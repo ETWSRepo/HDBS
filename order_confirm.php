@@ -2,6 +2,8 @@
 // order_confirm.php — Sends order confirmation email to the customer
 // Sits alongside notify.php in public_html
 
+require_once __DIR__ . '/api/config.php';
+
 header('Content-Type: application/json');
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
 header('Access-Control-Allow-Origin: ' . $origin);
@@ -168,7 +170,6 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 
 // ── Send via SMTP — customer + BCC to Suzi ──
 require_once __DIR__ . '/mailer.php';
-require_once __DIR__ . '/api/config.php';
 $recipients = [$customer_email, 'handmadedesignsbysuzi@yahoo.com'];
 $result = sendEmail($recipients, $subject, $html, $from_email, $from_name);
 $sent = ($result === true);

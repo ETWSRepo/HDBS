@@ -754,6 +754,29 @@ try{
     t('htaccess has no http:// asset loads',strpos(file_get_contents($root.'/.htaccess'),'http://')===false);
 }catch(Exception $e){t('htaccess security checks',false,$e->getMessage());}
 
+// ── ORDER CONFIRM TOKEN GATE ──
+try{
+    $ocphp=file_get_contents($root.'/order_confirm.php');
+    t('order_confirm.php has token gate',strpos($ocphp,'confirm_token')!==false&&strpos($ocphp,'hash_equals')!==false);
+    t('order_confirm.php requires config.php at top',strpos($ocphp,"require_once __DIR__ . '/api/config.php'")!==false);
+    t('store.js passes confirm_token',strpos(file_get_contents($root.'/js/store.js'),'confirm_token:window._confirmToken')!==false);
+    t('ui.js loads confirm_token',strpos(file_get_contents($root.'/js/ui.js'),"key:'confirm_token'")!==false);
+    // Live: no token → 403
+    $ch=curl_init('https://handmadedesignsbysuzi.com/order_confirm.php');
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>'{"order_id":"TEST","customer_email":"test@test.com"}',
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+    t('order_confirm blocked without token (403)',$code===403,'HTTP '.$code);
+    // Live: wrong token → 403
+    $ch=curl_init('https://handmadedesignsbysuzi.com/order_confirm.php');
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>'{"order_id":"TEST","customer_email":"test@test.com","confirm_token":"wrongtoken"}',
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+    t('order_confirm blocked with wrong token (403)',$code===403,'HTTP '.$code);
+}catch(Exception $e){t('order_confirm token gate checks',false,$e->getMessage());}
+
 // ── SENSITIVE SETTINGS BLOCKED ──
 try{
     $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
@@ -775,6 +798,16 @@ try{
 // ── DEBUG/UTILITY FILES REMOVED ──
 foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php'] as $df)
     t($df.' removed from server',!file_exists($root.'/'.$df));
+
+// ── FAVICON ──
+try{
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    t('favicon.png exists',file_exists($root.'/favicon.png'));
+    t('favicon.png linked in index.html',strpos($ihtml,'favicon.png')!==false);
+    t('favicon link is PNG type',strpos($ihtml,'type="image/png"')!==false);
+    t('SVG emoji favicon removed',strpos($ihtml,"data:image/svg+xml")===false);
+    t('favicon.png accessible (200)',httpCode('https://handmadedesignsbysuzi.com/favicon.png')===200);
+}catch(Exception $e){t('favicon checks',false,$e->getMessage());}
 
 // ── ABOUT PAGE ──
 try{
