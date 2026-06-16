@@ -46,6 +46,7 @@ var TN_CITY_COUNTY={
   'gatlinburg':'sevier','pigeon forge':'sevier','oak hill':'davidson','goodlettsville':'davidson'
 };
 var CATS=['Tote Bags','Purses','Clutches','Crossbody','Mini Bags','Other']; // admin-managed
+function parseCats(cat){if(!cat)return[];try{var a=JSON.parse(cat);if(Array.isArray(a))return a;}catch(e){}return[cat];}
 var CAT_PREFIXES={'Tote Bags':'TOT','Purses':'PUR','Clutches':'CLU','Crossbody':'CRS','Mini Bags':'MIN','Other':'OTH'}; // persisted to DB
 var ACTIVE_CAT='All'; // current filter // loaded from DB on startup
 var PRODS=[], ORDERS=[], CUSTS=[], CART=[], SUBS=[];

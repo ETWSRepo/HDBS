@@ -86,7 +86,7 @@ if ($method === 'POST' && $action === 'get_setting') {
     $key = $d['key'] ?? '';
     dbg('admin', "get_setting key=$key");
     if (!$key) fail('Missing key');
-    $sensitive = ['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
     if (in_array($key, $sensitive)) fail('Forbidden');
     $val = getSetting($pdo, $key);
     // default unset boolean settings to '0'
@@ -120,7 +120,7 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
     $val = $d['value'] ?? '';
     dbg('admin', "set_setting key=$key value=$val");
     if (!$key) fail('Missing key');
-    $sensitive = ['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
     if (in_array($key, $sensitive)) fail('Forbidden');
     setSetting($pdo, $key, $val);
     ok(['message' => 'Setting saved']);

@@ -805,12 +805,12 @@ try{
 // ── SENSITIVE SETTINGS BLOCKED ──
 try{
     $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
-    $sensitiveKeys=['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    $sensitiveKeys=['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
     foreach($sensitiveKeys as $sk)
         t('get_setting blocks '.$sk, strpos($adphp,"'".$sk."'")!==false&&strpos($adphp,'$sensitive')!==false);
     // Live checks — each sensitive key must return fail/Forbidden
     $apiUrl='https://handmadedesignsbysuzi.com/api/admin.php';
-    foreach(['github_token','admin_password','rt_token'] as $sk){
+    foreach(['github_token','admin_password'] as $sk){
         $ch=curl_init($apiUrl);
         curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
             CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>$sk]),
@@ -818,6 +818,13 @@ try{
         $res=json_decode(curl_exec($ch),true);curl_close($ch);
         t('get_setting '.$sk.' returns forbidden',isset($res['success'])&&$res['success']===false&&($res['error']??'')==='Forbidden',$res['error']??json_encode($res));
     }
+    // rt_token must be readable (used by regression test UI)
+    $ch=curl_init($apiUrl);
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>'rt_token']),
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    $rtRes=json_decode(curl_exec($ch),true);curl_close($ch);
+    t('get_setting rt_token returns value',isset($rtRes['success'])&&$rtRes['success']===true&&!empty($rtRes['value']));
 }catch(Exception $e){t('sensitive settings blocked checks',false,$e->getMessage());}
 
 // ── DEBUG/UTILITY FILES REMOVED ──
@@ -847,6 +854,48 @@ try{
     t('about-grid stacks to 1 column on mobile',strpos($css,'about-grid')!==false&&strpos($css,'grid-template-columns:1fr')!==false);
 }catch(Exception $e){t('about page checks',false,$e->getMessage());}
 
+// ── MULTI-CATEGORY PRODUCTS ──
+try{
+    $cfgjs=file_get_contents($root.'/js/config.js');
+    t('parseCats helper in config.js',strpos($cfgjs,'function parseCats')!==false);
+    t('parseCats handles JSON array',strpos($cfgjs,'JSON.parse')!==false&&strpos($cfgjs,'Array.isArray')!==false);
+    $apjs=file_get_contents($root.'/js/admin-products.js');
+    t('admin-products: checkbox group (pf-cats)',strpos($apjs,'pf-cats')!==false);
+    t('admin-products: pfGetCats function',strpos($apjs,'function pfGetCats')!==false);
+    t('admin-products: saveP uses pfGetCats',strpos($apjs,'pfGetCats()')!==false&&strpos($apjs,'JSON.stringify(pfGetCats())')!==false);
+    t('admin-products: select#pf-c removed',strpos($apjs,'id="pf-c"')===false);
+    t('admin-products: product table uses parseCats',strpos($apjs,'parseCats(p.cat)')!==false);
+    $sjs=file_get_contents($root.'/js/store.js');
+    t('store.js: filter uses parseCats',strpos($sjs,'parseCats(p.cat).indexOf(ACTIVE_CAT)')!==false);
+    t('store.js: detail view uses parseCats join',strpos($sjs,'parseCats(p.cat).join')!==false);
+    $aojs=file_get_contents($root.'/js/admin-orders.js');
+    t('admin-orders: category count uses parseCats',strpos($aojs,'parseCats(p.cat).indexOf(cat)')!==false);
+}catch(Exception $e){t('multi-category checks',false,$e->getMessage());}
+
+// ── CATEGORY DRAG-AND-DROP REORDER ──
+try{
+    $aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
+    t('initCatDrag function exists',strpos($aojs,'function initCatDrag')!==false);
+    t('drag handle in category row',strpos($aojs,'draggable="true"')!==false);
+    t('dragstart event wired',strpos($aojs,'dragstart')!==false);
+    t('drop event saves new order',strpos($aojs,'drop')!==false&&strpos($aojs,'CATS.splice')!==false);
+    t('moveCat removed (replaced by drag)',strpos($aojs,'function moveCat')===false);
+    t('up/down arrow buttons removed',strpos($aojs,'moveCat(')===false);
+}catch(Exception $e){t('drag-and-drop reorder checks',false,$e->getMessage());}
+
+// ── WATCH SCRIPT ──
+t('watch.ps1 not deployed to server',!file_exists($root.'/watch.ps1'));
+
+// ── PRODUCT FORM ACTION BUTTONS ──
+try{
+    $apjs=isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js');
+    t('pfSetActionBtns function exists',strpos($apjs,'function pfSetActionBtns')!==false);
+    t('action buttons container (pf-action-btns)',strpos($apjs,'pf-action-btns')!==false);
+    t('Update button appears before Cancel',strpos($apjs,'saveP()')!==false&&strpos($apjs,'cancelPF()')!==false&&strpos($apjs,'saveP()')< strpos($apjs,'cancelPF()'));
+    t('bottom Cancel/Save div removed from form',strpos($apjs,"justify-content:flex-end;margin-top:.5rem")===false);
+    t('cancelPF restores Add Product button',strpos($apjs,'cancelPF')!==false&&strpos($apjs,'+ Add Product')!==false);
+}catch(Exception $e){t('product form action buttons checks',false,$e->getMessage());}
+
 // ── 3. FILES ──
 foreach(['api/config.php','api/admin.php','api/orders.php','api/products.php',
          'api/tax_sweep.php','api/square_payments.php','api/fetch_tax.php',
@@ -863,7 +912,7 @@ $fns=['openCheckout','placeOrder','renderOrdersTable','viewOrder','showManualOrd
       'sendConfirmEmail','rSweep','rSqPay','applyShippingConfig','rBizProfile',
       'buildAdminNav','saveNavOrder','rRegTest','runRegTests','cancelRegTests',
       'SQ_FEE_PCT','TAX_RATES','updCarrier','updTracking','deleteOrder','sendShippingEmail',
-      'pfNextSku','pfAutoSku','fetchOrderTax','editCat','saveCatEdit',
+      'pfNextSku','pfAutoSku','pfGetCats','initCatDrag','fetchOrderTax','editCat','saveCatEdit',
       'prodSort','prodFilt','applyProdFilters','custSort','custFilt','applyCustomerFilters',
       'setAllStock1','setAllPrice1','autoAssignSkus','exportProductsCsv','showImportCsv','doImportCsv','toggleSell',
       'elSort','elFilt','elFiltApply','applyElFilters','buildElThead','rEmailLog','elRefresh','clearEmailLog',

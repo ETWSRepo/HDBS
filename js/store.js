@@ -24,7 +24,7 @@ function renderStore(){
   var g=document.getElementById('pgrid'),h='';
   // Only show products listed for sale (sell !== 0)
   var forSale=PRODS.filter(function(p){return p.sell!==0;});
-  var filtered=ACTIVE_CAT==='All'?forSale:forSale.filter(function(p){return p.cat===ACTIVE_CAT;});
+  var filtered=ACTIVE_CAT==='All'?forSale:forSale.filter(function(p){return parseCats(p.cat).indexOf(ACTIVE_CAT)>=0;});
   renderCatFilter();
   for(var i=0;i<filtered.length;i++){
     var p=filtered[i];
@@ -109,7 +109,7 @@ function openPD(id){
         '<div class="detail-desc">'+p.desc+'</div>'+
         stockHtml+
         (p.sku?'<div style="font-size:.78rem;font-family:monospace;color:#a07810;margin-bottom:.3rem;letter-spacing:.04em">SKU: '+p.sku+'</div>':'')+
-        '<div class="detail-cat">Category: '+p.cat+(p.weight?' &nbsp;·&nbsp; '+p.weight+' lbs':'')+'</div>'+
+        '<div class="detail-cat">Category: '+parseCats(p.cat).join(', ')+(p.weight?' &nbsp;·&nbsp; '+p.weight+' lbs':'')+'</div>'+
         (p.size?'<div style="font-size:.85rem;color:#2d2220;margin-bottom:.6rem;"><strong>Size:</strong> '+p.size+'</div>':'')+
 
         '<button class="detail-add'+(p.stock<=0?' os':'')+'" id="pdadd-btn" data-pid="'+p.id+'"'+(p.stock<=0?' disabled':'')+'>'+

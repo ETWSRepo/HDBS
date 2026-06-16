@@ -1420,8 +1420,7 @@ function deleteReview(id){
 
 function rCats(el){
   var listHtml=CATS.map(function(cat,i){
-    var count=PRODS.filter(function(p){return p.cat===cat;}).length;
-    // Compute prefix and next available SKU for this category
+    var count=PRODS.filter(function(p){return parseCats(p.cat).indexOf(cat)>=0;}).length;
     var prefix=(CAT_PREFIXES&&CAT_PREFIXES[cat])?CAT_PREFIXES[cat]:cat.replace(/[^A-Za-z]/g,'').substring(0,3).toUpperCase();
     var existing=PRODS.filter(function(p){return p.sku&&p.sku.indexOf(prefix)===0;})
       .map(function(p){return parseInt(p.sku.replace(prefix,''))||0;});
@@ -1429,10 +1428,8 @@ function rCats(el){
     var overrideNum=(CAT_PREFIXES&&CAT_PREFIXES[cat+'__next']!==undefined)?parseInt(CAT_PREFIXES[cat+'__next']):null;
     var nextNum=(overrideNum!==null)?overrideNum:autoNum;
     var nextSku=prefix+String(nextNum).padStart(3,'0');
-    var upBtn='<button style="font-size:.72rem;padding:1px 5px;background:#fdf3d0;border:1px solid #a07810;border-radius:4px;color:#2d2220;cursor:pointer'+(i===0?';opacity:.3;pointer-events:none':'')+'" onclick="moveCat('+i+',-1)" title="Move up">▲</button>';
-    var dnBtn='<button style="font-size:.72rem;padding:1px 5px;background:#fdf3d0;border:1px solid #a07810;border-radius:4px;color:#2d2220;cursor:pointer'+(i===CATS.length-1?';opacity:.3;pointer-events:none':'')+'" onclick="moveCat('+i+',1)" title="Move down">▼</button>';
-    return '<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#fff;border:1px solid #e8e0b8;border-radius:8px;margin-bottom:.5rem">'+
-      '<div style="display:flex;flex-direction:column;gap:1px">'+upBtn+dnBtn+'</div>'+
+    return '<div draggable="true" data-cat-idx="'+i+'" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#fff;border:1px solid #e8e0b8;border-radius:8px;margin-bottom:.5rem;cursor:default">'+
+      '<span style="cursor:grab;color:#a07810;font-size:1rem;padding:0 2px;line-height:1" title="Drag to reorder">⠿</span>'+
       '<span style="flex:1;font-weight:600;font-size:.88rem;color:#2d2220">'+cat+'</span>'+
       '<span class="badge bb" style="font-size:.72rem">'+count+' product'+(count!==1?'s':'')+'</span>'+
       '<span style="font-size:.72rem;font-family:monospace;color:#6b6040;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:1px 6px" title="SKU prefix">'+prefix+'</span>'+
@@ -1453,8 +1450,49 @@ function rCats(el){
       '<div class="aok" id="cat-ok" style="margin-top:.6rem">✓ Categories updated!</div>'+
     '</div>'+
     '<div style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:#6b6040;line-height:1.6">'+
-    'Category changes apply immediately to the shop filter bar and product form dropdown.'+
+    'Drag the ⠿ handle to reorder. Changes apply immediately to the shop filter bar and product form.'+
     '</div></div>';
+  initCatDrag();
+}
+function initCatDrag(){
+  var list=document.getElementById('cat-list');
+  if(!list)return;
+  var dragSrc=null;
+  var rows=list.querySelectorAll('[data-cat-idx]');
+  for(var i=0;i<rows.length;i++){
+    rows[i].addEventListener('dragstart',function(e){
+      dragSrc=this;
+      e.dataTransfer.effectAllowed='move';
+      setTimeout(function(){dragSrc.style.opacity='.4';},0);
+    });
+    rows[i].addEventListener('dragend',function(){
+      this.style.opacity='';
+      var all=list.querySelectorAll('[data-cat-idx]');
+      for(var j=0;j<all.length;j++)all[j].style.borderTop='';
+    });
+    rows[i].addEventListener('dragover',function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      var all=list.querySelectorAll('[data-cat-idx]');
+      for(var j=0;j<all.length;j++)all[j].style.borderTop='';
+      if(this!==dragSrc)this.style.borderTop='2px solid #d4a017';
+    });
+    rows[i].addEventListener('dragleave',function(){
+      this.style.borderTop='';
+    });
+    rows[i].addEventListener('drop',function(e){
+      e.preventDefault();
+      if(!dragSrc||dragSrc===this)return;
+      var fromIdx=parseInt(dragSrc.getAttribute('data-cat-idx'));
+      var toIdx=parseInt(this.getAttribute('data-cat-idx'));
+      var moved=CATS.splice(fromIdx,1)[0];
+      CATS.splice(toIdx,0,moved);
+      apiFetch('admin.php','POST',{action:'save_setting',key:'product_categories',value:JSON.stringify(CATS)}).catch(function(){});
+      rCats(document.getElementById('acnt'));
+      renderCatFilter();
+      showCatOk();
+    });
+  }
 }
 function addCat(){
   var inp=document.getElementById('new-cat');
@@ -1466,15 +1504,6 @@ function addCat(){
   if(CAT_PREFIXES){var ap=name.replace(/[^A-Za-z]/g,'').substring(0,3).toUpperCase();CAT_PREFIXES[name]=ap;}
   apiFetch('admin.php','POST',{action:'save_setting',key:'product_categories',value:JSON.stringify(CATS)}).catch(function(){});
   apiFetch('admin.php','POST',{action:'save_setting',key:'cat_prefixes',value:JSON.stringify(CAT_PREFIXES)}).catch(function(){});
-  rCats(document.getElementById('acnt'));
-  renderCatFilter();
-  showCatOk();
-}
-function moveCat(idx,dir){
-  var newIdx=idx+dir;
-  if(newIdx<0||newIdx>=CATS.length)return;
-  var tmp=CATS[idx];CATS[idx]=CATS[newIdx];CATS[newIdx]=tmp;
-  apiFetch('admin.php','POST',{action:'save_setting',key:'product_categories',value:JSON.stringify(CATS)}).catch(function(){});
   rCats(document.getElementById('acnt'));
   renderCatFilter();
   showCatOk();
@@ -1554,7 +1583,7 @@ function saveCatEdit(idx){
 }
 function deleteCat(idx){
   var name=CATS[idx];
-  var count=PRODS.filter(function(p){return p.cat===name;}).length;
+  var count=PRODS.filter(function(p){return parseCats(p.cat).indexOf(name)>=0;}).length;
   if(count>0&&!confirm('Delete category "'+name+'"? '+count+' product(s) will have no category.'))return;
   CATS.splice(idx,1);
   if(ACTIVE_CAT===name){ACTIVE_CAT='All';}
