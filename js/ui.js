@@ -102,6 +102,10 @@ function tryLoad(){
   apiFetch('admin.php','POST',{action:'get_setting',key:'square_mode'}).then(function(md){
     if(md.success&&md.value){SQUARE_MODE=md.value;if(SQUARE_MODE==='test')setSquareMode('test');}
   }).catch(function(){});
+  // Load confirm token for order_confirm.php auth
+  apiFetch('admin.php','POST',{action:'get_setting',key:'confirm_token'}).then(function(d){
+    if(d.success&&d.value)window._confirmToken=d.value;
+  }).catch(function(){});
 }
 function checkThankYou(){
   var params=new URLSearchParams(window.location.search);

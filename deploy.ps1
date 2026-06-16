@@ -13,7 +13,7 @@ $ftpPort  = $creds["FTP_PORT"]
 $local    = $PSScriptRoot
 $apiBase  = "https://handmadedesignsbysuzi.com/api"
 
-$exclude = @(".git",".ftp-credentials","deploy.ps1","CLAUDE.md","README.md","node_modules","product_images","secrets.php")
+$exclude = @(".git",".ftp-credentials","deploy.ps1","CLAUDE.md","README.md","node_modules","product_images","secrets.php","debug.php","debug.flag","drop_tn_tax.php","fix_tax.php","sq_test.php","run_tests.html","reset_nav.php","default.php")
 
 function Should-Exclude($path) {
     foreach ($ex in $exclude) {
@@ -39,6 +39,15 @@ function Increment-MinorVersion {
         $json = Invoke-RestMethod -Uri "$apiBase/admin.php" -Method Post -Body $body -ContentType "application/json"
         Write-Host "  Version incremented to $($json.version)" -ForegroundColor Cyan
     } catch {}
+}
+
+function Delete-FtpFile($rel) {
+    $remotePath = ($rel -replace "\\", "/")
+    $url = "ftp://${ftpHost}:${ftpPort}/${remotePath}"
+    Write-Host "Deleting $rel ..." -ForegroundColor Yellow
+    $out = & curl.exe -u "${ftpUser}:${ftpPass}" -Q "DELE $remotePath" $url 2>&1
+    if ($LASTEXITCODE -eq 0) { Write-Host "  OK" -ForegroundColor Green }
+    else { Write-Host "  FAILED (may not exist): $out" -ForegroundColor DarkYellow }
 }
 
 function Log-Deploy($fileList, $mode) {

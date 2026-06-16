@@ -86,6 +86,8 @@ if ($method === 'POST' && $action === 'get_setting') {
     $key = $d['key'] ?? '';
     dbg('admin', "get_setting key=$key");
     if (!$key) fail('Missing key');
+    $sensitive = ['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    if (in_array($key, $sensitive)) fail('Forbidden');
     $val = getSetting($pdo, $key);
     // default unset boolean settings to '0'
     if ($val === null && in_array($key, ['debug_mode', 'log_page_changes'])) {
@@ -94,6 +96,11 @@ if ($method === 'POST' && $action === 'get_setting') {
     }
     // auto-generate rt_token if not set
     if ($val === null && $key === 'rt_token') {
+        $val = bin2hex(random_bytes(16));
+        setSetting($pdo, $key, $val);
+    }
+    // auto-generate confirm_token if not set
+    if ($val === null && $key === 'confirm_token') {
         $val = bin2hex(random_bytes(16));
         setSetting($pdo, $key, $val);
     }
@@ -108,6 +115,8 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
     $val = $d['value'] ?? '';
     dbg('admin', "set_setting key=$key value=$val");
     if (!$key) fail('Missing key');
+    $sensitive = ['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    if (in_array($key, $sensitive)) fail('Forbidden');
     setSetting($pdo, $key, $val);
     ok(['message' => 'Setting saved']);
 }

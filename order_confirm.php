@@ -14,6 +14,16 @@ $raw  = file_get_contents('php://input');
 $data = json_decode($raw, true);
 if (!$data) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Invalid JSON']); exit(); }
 
+// Token gate
+$pdo_chk = db();
+$stored_token = $pdo_chk->query("SELECT value FROM settings WHERE key_name='confirm_token' LIMIT 1")->fetchColumn();
+$given_token  = $data['confirm_token'] ?? '';
+if (!$stored_token || !$given_token || !hash_equals($stored_token, $given_token)) {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'error'=>'Forbidden']);
+    exit();
+}
+
 // ── Config ──
 $from_email = 'handmadedesignsbysuzi@yahoo.com';
 $from_name  = 'Handmade Designs By Suzi';

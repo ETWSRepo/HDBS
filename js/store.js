@@ -406,7 +406,8 @@ function placeOrder(){
       var confirmData=JSON.stringify({
         order_id:oid,date:o.date,customer_name:o.cust,customer_email:o.email,
         phone:o.phone||'',address:o.addr||'',
-        subtotal:o.subtotal||o.total,shipping:o.shipping||0,total:o.total,items:o.items
+        subtotal:o.subtotal||o.total,shipping:o.shipping||0,total:o.total,items:o.items,
+        confirm_token:window._confirmToken||''
       });
       var opts={method:'POST',headers:{'Content-Type':'application/json'},body:confirmData};
       Promise.all([

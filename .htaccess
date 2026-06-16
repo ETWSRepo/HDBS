@@ -1,3 +1,31 @@
+# Disable directory listing
+Options -Indexes
+
+# Block direct access to internal PHP helpers
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+<Files "applog.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Block sensitive files
+<FilesMatch "(secrets\.php|\.ftp-credentials|\.env)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block log and text files
+<FilesMatch "\.(log|txt)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Force HTTPS upgrade for any accidental HTTP asset loads
+Header always set Content-Security-Policy "upgrade-insecure-requests"
+
 # Disable LiteSpeed cache for JS, CSS, PHP
 <IfModule LiteSpeed>
     RewriteEngine On

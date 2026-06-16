@@ -731,6 +731,51 @@ try{
     t('tk-th-label arrow in shop.css',strpos($shopcss,'tk-th-label')!==false&&strpos($shopcss,'25BC')!==false);
 }catch(Exception $e){t('TableKit integration checks',false,$e->getMessage());}
 
+// ── SECURITY: HTACCESS ──
+try{
+    $htaccess=file_get_contents($root.'/.htaccess');
+    t('htaccess disables directory listing',strpos($htaccess,'Options -Indexes')!==false);
+    t('htaccess blocks config.php',strpos($htaccess,'"config.php"')!==false&&strpos($htaccess,'Deny from all')!==false);
+    t('htaccess blocks applog.php',strpos($htaccess,'"applog.php"')!==false);
+    t('htaccess blocks secrets.php',strpos($htaccess,'secrets\.php')!==false);
+    t('htaccess blocks .log/.txt files',strpos($htaccess,'\.(log|txt)$')!==false);
+    // Live HTTP checks
+    function httpCode($url){$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_NOBODY=>true,CURLOPT_FOLLOWLOCATION=>false]);curl_exec($ch);$c=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);return $c;}
+    $base='https://handmadedesignsbysuzi.com';
+    t('api/config.php blocked (403)',httpCode($base.'/api/config.php')===403,'HTTP '.httpCode($base.'/api/config.php'));
+    t('api/applog.php blocked (403)',httpCode($base.'/api/applog.php')===403,'HTTP '.httpCode($base.'/api/applog.php'));
+    t('secrets.php blocked (403)',httpCode($base.'/secrets.php')===403,'HTTP '.httpCode($base.'/secrets.php'));
+    t('notify_log.txt blocked (403)',httpCode($base.'/notify_log.txt')===403,'HTTP '.httpCode($base.'/notify_log.txt'));
+    t('api/ directory listing blocked (403)',httpCode($base.'/api/')===403,'HTTP '.httpCode($base.'/api/'));
+    t('js/ directory listing blocked (403)',httpCode($base.'/js/')===403,'HTTP '.httpCode($base.'/js/'));
+    // CSP header check
+    $ch=curl_init($base.'/');curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_HEADER=>true,CURLOPT_NOBODY=>true]);$resp=curl_exec($ch);curl_close($ch);
+    t('CSP upgrade-insecure-requests header set',stripos($resp,'upgrade-insecure-requests')!==false);
+    t('htaccess has no http:// asset loads',strpos(file_get_contents($root.'/.htaccess'),'http://')===false);
+}catch(Exception $e){t('htaccess security checks',false,$e->getMessage());}
+
+// ── SENSITIVE SETTINGS BLOCKED ──
+try{
+    $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    $sensitiveKeys=['github_token','admin_password','admin_sec_answer','rt_token','square_access_token','square_app_secret'];
+    foreach($sensitiveKeys as $sk)
+        t('get_setting blocks '.$sk, strpos($adphp,"'".$sk."'")!==false&&strpos($adphp,'$sensitive')!==false);
+    // Live checks — each sensitive key must return fail/Forbidden
+    $apiUrl='https://handmadedesignsbysuzi.com/api/admin.php';
+    foreach(['github_token','admin_password','rt_token'] as $sk){
+        $ch=curl_init($apiUrl);
+        curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+            CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>$sk]),
+            CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+        $res=json_decode(curl_exec($ch),true);curl_close($ch);
+        t('get_setting '.$sk.' returns forbidden',isset($res['success'])&&$res['success']===false&&($res['error']??'')==='Forbidden',$res['error']??json_encode($res));
+    }
+}catch(Exception $e){t('sensitive settings blocked checks',false,$e->getMessage());}
+
+// ── DEBUG/UTILITY FILES REMOVED ──
+foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php'] as $df)
+    t($df.' removed from server',!file_exists($root.'/'.$df));
+
 // ── ABOUT PAGE ──
 try{
     $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
