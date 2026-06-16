@@ -324,7 +324,7 @@ try{
     t('editSweepRow exists',strpos($amjs2,'function editSweepRow(')!==false);
     t('saveSweepEdit exists',strpos($amjs2,'function saveSweepEdit(')!==false);
     t('sweep header Excel style',strpos($amjs2,'text-transform:uppercase')!==false);
-    t('Error Logs label',strpos($amjs2,"label:'📋 Error Logs'")!==false);
+    t('Error Logs label',strpos($amjs2,"logs:'📋 Error Logs'")!==false||strpos($amjs2,"label:'📋 Error Logs'")!==false);
 }catch(Exception $e){t('tax sweep button checks',false,$e->getMessage());}
 // Contact page and navigation
 try{
@@ -536,6 +536,34 @@ try{
     $navjs=file_get_contents($root.'/js/admin-nav.js');
     t('admin-nav logs page view',strpos($navjs,'log_page_view')!==false&&strpos($navjs,'hdbs_pagelog')!==false);
 }catch(Exception $e){t('page view logging checks',false,$e->getMessage());}
+
+// ── NAV SUBMENUS ──
+try{
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('ADMIN_NAV_LABELS defined',strpos($amjs,'var ADMIN_NAV_LABELS=')!==false);
+    t('ADMIN_NAV_STRUCTURE_DEFAULT has shop folder',strpos($amjs,"sec:'shop'")!==false&&strpos($amjs,"type:'folder'")!==false);
+    t('ADMIN_NAV_STRUCTURE_DEFAULT has developer folder',strpos($amjs,"sec:'developer'")!==false);
+    t('toggleNavFolder exists',strpos($amjs,'function toggleNavFolder(')!==false);
+    t('loadNavOrder handles nested format',strpos($amjs,"p[0].type")!==false);
+    t('saveNavOrder reads DOM structure',strpos($amjs,"dataset.type==='folder'")!==false);
+    t('buildAdminNav renders folders',strpos($amjs,'makeFolder')!==false&&strpos($amjs,'fld-ch-')!==false);
+    // Verify default folder membership
+    $shopMatch=preg_match("/sec:'shop'.*?children:\[([^\]]+)\]/s",$amjs,$sm);
+    t('shop folder contains prods',$shopMatch&&strpos($sm[1],"'prods'")!==false);
+    t('shop folder contains orders',$shopMatch&&strpos($sm[1],"'orders'")!==false);
+    $devMatch=preg_match("/sec:'developer'.*?children:\[([^\]]+)\]/s",$amjs,$dm);
+    t('developer folder contains regtest',$devMatch&&strpos($dm[1],"'regtest'")!==false);
+    t('developer folder contains settings',$devMatch&&strpos($dm[1],"'settings'")!==false);
+    // Drag behaviour
+    t('drag item into folder on header drop',strpos($amjs,'ch.appendChild(drag.el)')!==false);
+    t('drag item to root on container drop',strpos($amjs,'container.appendChild(drag.el)')!==false);
+    // Folder collapse
+    t('toggleNavFolder saves to localStorage',strpos($amjs,'hdbs_nav_folders')!==false);
+    t('folder collapse state in localStorage',strpos($amjs,'_navFolderState')!==false);
+    // Migration
+    t('loadNavOrder migrates old flat format',strpos($amjs,'ADMIN_NAV_STRUCTURE_DEFAULT')!==false&&strpos($amjs,'migrate')!==false);
+    t('loadNavOrder adds missing secs',strpos($amjs,'existing.indexOf(sec)<0')!==false);
+}catch(Exception $e){t('nav submenu checks',false,$e->getMessage());}
 
 // ── DEPLOY HISTORY ──
 try{

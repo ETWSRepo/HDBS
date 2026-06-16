@@ -3,7 +3,8 @@ var RT_GROUPS={
   'DB Schema':['orders.tax_amount','orders.tax_swept_date','orders.payment_method','orders.customer_email','orders.total','orders.shipping_carrier','orders.tracking_number','orders.square_payment_id','products.sku','products.img1','products.price','products.name','products.stock','products.weight','orders table','products table','order_items table','settings table','tax_sweeps table','settings LONGTEXT','tax_swept removed'],
   'Data Integrity':['products exist','orders exist','settings exist','rt_token set','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs','product descriptions updated','hero.jpg exists','shop.css has /hero.jpg','store.js has sold-out diagonal','orders.php decrements stock','send_shipping uses EDT','send_confirm uses EDT','sitemap.xml exists','robots.txt exists','robots.txt references sitemap'],
   'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','api/email_log.php','api/fetch_tax.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.html','css/shop.css','css/table.css','js/api.js','js/config.js','js/store.js','js/table.js','js/admin-orders.js','js/admin-misc.js'],
-  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax','JS:setPageLogMode','JS:rGitLog'],
+  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax','JS:setPageLogMode','JS:rGitLog','JS:toggleNavFolder'],
+  'Nav Submenus':['ADMIN_NAV_LABELS defined','ADMIN_NAV_STRUCTURE_DEFAULT has shop folder','ADMIN_NAV_STRUCTURE_DEFAULT has developer folder','shop folder contains prods','shop folder contains orders','developer folder contains regtest','developer folder contains settings','toggleNavFolder exists','toggleNavFolder saves to localStorage','loadNavOrder handles nested format','loadNavOrder migrates old flat format','loadNavOrder adds missing secs','saveNavOrder reads DOM structure','buildAdminNav renders folders','drag item into folder on header drop','drag item to root on container drop','folder collapse state in localStorage'],
   'Deploy History':['api/deploy_log.php exists','deploy_log appends entries','deploy_log returns deploys','deploy_log.php POST handler exists','deploy_log.php GET handler exists','deploylog in nav titles','rDeployLog in nav','rDeployLog function exists','rDeployLog fetches deploy_log','rDeployLog groups by 5-min window','rDeployLog shows deploy sessions'],
   'Change History':['api/github_log.php exists','github_log returns commits','gitlog in nav titles','rGitLog wired in nav','rGitLog fetches github_log','github token card in settings'],
   'Regression Test Security':['regression_test.php has token gate','regression_test.php returns 403 on bad token','admin-misc fetches rt_token','runRegTests appends token','bare URL returns 403'],
@@ -368,43 +369,66 @@ function doTaxSweep(){
   }).catch(function(){alert('Network error during sweep.');});
 }
 
-var ADMIN_NAV_DEFAULT=[
-  {sec:'dash',    label:'📊 Dashboard'},
-  {sec:'prods',   label:'👜 Products'},
-  {sec:'orders',  label:'📦 Orders'},
-  {sec:'manord',  label:'📋 Manual Order'},
-  {sec:'custs',   label:'👥 Customers'},
-  {sec:'sales',   label:'💰 Sales'},
-  {sec:'subs',    label:'✉️ Subscribers'},
-  {sec:'blast',   label:'📣 Email Blast'},
-  {sec:'faqs',    label:'❓ FAQs'},
-  {sec:'tncity',  label:'🏙️ TN City Sales Taxes'},
-  {sec:'reviews', label:'⭐ Reviews'},
-  {sec:'cats',    label:'🏷️ Categories'},
-  {sec:'shipping',label:'🚚 Shipping Charges'},
-  {sec:'sqpay',   label:'💳 Square Payments'},
-  {sec:'sweep',   label:'🧾 Tax Sweep'},
-  {sec:'gitlog',  label:'📜 Change History'},
-  {sec:'deploylog',label:'🚀 Deploy History'},
-  {sec:'regtest', label:'🧪 Regression Tests'},
-  {sec:'emaillog',label:'📧 Email Log'},
-  {sec:'logs',    label:'📋 Error Logs'},
-  {sec:'bizprofile',label:'🏢 Business Profile'},
-  {sec:'settings',label:'⚙️ Settings'}
+// Flat label map for all known sections
+var ADMIN_NAV_LABELS={
+  dash:'📊 Dashboard',prods:'👜 Products',orders:'📦 Orders',
+  manord:'📋 Manual Order',custs:'👥 Customers',sales:'💰 Sales',
+  subs:'✉️ Subscribers',blast:'📣 Email Blast',faqs:'❓ FAQs',
+  tncity:'🏙️ TN City Sales Taxes',reviews:'⭐ Reviews',
+  cats:'🏷️ Categories',shipping:'🚚 Shipping Charges',
+  sqpay:'💳 Square Payments',sweep:'🧾 Tax Sweep',
+  regtest:'🧪 Regression Tests',emaillog:'📧 Email Log',
+  logs:'📋 Error Logs',bizprofile:'🏢 Business Profile',
+  settings:'⚙️ Settings',gitlog:'📜 Change History',
+  deploylog:'🚀 Deploy History',inv:'📦 Inventory'
+};
+// Keep ADMIN_NAV_DEFAULT as flat list for backwards-compat references in RT_GROUPS etc.
+var ADMIN_NAV_DEFAULT=Object.keys(ADMIN_NAV_LABELS).map(function(s){return{sec:s,label:ADMIN_NAV_LABELS[s]};});
+// Default nested structure with Shop and Developer folders
+var ADMIN_NAV_STRUCTURE_DEFAULT=[
+  {type:'item',sec:'dash'},
+  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','manord','custs','sales','subs','blast','inv']},
+  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','emaillog','logs','bizprofile','settings']},
+  {type:'item',sec:'faqs'},
+  {type:'item',sec:'tncity'},
+  {type:'item',sec:'reviews'},
+  {type:'item',sec:'cats'},
+  {type:'item',sec:'shipping'},
+  {type:'item',sec:'sqpay'},
+  {type:'item',sec:'sweep'}
 ];
+function _navFolderState(){try{return JSON.parse(localStorage.getItem('hdbs_nav_folders')||'{}');}catch(e){return{};}}
+function toggleNavFolder(sec){
+  var ch=document.getElementById('fld-ch-'+sec),ar=document.getElementById('fld-ar-'+sec);
+  if(!ch)return;
+  var open=ch.style.display!=='none';
+  ch.style.display=open?'none':'block';
+  if(ar)ar.textContent=open?'▶':'▼';
+  var s=_navFolderState();s[sec]=!open;
+  localStorage.setItem('hdbs_nav_folders',JSON.stringify(s));
+}
 function loadNavOrder(callback){
-  var defaults=ADMIN_NAV_DEFAULT.map(function(n){return n.sec;});
-  try{
-    apiFetch('admin.php','POST',{action:'get_setting',key:'nav_order'}).then(function(d){
-      if(d&&d.success&&d.value){
-        try{
-          var parsed=JSON.parse(d.value);
-          if(Array.isArray(parsed)&&parsed.length>0){callback(parsed);return;}
-        }catch(e){}
+  apiFetch('admin.php','POST',{action:'get_setting',key:'nav_order'}).then(function(d){
+    var structure;
+    try{
+      var p=JSON.parse(d&&d.value?d.value:'[]');
+      if(p.length&&p[0]&&typeof p[0]==='object'&&p[0].type){
+        structure=p; // new nested format
+      } else {
+        structure=JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT)); // migrate
       }
-      callback(defaults);
-    }).catch(function(){callback(defaults);});
-  }catch(e){callback(defaults);}
+    }catch(e){structure=JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT));}
+    // Add any new secs not yet present anywhere in structure
+    var existing=[];
+    structure.forEach(function(n){
+      if(n.type==='folder')(n.children||[]).forEach(function(s){existing.push(s);});
+      else existing.push(n.sec);
+    });
+    Object.keys(ADMIN_NAV_LABELS).forEach(function(sec){
+      if(existing.indexOf(sec)<0)structure.push({type:'item',sec:sec});
+    });
+    callback(structure);
+  }).catch(function(){callback(JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT)));});
 }
 function rDeployLog(el){
   el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading deploy history…</div>';
@@ -510,51 +534,125 @@ function rGitLog(el){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function saveNavOrder(){
-  var order=[];
-  document.querySelectorAll('#admin-nav .sitem').forEach(function(el){order.push(el.dataset.sec);});
-  apiFetch('admin.php','POST',{action:'save_setting',key:'nav_order',value:JSON.stringify(order)}).catch(function(){});
+  var container=document.getElementById('admin-nav');
+  if(!container)return;
+  var structure=[];
+  for(var i=0;i<container.childNodes.length;i++){
+    var el=container.childNodes[i];
+    if(!el.dataset)continue;
+    if(el.dataset.type==='folder'){
+      var children=[];
+      var ch=document.getElementById('fld-ch-'+el.dataset.sec);
+      if(ch){for(var j=0;j<ch.childNodes.length;j++){var c=ch.childNodes[j];if(c.dataset&&c.dataset.sec)children.push(c.dataset.sec);}}
+      structure.push({type:'folder',sec:el.dataset.sec,label:el.dataset.label||'',children:children});
+    }else if(el.dataset.sec){
+      structure.push({type:'item',sec:el.dataset.sec});
+    }
+  }
+  apiFetch('admin.php','POST',{action:'save_setting',key:'nav_order',value:JSON.stringify(structure)}).catch(function(){});
 }
 function buildAdminNav(){
   var container=document.getElementById('admin-nav');
   if(!container)return;
   container.innerHTML='<div style="padding:.5rem 1.2rem;font-size:.72rem;color:rgba(255,255,255,.3)">Loading…</div>';
-  loadNavOrder(function(order){
-    var map={};
-    ADMIN_NAV_DEFAULT.forEach(function(n){map[n.sec]=n.label;});
+  var folderState=_navFolderState();
+  var drag={sec:null,el:null,isFolder:false};
+  function clearDragOver(){container.querySelectorAll('.drag-over').forEach(function(e){e.classList.remove('drag-over');});}
+
+  function makeItem(sec){
+    var div=document.createElement('div');
+    div.className='sitem';div.dataset.type='item';div.dataset.sec=sec;
+    div.setAttribute('draggable','true');
+    div.innerHTML='<span class="sitem-drag" title="Drag to reorder">⠿</span>'+
+      '<span onclick="aNavEl(this.parentNode,\''+sec+'\')">'+(ADMIN_NAV_LABELS[sec]||sec)+'</span>';
+    div.addEventListener('dragstart',function(e){
+      e.stopPropagation();
+      e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',sec);
+      drag.sec=sec;drag.el=div;drag.isFolder=false;
+      setTimeout(function(){div.classList.add('dragging');},0);
+    });
+    div.addEventListener('dragend',function(){
+      div.classList.remove('dragging');clearDragOver();
+      drag.sec=null;drag.el=null;saveNavOrder();
+    });
+    div.addEventListener('dragover',function(e){
+      if(!drag.el||drag.el===div)return;
+      e.preventDefault();e.stopPropagation();clearDragOver();div.classList.add('drag-over');
+    });
+    div.addEventListener('drop',function(e){
+      e.preventDefault();e.stopPropagation();div.classList.remove('drag-over');
+      if(!drag.el||drag.el===div)return;
+      div.parentNode.insertBefore(drag.el,div);saveNavOrder();
+    });
+    return div;
+  }
+
+  function makeFolder(node){
+    var isOpen=folderState[node.sec]!==false;
+    var outer=document.createElement('div');
+    outer.dataset.type='folder';outer.dataset.sec=node.sec;outer.dataset.label=node.label||'';
+    outer.setAttribute('draggable','true');
+    // Header
+    var hdr=document.createElement('div');
+    hdr.className='sitem sitem-folder';
+    hdr.style.cssText='font-weight:700;font-size:.82rem;letter-spacing:.03em';
+    hdr.innerHTML=
+      '<span class="sitem-drag" title="Drag to reorder">⠿</span>'+
+      '<span style="flex:1;cursor:pointer" onclick="toggleNavFolder(\''+node.sec+'\')">'+
+        (node.label||node.sec)+
+        '<span id="fld-ar-'+node.sec+'" style="margin-left:.35rem;font-size:.65rem;opacity:.7">'+(isOpen?'▼':'▶')+'</span>'+
+      '</span>';
+    // Drop item onto folder header → add to folder
+    hdr.addEventListener('dragover',function(e){
+      if(drag.el&&!drag.isFolder){var ch=document.getElementById('fld-ch-'+node.sec);if(!ch.contains(drag.el)){e.preventDefault();e.stopPropagation();clearDragOver();hdr.classList.add('drag-over');}}
+    });
+    hdr.addEventListener('dragleave',function(){hdr.classList.remove('drag-over');});
+    hdr.addEventListener('drop',function(e){
+      e.preventDefault();e.stopPropagation();hdr.classList.remove('drag-over');
+      if(!drag.el||drag.isFolder)return;
+      var ch=document.getElementById('fld-ch-'+node.sec);
+      if(ch&&!ch.contains(drag.el)){ch.appendChild(drag.el);saveNavOrder();}
+    });
+    outer.appendChild(hdr);
+    // Children
+    var ch=document.createElement('div');
+    ch.id='fld-ch-'+node.sec;
+    ch.style.cssText='padding-left:1rem;display:'+(isOpen?'block':'none');
+    (node.children||[]).forEach(function(sec){if(ADMIN_NAV_LABELS[sec])ch.appendChild(makeItem(sec));});
+    outer.appendChild(ch);
+    // Folder drag (reorder folders)
+    outer.addEventListener('dragstart',function(e){
+      if(e.defaultPrevented)return; // item inside already handled it
+      e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','__f__'+node.sec);
+      drag.sec=node.sec;drag.el=outer;drag.isFolder=true;
+      setTimeout(function(){outer.classList.add('dragging');},0);
+    });
+    outer.addEventListener('dragend',function(){
+      outer.classList.remove('dragging');clearDragOver();
+      drag.sec=null;drag.el=null;saveNavOrder();
+    });
+    outer.addEventListener('dragover',function(e){
+      if(drag.isFolder&&drag.el!==outer){e.preventDefault();e.stopPropagation();clearDragOver();outer.classList.add('drag-over');}
+    });
+    outer.addEventListener('drop',function(e){
+      if(!drag.isFolder||drag.el===outer)return;
+      e.preventDefault();e.stopPropagation();outer.classList.remove('drag-over');
+      container.insertBefore(drag.el,outer);saveNavOrder();
+    });
+    return outer;
+  }
+
+  loadNavOrder(function(structure){
     container.innerHTML='';
-    ADMIN_NAV_DEFAULT.forEach(function(n){if(order.indexOf(n.sec)<0)order.push(n.sec);});
-    order.forEach(function(sec){
-      if(!map[sec])return;
-      var div=document.createElement('div');
-      div.className='sitem';
-      div.dataset.sec=sec;
-      div.setAttribute('draggable','true');
-      div.innerHTML='<span class="sitem-drag" title="Drag to reorder">⠿</span><span onclick="aNavEl(this.parentNode,\''+sec+'\')">'+map[sec]+'</span>';
-      div.addEventListener('dragstart',function(e){
-        e.dataTransfer.effectAllowed='move';
-        e.dataTransfer.setData('text/plain',sec);
-        setTimeout(function(){div.classList.add('dragging');},0);
-      });
-      div.addEventListener('dragend',function(){
-        div.classList.remove('dragging');
-        document.querySelectorAll('.sitem').forEach(function(el){el.classList.remove('drag-over');});
-        saveNavOrder();
-      });
-      div.addEventListener('dragover',function(e){
-        e.preventDefault();
-        e.dataTransfer.dropEffect='move';
-        document.querySelectorAll('.sitem').forEach(function(el){el.classList.remove('drag-over');});
-        div.classList.add('drag-over');
-      });
-      div.addEventListener('drop',function(e){
-        e.preventDefault();
-        var fromSec=e.dataTransfer.getData('text/plain');
-        var fromEl=container.querySelector('[data-sec="'+fromSec+'"]');
-        if(fromEl&&fromEl!==div)container.insertBefore(fromEl,div);
-        div.classList.remove('drag-over');
-        saveNavOrder();
-      });
-      container.appendChild(div);
+    structure.forEach(function(node){
+      if(node.type==='folder')container.appendChild(makeFolder(node));
+      else if(ADMIN_NAV_LABELS[node.sec])container.appendChild(makeItem(node.sec));
+    });
+    // Drop at bottom of nav → move item to root level
+    container.addEventListener('dragover',function(e){if(e.target===container&&drag.el&&!drag.isFolder)e.preventDefault();});
+    container.addEventListener('drop',function(e){
+      if(e.target!==container||!drag.el||drag.isFolder)return;
+      e.preventDefault();container.appendChild(drag.el);saveNavOrder();
     });
   });
 }
