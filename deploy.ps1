@@ -33,6 +33,14 @@ function Deploy-File($rel) {
     else { Write-Host "  FAILED: $out" -ForegroundColor Red }
 }
 
+function Increment-MinorVersion {
+    try {
+        $body = @{action='increment_minor_version'} | ConvertTo-Json -Compress
+        $json = Invoke-RestMethod -Uri "$apiBase/admin.php" -Method Post -Body $body -ContentType "application/json"
+        Write-Host "  Version incremented to $($json.version)" -ForegroundColor Cyan
+    } catch {}
+}
+
 function Log-Deploy($fileList, $mode) {
     try {
         $normalized = @($fileList | ForEach-Object { $_ -replace '\\','/' })
@@ -44,6 +52,7 @@ function Log-Deploy($fileList, $mode) {
 # Single file mode
 if ($args.Count -gt 0) {
     Deploy-File $args[0]
+    if ($args[0] -like '*regression_test.php') { Increment-MinorVersion }
     Log-Deploy @($args[0]) 'single'
     exit
 }
@@ -60,5 +69,6 @@ foreach ($file in $files) {
     Deploy-File $rel
     $deployed += $rel
 }
+if ($deployed -contains 'regression_test.php') { Increment-MinorVersion }
 Log-Deploy $deployed 'full'
 Write-Host "Deploy complete." -ForegroundColor Green

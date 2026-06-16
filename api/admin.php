@@ -97,6 +97,9 @@ if ($method === 'POST' && $action === 'get_setting') {
         $val = bin2hex(random_bytes(16));
         setSetting($pdo, $key, $val);
     }
+    // default version settings
+    if ($val === null && $key === 'major_version') { setSetting($pdo, $key, '1'); $val = '1'; }
+    if ($val === null && $key === 'minor_version') { setSetting($pdo, $key, '0'); $val = '0'; }
     ok(['value' => $val]);
 }
 
@@ -220,6 +223,20 @@ if ($method === 'POST' && $action === 'log_page_view') {
     $page = trim($d['page'] ?? '');
     if ($page) pagelog('admin', $page);
     ok(['message' => 'logged']);
+}
+
+if ($action === 'get_version') {
+    $major = getSetting($pdo, 'major_version') ?? '1';
+    $minor = getSetting($pdo, 'minor_version') ?? '0';
+    ok(['version' => $major . '.' . $minor, 'major' => $major, 'minor' => $minor]);
+}
+
+if ($method === 'POST' && $action === 'increment_minor_version') {
+    $minor = (int)(getSetting($pdo, 'minor_version') ?? 0);
+    $minor++;
+    setSetting($pdo, 'minor_version', (string)$minor);
+    $major = getSetting($pdo, 'major_version') ?? '1';
+    ok(['version' => $major . '.' . $minor, 'minor' => $minor]);
 }
 
 fail('Unknown action', 400);

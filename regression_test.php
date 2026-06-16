@@ -537,6 +537,46 @@ try{
     t('admin-nav logs page view',strpos($navjs,'log_page_view')!==false&&strpos($navjs,'hdbs_pagelog')!==false);
 }catch(Exception $e){t('page view logging checks',false,$e->getMessage());}
 
+// ── SITE VERSION ──
+try{
+    $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    t('major_version in settings',strpos($adphp,"'major_version'")!==false);
+    t('minor_version in settings',strpos($adphp,"'minor_version'")!==false);
+    t('get_version action',strpos($adphp,"action === 'get_version'")!==false||strpos($adphp,"=== 'get_version'")!==false);
+    t('increment_minor_version action',strpos($adphp,"increment_minor_version")!==false);
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    t('version line in footer',strpos($ihtml,'site-version-line')!==false);
+    t('version fetch script in index.html',strpos($ihtml,'get_version')!==false);
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('saveVersion function exists',strpos($amjs,'function saveVersion(')!==false);
+    t('version card in settings',strpos($amjs,'version-card')!==false&&strpos($amjs,'ver-major')!==false);
+    // Live check — get_version returns a version string
+    $ch=curl_init('https://handmadedesignsbysuzi.com/api/admin.php');
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>'{"action":"get_version"}',
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    $vd=json_decode(curl_exec($ch),true);curl_close($ch);
+    t('get_version returns version',isset($vd['version'])&&strpos($vd['version'],'.')!==false,$vd['version']??'');
+}catch(Exception $e){t('site version checks',false,$e->getMessage());}
+
+// ── PROMPT HISTORY ──
+try{
+    t('api/prompt_log.php exists',file_exists($root.'/api/prompt_log.php'));
+    $plphp=file_get_contents($root.'/api/prompt_log.php');
+    t('prompt_log creates table',strpos($plphp,'CREATE TABLE IF NOT EXISTS prompt_log')!==false);
+    t('prompt_log add action',strpos($plphp,"add_prompt")!==false);
+    t('prompt_log update action',strpos($plphp,"update_prompt")!==false);
+    t('prompt_log delete action',strpos($plphp,"delete_prompt")!==false);
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('rPromptLog function exists',strpos($amjs,'function rPromptLog(')!==false);
+    t('showAddPrompt exists',strpos($amjs,'function showAddPrompt(')!==false);
+    t('savePrompt exists',strpos($amjs,'function savePrompt(')!==false);
+    t('deletePrompt exists',strpos($amjs,'function deletePrompt(')!==false);
+    $navjs=file_get_contents($root.'/js/admin-nav.js');
+    t('promptlog in nav',strpos($navjs,"promptlog:'Prompt History'")!==false&&strpos($navjs,'rPromptLog(el)')!==false);
+    t('promptlog in developer folder',strpos($amjs,"'promptlog'")!==false&&strpos($amjs,"sec:'developer'")!==false);
+}catch(Exception $e){t('prompt history checks',false,$e->getMessage());}
+
 // ── NAV SUBMENUS ──
 try{
     $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');

@@ -198,6 +198,7 @@
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN · <a href="mailto:handmadedesignsbysuzi@yahoo.com" style="color:rgba(255,255,255,.5)">handmadedesignsbysuzi@yahoo.com</a></div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div class="site-version-line" style="color:rgba(255,255,255,.25);font-size:.6rem;margin-top:.5rem"></div>
     <div style="margin-top:1rem">
       <img src="https://handmadedesignsbysuzi.com/QRCode.jpeg" alt="Scan to visit handmadedesignsbysuzi.com" style="width:90px;height:90px;border-radius:6px;opacity:.85">
       <div style="color:rgba(255,255,255,.35);font-size:.65rem;margin-top:.3rem">Scan to shop</div>
@@ -570,6 +571,7 @@
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN · <a href="mailto:handmadedesignsbysuzi@yahoo.com" style="color:rgba(255,255,255,.5)">handmadedesignsbysuzi@yahoo.com</a></div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div class="site-version-line" style="color:rgba(255,255,255,.25);font-size:.6rem;margin-top:.5rem"></div>
   </footer>
 </div>
 
@@ -736,5 +738,19 @@
 <script src="js/admin-misc.js?v=2"></script>
 <script src="js/table.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function(){ TableKit.initAll(); });</script>
+<script>
+(function(){
+  var dt=new Date();
+  var ds=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  fetch('/api/admin.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_version'})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var txt='Version: '+(d.version||'1.0')+'   Date: '+ds;
+    document.querySelectorAll('.site-version-line').forEach(function(el){el.textContent=txt;});
+  }).catch(function(){
+    document.querySelectorAll('.site-version-line').forEach(function(el){el.textContent='Date: '+ds;});
+  });
+})();
+</script>
 </body>
 </html>
