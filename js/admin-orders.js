@@ -1429,7 +1429,10 @@ function rCats(el){
     var overrideNum=(CAT_PREFIXES&&CAT_PREFIXES[cat+'__next']!==undefined)?parseInt(CAT_PREFIXES[cat+'__next']):null;
     var nextNum=(overrideNum!==null)?overrideNum:autoNum;
     var nextSku=prefix+String(nextNum).padStart(3,'0');
+    var upBtn='<button style="font-size:.72rem;padding:1px 5px;background:#fdf3d0;border:1px solid #a07810;border-radius:4px;color:#2d2220;cursor:pointer'+(i===0?';opacity:.3;pointer-events:none':'')+'" onclick="moveCat('+i+',-1)" title="Move up">▲</button>';
+    var dnBtn='<button style="font-size:.72rem;padding:1px 5px;background:#fdf3d0;border:1px solid #a07810;border-radius:4px;color:#2d2220;cursor:pointer'+(i===CATS.length-1?';opacity:.3;pointer-events:none':'')+'" onclick="moveCat('+i+',1)" title="Move down">▼</button>';
     return '<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#fff;border:1px solid #e8e0b8;border-radius:8px;margin-bottom:.5rem">'+
+      '<div style="display:flex;flex-direction:column;gap:1px">'+upBtn+dnBtn+'</div>'+
       '<span style="flex:1;font-weight:600;font-size:.88rem;color:#2d2220">'+cat+'</span>'+
       '<span class="badge bb" style="font-size:.72rem">'+count+' product'+(count!==1?'s':'')+'</span>'+
       '<span style="font-size:.72rem;font-family:monospace;color:#6b6040;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:1px 6px" title="SKU prefix">'+prefix+'</span>'+
@@ -1463,6 +1466,15 @@ function addCat(){
   if(CAT_PREFIXES){var ap=name.replace(/[^A-Za-z]/g,'').substring(0,3).toUpperCase();CAT_PREFIXES[name]=ap;}
   apiFetch('admin.php','POST',{action:'save_setting',key:'product_categories',value:JSON.stringify(CATS)}).catch(function(){});
   apiFetch('admin.php','POST',{action:'save_setting',key:'cat_prefixes',value:JSON.stringify(CAT_PREFIXES)}).catch(function(){});
+  rCats(document.getElementById('acnt'));
+  renderCatFilter();
+  showCatOk();
+}
+function moveCat(idx,dir){
+  var newIdx=idx+dir;
+  if(newIdx<0||newIdx>=CATS.length)return;
+  var tmp=CATS[idx];CATS[idx]=CATS[newIdx];CATS[newIdx]=tmp;
+  apiFetch('admin.php','POST',{action:'save_setting',key:'product_categories',value:JSON.stringify(CATS)}).catch(function(){});
   rCats(document.getElementById('acnt'));
   renderCatFilter();
   showCatOk();
