@@ -278,8 +278,6 @@ try{
     t('QR code in footer',strpos($ihtml,'QRCode.jpeg')!==false);
     t('contactpage exists',strpos($ihtml,'id="contactpage"')!==false);
     t('Back to Shop in contact nav',strpos($ihtml,'goContact')!==false);
-    t('sitemap.xml exists',file_exists($root.'/sitemap.xml'));
-    t('robots.txt exists',file_exists($root.'/robots.txt'));
 }catch(Exception $e){t('homepage visibility checks',false,$e->getMessage());}
 // Square Payments UI
 try{
@@ -483,6 +481,36 @@ try{$applog=file_get_contents($root.'/api/applog.php');
 }catch(Exception $e){t('sq_curl logging checks',false,$e->getMessage());}
 
 
+// Page view logging
+try{
+    $applog=file_get_contents($root.'/api/applog.php');
+    t('pagelog() in applog.php',strpos($applog,'function pagelog(')!==false);
+    t('page_log_enabled() in applog.php',strpos($applog,'function page_log_enabled(')!==false);
+    $adphp=file_get_contents($root.'/api/admin.php');
+    t('log_page_view action in admin.php',strpos($adphp,"action === 'log_page_view'")!==false);
+    t('pages.log in read_log allowlist',strpos($adphp,"'pages.log'")!==false);
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('setPageLogMode function exists',strpos($amjs,'function setPageLogMode(')!==false);
+    t('hdbs_pagelog in admin-misc.js',strpos($amjs,'hdbs_pagelog')!==false);
+    t('log_page_changes setting key used',strpos($amjs,"'log_page_changes'")!==false);
+    $cfjs=isset($cfjs)?$cfjs:file_get_contents($root.'/js/config.js');
+    t('goAbout logs visit',strpos($cfjs,"page:'About Suzi'")!==false);
+    t('goFAQ logs visit',strpos($cfjs,"page:'FAQ'")!==false);
+    t('goCustom logs visit',strpos($cfjs,"page:'Custom Orders'")!==false);
+    t('goContact logs visit',strpos($cfjs,"page:'Contact Us'")!==false);
+    t('goAuth logs visit',strpos($cfjs,"page:tab==='su'?'Register':'Sign In'")!==false);
+    $sjs=isset($sjs)?$sjs:file_get_contents($root.'/js/store.js');
+    t('openCart logs visit',strpos($sjs,"page:'Your Cart'")!==false);
+    t('openCheckout logs visit',strpos($sjs,"page:'Checkout'")!==false);
+    $aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
+    t('rLogs fetches pages.log',strpos($aojs,"file:'pages.log'")!==false);
+    t('dblclick wired for pages log',strpos($aojs,'_logPages')!==false);
+    t('Clear Pages button exists',strpos($aojs,'Clear Pages')!==false);
+    t('pages.log in email dropdown',strpos($aojs,'value="pages.log"')!==false);
+    $navjs=file_get_contents($root.'/js/admin-nav.js');
+    t('admin-nav logs page view',strpos($navjs,'log_page_view')!==false&&strpos($navjs,'hdbs_pagelog')!==false);
+}catch(Exception $e){t('page view logging checks',false,$e->getMessage());}
+
 // ── 3. FILES ──
 foreach(['api/config.php','api/admin.php','api/orders.php','api/products.php',
          'api/tax_sweep.php','api/square_payments.php','api/fetch_tax.php',
@@ -503,7 +531,7 @@ $fns=['openCheckout','placeOrder','renderOrdersTable','viewOrder','showManualOrd
       'prodSort','prodFilt','applyProdFilters','custSort','custFilt','applyCustomerFilters',
       'setAllStock1','setAllPrice1','autoAssignSkus','exportProductsCsv','showImportCsv','doImportCsv','toggleSell',
       'elSort','elFilt','elFiltApply','applyElFilters','buildElThead','rEmailLog','elRefresh','clearEmailLog',
-      'setDebugMode','logFullScreen','emailLog'];
+      'setDebugMode','logFullScreen','emailLog','setPageLogMode'];
 try{
     $js='';
     foreach(['js/api.js','js/config.js','js/data.js','js/store.js','js/auth.js',

@@ -171,7 +171,7 @@ function fmtPhone(input){
 }
 
 // ── CART ──
-function openCart(){document.getElementById('cart-ov').classList.add('on');document.getElementById('cart-drawer').classList.add('on');renderCart();}
+function openCart(){if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Your Cart'});document.getElementById('cart-ov').classList.add('on');document.getElementById('cart-drawer').classList.add('on');renderCart();}
 function closeCart(){document.getElementById('cart-ov').classList.remove('on');document.getElementById('cart-drawer').classList.remove('on');}
 function addToCart(id){
   var p=findProd(id);if(!p||p.stock<=0)return;
@@ -309,7 +309,9 @@ function renderCart(){
 
 // ── CHECKOUT ──
 function openCheckout(){
-  if(!CART.length)return;closeCart();
+  if(!CART.length)return;
+  if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Checkout'});
+  closeCart();
   // Clear address fields first so shipping calculation starts clean
   document.getElementById('co-sz').value='';
   document.getElementById('co-ad').value='';

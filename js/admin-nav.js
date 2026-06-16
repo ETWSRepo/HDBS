@@ -15,6 +15,7 @@ function aNavById(sec){
   var amain=document.querySelector('.amain');
   if(amain)amain.style.overflowY=(sec==='emaillog')?'visible':'';
   if(typeof _dbgScreen==='function')_dbgScreen(sec);
+  if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:(titles[sec]||sec)});
   var el=document.getElementById('acnt');
   if(sec==='dash')rDash(el);else if(sec==='prods')rProds(el);else if(sec==='orders')rOrders(el);
   else if(sec==='custs')rCusts(el);else if(sec==='inv')rInv(el);else if(sec==='sales')rSales(el);else if(sec==='subs')rSubs(el);else if(sec==='blast')rBlast(el);else if(sec==='tncity')rTnCity(el);else if(sec==='faqs')rAdminFAQs(el);else if(sec==='reviews')rAdminReviews(el);else if(sec==='cats')rCats(el);else if(sec==='shipping')rShipping(el);else if(sec==='emaillog')rEmailLog(el);else if(sec==='logs')rLogs(el);else if(sec==='settings')rSettings(el);else if(sec==='bizprofile')rBizProfile(el);else if(sec==='sweep')rSweep(el);else if(sec==='regtest')rRegTest(el);else if(sec==='sqpay')rSqPay(el);else if(sec==='manord')showManualOrderForm();

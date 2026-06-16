@@ -36,6 +36,41 @@ if (!function_exists('debug_enabled')) {
     }
 }
 
+if (!function_exists('page_log_enabled')) {
+    function page_log_enabled() {
+        static $cached = null;
+        if ($cached !== null) return $cached;
+        try {
+            $host = defined('DB_HOST') ? DB_HOST : '127.0.0.1';
+            $name = defined('DB_NAME') ? DB_NAME : '';
+            $user = defined('DB_USER') ? DB_USER : '';
+            $pass = defined('DB_PASS') ? DB_PASS : '';
+            if (!$name) { $cached = false; return false; }
+            $raw = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $st  = $raw->prepare("SELECT value FROM settings WHERE key_name='log_page_changes' LIMIT 1");
+            $st->execute();
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            $cached = ($row && $row['value'] === '1');
+        } catch (Exception $e) {
+            $cached = false;
+        }
+        return $cached;
+    }
+}
+
+if (!function_exists('pagelog')) {
+    function pagelog($ctx, $msg) {
+        if (!page_log_enabled()) return;
+        $edt  = (new DateTime('now', new DateTimeZone('America/New_York')))->format('Y-m-d g:i:s A') . ' EDT';
+        $line = "$edt | PAGE | $ctx | $msg\n";
+        $candidates = [__DIR__ . '/../pages.log', __DIR__ . '/pages.log'];
+        foreach ($candidates as $c) {
+            if (file_exists(dirname($c))) { file_put_contents($c, $line, FILE_APPEND | LOCK_EX); return; }
+        }
+    }
+}
+
 if (!function_exists('_dbg_safe')) {
     function _dbg_safe() {
         return function_exists('dbg') && debug_enabled();

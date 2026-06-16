@@ -1,9 +1,10 @@
 // ── Regression test globals ──
 var RT_GROUPS={
   'DB Schema':['orders.tax_amount','orders.tax_swept_date','orders.payment_method','orders.customer_email','orders.total','orders.shipping_carrier','orders.tracking_number','orders.square_payment_id','products.sku','products.img1','products.price','products.name','products.stock','products.weight','orders table','products table','order_items table','settings table','tax_sweeps table','settings LONGTEXT','tax_swept removed'],
-  'Data Integrity':['products exist','orders exist','settings exist','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs','product descriptions updated','hero.jpg exists','shop.css has /hero.jpg','store.js has sold-out diagonal','orders.php decrements stock','send_shipping uses EDT','send_confirm uses EDT'],
+  'Data Integrity':['products exist','orders exist','settings exist','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs','product descriptions updated','hero.jpg exists','shop.css has /hero.jpg','store.js has sold-out diagonal','orders.php decrements stock','send_shipping uses EDT','send_confirm uses EDT','sitemap.xml exists','robots.txt exists','robots.txt references sitemap'],
   'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','api/email_log.php','api/fetch_tax.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.html','css/shop.css','js/api.js','js/config.js','js/store.js','js/admin-orders.js','js/admin-misc.js'],
-  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax']
+  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax','JS:setPageLogMode'],
+  'Page View Logging':['pagelog() in applog.php','page_log_enabled() in applog.php','log_page_view action in admin.php','pages.log in read_log allowlist','setPageLogMode function exists','hdbs_pagelog in admin-misc.js','log_page_changes setting key used','goAbout logs visit','goFAQ logs visit','goCustom logs visit','goContact logs visit','goAuth logs visit','openCart logs visit','openCheckout logs visit','rLogs fetches pages.log','dblclick wired for pages log','Clear Pages button exists','pages.log in email dropdown','admin-nav logs page view']
 };
 function rtBuildSkeleton(){
   var html='';
@@ -1116,6 +1117,32 @@ window.addEventListener('load', function(){
       '</label>';
     if(el.firstChild) el.insertBefore(card, el.firstChild);
     else el.appendChild(card);
+
+    // ── Page Changes Log card (inserted after debug card) ──
+    var existing2 = document.getElementById('pagelog-card');
+    if(existing2) existing2.remove();
+    var card2 = document.createElement('div');
+    card2.id = 'pagelog-card';
+    card2.style.cssText = 'background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem;margin-bottom:1.2rem;max-width:420px';
+    card2.innerHTML =
+      '<div style="font-weight:700;margin-bottom:.5rem">&#x1F4C4; Log Page Views</div>'+
+      '<div style="font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">When enabled, admin section visits and storefront loads are recorded in <code>pages.log</code>.</div>'+
+      '<label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;cursor:pointer">'+
+        '<input type="checkbox" id="pagelog-toggle" onchange="setPageLogMode(this.checked)">'+
+        '<span id="pagelog-label">Loading...</span>'+
+      '</label>';
+    card.insertAdjacentElement('afterend', card2);
+    apiFetch('admin.php','POST',{action:'get_setting',key:'log_page_changes'}).then(function(d){
+      var on = d && d.value === '1';
+      var tog = document.getElementById('pagelog-toggle');
+      var lbl = document.getElementById('pagelog-label');
+      if(tog) tog.checked = on;
+      if(lbl) lbl.innerHTML = on ? '<strong style="color:#2e7d32">ON — writing to pages.log</strong>' : 'OFF';
+      localStorage.setItem('hdbs_pagelog', on ? '1' : '0');
+    }).catch(function(){
+      var lbl = document.getElementById('pagelog-label');
+      if(lbl) lbl.textContent = 'Error loading setting';
+    });
     // Always fetch from DB — settings screen always shows current persisted value
     apiFetch('admin.php','POST',{action:'get_setting',key:'debug_mode'}).then(function(d){
       // Default is false if key not yet in DB
@@ -1133,6 +1160,21 @@ window.addEventListener('load', function(){
     });
   };
 });
+
+function setPageLogMode(on){
+  var lbl = document.getElementById('pagelog-label');
+  if(lbl) lbl.textContent = 'Saving...';
+  apiFetch('admin.php','POST',{action:'set_setting',key:'log_page_changes',value:on?'1':'0'}).then(function(d){
+    if(d && d.success){
+      localStorage.setItem('hdbs_pagelog', on ? '1' : '0');
+      if(lbl) lbl.innerHTML = on ? '<strong style="color:#2e7d32">ON — writing to pages.log</strong>' : 'OFF';
+    } else {
+      if(lbl) lbl.textContent = 'Save failed';
+    }
+  }).catch(function(){
+    if(lbl) lbl.textContent = 'Save failed';
+  });
+}
 
 function setDebugMode(on){
   var lbl = document.getElementById('dbg-label');

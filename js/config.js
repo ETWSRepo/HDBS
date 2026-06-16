@@ -175,9 +175,9 @@ function goPanel(){
     aNavById('dash');
   });
 }
-function goAbout(){showOnly('aboutpage');window.scrollTo(0,0);}
-function goFAQ(){loadFAQs();showOnly('faqpage');window.scrollTo(0,0);}
-function goCustom(){showOnly('custompg');window.scrollTo(0,0);}
+function goAbout(){if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'About Suzi'});showOnly('aboutpage');window.scrollTo(0,0);}
+function goFAQ(){if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'FAQ'});loadFAQs();showOnly('faqpage');window.scrollTo(0,0);}
+function goCustom(){if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Custom Orders'});showOnly('custompg');window.scrollTo(0,0);}
 function submitCustomRequest(){
   var name=document.getElementById('cust-name').value.trim();
   var email=document.getElementById('cust-email').value.trim();
@@ -206,6 +206,7 @@ function submitCustomRequest(){
   }).catch(function(){err.textContent='Network error. Please email handmadedesignsbysuzi@yahoo.com directly.';err.style.display='block';});
 }
 function goContact(){
+  if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Contact Us'});
   showOnly('contactpage',true);
   window.scrollTo(0,0);
   document.getElementById('contact-ok').style.display='none';
@@ -237,6 +238,7 @@ function sendContact(){
   });
 }
 function goAuth(tab){
+  if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:tab==='su'?'Register':'Sign In'});
   showOnly('authpage',true);
   if(tab==='account'&&CUR_USER){document.getElementById('auth-tabs').style.display='none';switchTab('ac');renderAcct();}
   else{document.getElementById('auth-tabs').style.display='flex';switchTab(tab==='su'?'su':'si');}

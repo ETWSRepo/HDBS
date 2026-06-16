@@ -1,0 +1,11 @@
+# Disable LiteSpeed cache for JS, CSS, PHP
+<IfModule LiteSpeed>
+    RewriteEngine On
+    CacheLookup off
+</IfModule>
+
+<FilesMatch "\.(js|css|php)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate"
+    Header set Pragma "no-cache"
+    Header unset Expires
+</FilesMatch>

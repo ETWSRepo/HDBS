@@ -1768,20 +1768,24 @@ function rLogs(el){
   Promise.all([
     apiFetch('admin.php','POST',{action:'read_log',file:'notify_log.txt'}),
     apiFetch('admin.php','POST',{action:'read_log',file:'webhook_log.txt'}),
-    apiFetch('admin.php','POST',{action:'read_log',file:'error_log.txt'})
+    apiFetch('admin.php','POST',{action:'read_log',file:'error_log.txt'}),
+    apiFetch('admin.php','POST',{action:'read_log',file:'pages.log'})
   ]).then(function(results){
     var notifyLog  = results[0].content||'No entries yet.';
     var webhookLog = results[1].content||'No entries yet.';
     var errorLog   = results[2].content||'No entries yet.';
+    var pagesLog   = results[3].content||'No entries yet.';
     window._logNotify  = notifyLog;
     window._logWebhook = webhookLog;
     window._logError   = errorLog;
+    window._logPages   = pagesLog;
     el.innerHTML=
       '<div style="max-width:860px">'+
       '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">'+
         '<button class="bs" style="font-size:.78rem" onclick="clearLog(\'notify_log.txt\')">&#x1F5D1; Clear Notify</button>'+
         '<button class="bs" style="font-size:.78rem" onclick="clearLog(\'webhook_log.txt\')">&#x1F5D1; Clear Webhook</button>'+
         '<button class="bs" style="font-size:.78rem" onclick="clearLog(\'error_log.txt\')">&#x1F5D1; Clear Error</button>'+
+        '<button class="bs" style="font-size:.78rem" onclick="clearLog(\'pages.log\')">&#x1F5D1; Clear Pages</button>'+
         '<button class="bp" style="font-size:.78rem" onclick="rLogs(document.getElementById(\'acnt\'))">&#x21BA; Refresh</button>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;background:#fdfbf0;border:1px solid #e8e0b8;border-radius:8px;padding:.6rem .8rem">'+
@@ -1789,6 +1793,7 @@ function rLogs(el){
           '<option value="notify_log.txt">notify_log.txt</option>'+
           '<option value="webhook_log.txt">webhook_log.txt</option>'+
           '<option value="error_log.txt">error_log.txt</option>'+
+          '<option value="pages.log">pages.log</option>'+
         '</select>'+
         '<input id="log-email-to" type="email" placeholder="Email address" style="font-size:.78rem;border:1px solid #e8e0b8;border-radius:5px;padding:.3rem .6rem;flex:1;min-width:180px;color:#2d2220">'+
         '<button class="bp" style="font-size:.78rem" onclick="emailLog()">&#x2709; Email Log</button>'+
@@ -1797,13 +1802,16 @@ function rLogs(el){
       _logPanel('notify', 'Order Notification Log (notify_log.txt)',   'notify_log.txt',  notifyLog)+
       _logPanel('webhook','Square Webhook Log (webhook_log.txt)',       'webhook_log.txt', webhookLog)+
       _logPanel('error',  'Debug Error Log (error_log.txt)',            'error_log.txt',   errorLog)+
+      _logPanel('pages',  'Page Views Log (pages.log)',                 'pages.log',       pagesLog)+
       '</div>';
     var pn=document.getElementById('pre-notify');
     var pw=document.getElementById('pre-webhook');
     var pe=document.getElementById('pre-error');
+    var pp=document.getElementById('pre-pages');
     if(pn)pn.addEventListener('dblclick',function(){logFullScreen('notify_log.txt',notifyLog);});
     if(pw)pw.addEventListener('dblclick',function(){logFullScreen('webhook_log.txt',webhookLog);});
     if(pe)pe.addEventListener('dblclick',function(){logFullScreen('error_log.txt',errorLog);});
+    if(pp)pp.addEventListener('dblclick',function(){logFullScreen('pages.log',pagesLog);});
   }).catch(function(){
     el.innerHTML='<div style="padding:2rem;color:#c0392b">Failed to load logs.</div>';
   });

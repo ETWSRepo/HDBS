@@ -87,9 +87,9 @@ if ($method === 'POST' && $action === 'get_setting') {
     dbg('admin', "get_setting key=$key");
     if (!$key) fail('Missing key');
     $val = getSetting($pdo, $key);
-    // debug_mode defaults to '0' (disabled) if never set
-    if ($val === null && $key === 'debug_mode') {
-        setSetting($pdo, 'debug_mode', '0');
+    // default unset boolean settings to '0'
+    if ($val === null && in_array($key, ['debug_mode', 'log_page_changes'])) {
+        setSetting($pdo, $key, '0');
         $val = '0';
     }
     ok(['value' => $val]);
@@ -106,7 +106,7 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
 
 // ── Log file reader ──
 if ($method === 'POST' && $action === 'read_log') {
-    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt'];
+    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file = $d['file'] ?? '';
     if (!in_array($file, $allowed)) fail('Invalid log file');
     $path = dirname(__DIR__) . '/' . $file;
@@ -117,7 +117,7 @@ if ($method === 'POST' && $action === 'read_log') {
 }
 
 if ($method === 'POST' && $action === 'clear_log') {
-    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt'];
+    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file = $d['file'] ?? '';
     if (!in_array($file, $allowed)) fail('Invalid log file');
     $path = dirname(__DIR__) . '/' . $file;
@@ -157,7 +157,7 @@ if ($method === 'POST' && $action === 'js_debug_log') {
 
 // ── Email a log file ──
 if ($method === 'POST' && $action === 'send_log') {
-    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt'];
+    $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file    = $d['file']  ?? '';
     $to      = trim($d['to'] ?? '');
     if (!in_array($file, $allowed)) fail('Invalid log file');
@@ -208,6 +208,13 @@ if ($method === 'POST' && $action === 'send_log') {
     ]);
     if ($result === true) ok(['message' => "Log emailed to $to"]);
     fail('Email failed: ' . $errorMsg);
+}
+
+// ── Page view logger ──
+if ($method === 'POST' && $action === 'log_page_view') {
+    $page = trim($d['page'] ?? '');
+    if ($page) pagelog('admin', $page);
+    ok(['message' => 'logged']);
 }
 
 fail('Unknown action', 400);
