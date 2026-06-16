@@ -13,7 +13,7 @@ $ftpPort  = $creds["FTP_PORT"]
 $local    = $PSScriptRoot
 $apiBase  = "https://handmadedesignsbysuzi.com/api"
 
-$exclude = @(".git",".ftp-credentials","deploy.ps1","CLAUDE.md","README.md","node_modules","product_images","secrets.php","debug.php","debug.flag","drop_tn_tax.php","fix_tax.php","sq_test.php","run_tests.html","reset_nav.php","default.php")
+$exclude = @(".git",".ftp-credentials","deploy.ps1","CLAUDE.md","README.md","node_modules","product_images","secrets.php","debug.php","debug.flag","drop_tn_tax.php","fix_tax.php","sq_test.php","run_tests.html","reset_nav.php","default.php","get_products.php")
 
 function Should-Exclude($path) {
     foreach ($ex in $exclude) {

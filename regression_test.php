@@ -821,7 +821,7 @@ try{
 }catch(Exception $e){t('sensitive settings blocked checks',false,$e->getMessage());}
 
 // ── DEBUG/UTILITY FILES REMOVED ──
-foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php'] as $df)
+foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php','get_products.php'] as $df)
     t($df.' removed from server',!file_exists($root.'/'.$df));
 
 // ── FAVICON ──
@@ -841,6 +841,10 @@ try{
     t('aboutsuzi.jpeg in About page',strpos($ihtml,'aboutsuzi.jpeg')!==false);
     t('About page has photo img tag',strpos($ihtml,'src="aboutsuzi.jpeg"')!==false);
     t('emoji placeholder removed from About page',strpos($ihtml,'font-size:5rem;margin-bottom:1rem">👜')===false);
+    t('About page grid has about-grid class',strpos($ihtml,'about-grid')!==false);
+    $css=file_get_contents($root.'/css/shop.css');
+    t('about-grid mobile breakpoint in shop.css',strpos($css,'about-grid')!==false&&strpos($css,'max-width:600px')!==false);
+    t('about-grid stacks to 1 column on mobile',strpos($css,'about-grid')!==false&&strpos($css,'grid-template-columns:1fr')!==false);
 }catch(Exception $e){t('about page checks',false,$e->getMessage());}
 
 // ── 3. FILES ──
