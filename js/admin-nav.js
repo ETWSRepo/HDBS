@@ -50,6 +50,7 @@ function renderSubsTable(el){
     (rows||'<tr><td colspan="3" style="text-align:center;padding:2rem;color:#6b6040">No subscribers yet.<br><span style="font-size:.8rem">The newsletter section on the homepage will collect emails here.</span></td></tr>') +
     '</tbody></table>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
+  if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Subscribers',logoText:'Handmade Designs By Suzi'});
 }
 function delSub(email){
   if(!confirm('Remove '+email+' from the newsletter list?'))return;

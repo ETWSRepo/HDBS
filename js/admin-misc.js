@@ -261,6 +261,7 @@ function renderSweepPanel(el, d){
 
     el.innerHTML='<div style="max-width:700px">'+pendingHtml+histHtml+'</div>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
+    if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Tax Sweep',logoText:'Handmade Designs By Suzi'});
   }).catch(function(){
     el.innerHTML='<div style="color:#c62828;padding:1rem">Failed to load sweep history.</div>';
   });
@@ -475,6 +476,7 @@ function rPromptLog(el){
           ?'<table class="tablekit"><thead><tr><th>Date</th><th>Category</th><th>Prompt</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table>'
           :'<div style="padding:2rem;text-align:center;color:#6b6040">No prompts yet. Click + Add Prompt to start recording.</div>');
       if(typeof TableKit!=='undefined')TableKit.initAll();
+      if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Prompt History',logoText:'Handmade Designs By Suzi'});
     }).catch(function(e){
       el.innerHTML='<div style="padding:2rem;color:#c62828">Error: '+escHtml(e.message)+'</div>';
     });
@@ -589,6 +591,7 @@ function rDeployLog(el){
       '<table class="tablekit"><thead><tr><th>Date</th><th>Files</th><th>Type</th><th>Details</th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
+    if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Deploy History',logoText:'Handmade Designs By Suzi'});
   }).catch(function(e){
     el.innerHTML='<div style="padding:2rem;color:#c62828">Error loading deploy history: '+escHtml(e.message)+'</div>';
   });
@@ -635,6 +638,7 @@ function rGitLog(el){
       '<table class="tablekit"><thead><tr><th>Date</th><th>Description</th><th>Files</th><th>SHA</th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
+    if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Change History',logoText:'Handmade Designs By Suzi'});
   }).catch(function(e){
     el.innerHTML='<div style="padding:2rem;color:#c62828">Error loading history: '+escHtml(e.message)+'</div>';
   });
@@ -1102,6 +1106,7 @@ function rEmailLog(el){
     '</div>'+
     '<div id="el-table" style="overflow-x:auto"><table class="tablekit">'+buildElThead()+'<tbody>'+(rows||'<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#6b6040">No emails logged.</td></tr>')+'</tbody></table></div>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
+  if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'Email Log',logoText:'Handmade Designs By Suzi'});
 }
 
 // ── TN CITY TAX ──
@@ -1149,6 +1154,7 @@ function rTnCity(el){
         '<tbody>'+rows+'</tbody>'+
       '</table></div>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
+    if(typeof PageToolbar!=='undefined')PageToolbar.init({title:'TN City Tax',logoText:'Handmade Designs By Suzi'});
   }).catch(function(){el.innerHTML='<div style="color:#c62828;padding:1rem">Could not load TN city tax table</div>';});
 }
 function showAddTnCity(){var f=document.getElementById('add-tncity-form');if(f){f.style.display='block';document.getElementById('tncity-city').focus();}}

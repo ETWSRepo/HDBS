@@ -17,7 +17,8 @@ This project uses standard prompts stored in "Z:\\Backup\\Websites\\Web Utilitie
 - `api/prompt_log.php` — prompt history CRUD
 - `js/admin-misc.js` — all admin screen JS (nav, settings, logs, version, prompts)
 - `js/admin-nav.js` — nav titles map and routing
-- `js/table.js` / `js/table.css` — TableKit (NEVER modify)
+- `js/table.js` / `css/table.css` — TableKit (NEVER modify — copy from component source if updated)
+- `js/toolbar.js` / `css/toolbar.css` — PageToolbar (NEVER modify — copy from component source if updated)
 - `regression_test.php` — token-gated test runner
 - `deploy.ps1` — local deploy script (not deployed to server)
 
