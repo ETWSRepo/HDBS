@@ -403,7 +403,8 @@ function placeOrder(){
   // ── Live mode: save order then show embedded card form ──
   _hide('co-form');_show('co-processing');
   apiFetch('orders.php','POST',o)
-    .then(function(){
+    .then(function(d){
+      window._pendingCancelToken=d.cancel_token||null;
       apiFetch('customers.php','POST',{action:'inc_orders',em:em}).catch(function(){});
       CART=[];updCartCount();renderStore();
       showPaymentStep(subtotal,shipping,tax,total);
@@ -483,6 +484,7 @@ function submitPayment(){
     if(d.success){
       window._pendingOrderId=null;
       window._pendingCartItems=null;
+      window._pendingCancelToken=null;
       var body=document.getElementById('co-result-body');
       if(body)body.innerHTML='Your payment of <strong>$'+d.total.toFixed(2)+'</strong> was received.<br>Order #<strong>'+d.order_id+'</strong><br>A confirmation email has been sent to you.';
       _show('co-result');
@@ -510,8 +512,9 @@ function backToCheckoutForm(){
   // Cancel the pending order so stock is restored
   var oid=window._pendingOrderId;
   if(oid){
-    apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid}).catch(function(){});
+    apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid,cancel_token:window._pendingCancelToken}).catch(function(){});
     window._pendingOrderId=null;
+    window._pendingCancelToken=null;
   }
   // Restore cart items
   if(window._pendingCartItems){
@@ -562,9 +565,10 @@ function cancelPendingOrder(){
   if(!oid)return;
   var btn=document.getElementById('co-cancel-btn');
   if(btn){btn.disabled=true;btn.textContent='Cancelling…';}
-  apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid})
+  apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid,cancel_token:window._pendingCancelToken})
     .then(function(){
       window._pendingOrderId=null;
+      window._pendingCancelToken=null;
       if(window._sqCard){try{window._sqCard.destroy();}catch(e){}window._sqCard=null;}
       // Restore cart items if cancelling from payment step
       if(window._pendingCartItems){

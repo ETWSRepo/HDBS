@@ -60,6 +60,11 @@ if (!$token) fail('Payment not configured');
 
 $sqBase = ($sqMode === 'test') ? 'https://connect.squaresandbox.com' : 'https://connect.squareup.com';
 
+// Atomic lock: claim the order before hitting Square — prevents double-charge on concurrent requests
+$guard = $pdo->prepare("UPDATE orders SET status='Processing' WHERE id=? AND status='Awaiting Payment'");
+$guard->execute([$order_id]);
+if ($guard->rowCount() === 0) fail('Order is no longer awaiting payment. Please refresh and try again.');
+
 // Charge the card
 $body = [
     'source_id'           => $source_id,
@@ -73,6 +78,8 @@ $body = [
 $resp = sq_curl($sqBase . '/v2/payments', 'POST', $body, $token);
 
 if (!$resp || !isset($resp['payment'])) {
+    // Roll back status so customer can retry with a different card
+    $pdo->prepare("UPDATE orders SET status='Awaiting Payment' WHERE id=? AND status='Processing'")->execute([$order_id]);
     $sqErr  = $resp ? json_encode($resp) : 'sq_curl returned null';
     applog('PAYMENT-FAIL', "order=$order_id mode=$sqMode loc=$location err=$sqErr");
     $errCode = $resp ? ($resp['errors'][0]['code'] ?? '') : '';
@@ -93,14 +100,20 @@ if (!$resp || !isset($resp['payment'])) {
 
 $payment = $resp['payment'];
 if ($payment['status'] !== 'COMPLETED') {
+    $pdo->prepare("UPDATE orders SET status='Awaiting Payment' WHERE id=? AND status='Processing'")->execute([$order_id]);
     fail('Payment not completed. Status: ' . $payment['status']);
 }
 
 $payId = $payment['id'];
 
-// Mark order paid
-$pdo->prepare("UPDATE orders SET status='Paid', square_payment_id=?, total=?, tax_amount=?, confirm_sent_at=NOW() WHERE id=?")
-    ->execute([$payId, $total, $tax, $order_id]);
+// Mark order paid — if this write fails the card was still charged, so log for manual reconciliation
+try {
+    $pdo->prepare("UPDATE orders SET status='Paid', square_payment_id=?, total=?, tax_amount=?, confirm_sent_at=NOW() WHERE id=?")
+        ->execute([$payId, $total, $tax, $order_id]);
+} catch (Exception $e) {
+    applog('CHARGE-ORPHANED', "order=$order_id sq_payment=$payId err=".$e->getMessage());
+    fail('Payment received but order update failed. Please contact us with order reference: '.$order_id);
+}
 
 // Increment customer order count
 $pdo->prepare("UPDATE customers SET order_count = order_count + 1 WHERE email = ?")

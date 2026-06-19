@@ -125,7 +125,9 @@ if ($method === 'POST') { dbg('orders','POST new order body='.substr(file_get_co
             }
         }
         $pdo->commit();
-        ok(['message' => 'Order saved']);
+        // Return a cancel token so only the order creator can cancel it
+        $cancelToken = substr(hash_hmac('sha256', $d['id'], DB_PASS), 0, 24);
+        ok(['message' => 'Order saved', 'cancel_token' => $cancelToken]);
     } catch (Exception $e) {
         $pdo->rollBack();
         fail('Failed to save order: ' . $e->getMessage(), 500);

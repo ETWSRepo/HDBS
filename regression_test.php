@@ -1636,6 +1636,17 @@ try{
     t('process_payment guards null resp on errCode',strpos($ppPhp,'$resp ? ($resp[\'errors\']')!==false);
     t('process_payment has idempotency key with nonce hash',strpos($ppPhp,'md5($source_id)')!==false);
     t('process_payment no debug console.log in store.js',strpos($stjs,"console.log('[SQ]")===false);
+    // Hardening: atomic guard, rollback, orphan logging, cancel token
+    t('process_payment has atomic Processing guard',strpos($ppPhp,"status='Processing' WHERE id=? AND status='Awaiting Payment'")!==false);
+    t('process_payment rolls back on Square failure',strpos($ppPhp,"status='Awaiting Payment' WHERE id=? AND status='Processing'")!==false);
+    t('process_payment has CHARGE-ORPHANED log',strpos($ppPhp,"'CHARGE-ORPHANED'")!==false);
+    // cancel_order ownership token
+    $custPhp=file_get_contents($root.'/api/customers.php');
+    t('cancel_order requires cancel_token',strpos($custPhp,'cancel_token')!==false&&strpos($custPhp,'hash_equals')!==false&&strpos($custPhp,'hash_hmac')!==false);
+    t('cancel_order returns 403 on missing token',strpos($custPhp,"fail('Missing cancel token', 403)")!==false);
+    t('orders.php returns cancel_token',strpos(file_get_contents($root.'/api/orders.php'),'cancel_token')!==false);
+    t('store.js stores pendingCancelToken',strpos($stjs,'_pendingCancelToken')!==false);
+    t('store.js sends cancel_token with cancel_order',strpos($stjs,'cancel_token:window._pendingCancelToken')!==false);
 
     // config.php now owns getSetting/setSetting
     $cfgPhp=file_get_contents($root.'/api/config.php');

@@ -213,10 +213,14 @@ if ($method === 'POST' && $action === 'delete_customer') {
     ok(['message' => 'Customer deleted']);
 }
 
-// POST — cancel order (public; only Awaiting Payment orders can be cancelled this way)
+// POST — cancel order (public; requires cancel_token issued at order creation)
 if ($method === 'POST' && $action === 'cancel_order') {
-    $order_id = trim($d['order_id'] ?? '');
-    if (!$order_id) fail('Missing order_id');
+    $order_id     = trim($d['order_id']     ?? '');
+    $cancel_token = trim($d['cancel_token'] ?? '');
+    if (!$order_id)     fail('Missing order_id');
+    if (!$cancel_token) fail('Missing cancel token', 403);
+    $expected = substr(hash_hmac('sha256', $order_id, DB_PASS), 0, 24);
+    if (!hash_equals($expected, $cancel_token)) fail('Invalid cancel token', 403);
     $stmt = $pdo->prepare("SELECT id, status FROM orders WHERE id = ? LIMIT 1");
     $stmt->execute([$order_id]);
     $order = $stmt->fetch();
