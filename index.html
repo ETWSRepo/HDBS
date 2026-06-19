@@ -275,20 +275,42 @@
         <div class="os-total"><span>Est. Total</span><span id="oc-tot">$0.00</span></div>
       </div>
       <div style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.8rem 1rem;font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">
-        💳 You will be securely redirected to Square to complete payment. Your order is saved before you leave.
+        🔒 Your payment is processed securely by Square. Card details are never stored on our site.
       </div>
-      <button class="mbtn" onclick="placeOrder()">Continue to Payment →</button>
+      <button class="mbtn" onclick="placeOrder()">Review &amp; Pay →</button>
     </div>
-    <div id="co-success" style="display:none;text-align:center;padding:2.5rem 1.5rem">
-  <div style="margin:0 auto 1.2rem;width:52px;height:52px;position:relative">
-    <div style="position:absolute;inset:0;border-radius:50%;border:4px solid #f0e8d0"></div>
-    <div style="position:absolute;inset:0;border-radius:50%;border:4px solid transparent;border-top-color:#d4a017;animation:spin .8s linear infinite"></div>
-  </div>
-  <div style="font-weight:700;font-size:1.1rem;color:#2d2220;margin-bottom:.4rem">Processing your order…</div>
-  <div style="font-size:.85rem;color:#6b6040;margin-bottom:.3rem">Connecting securely to Square</div>
-  <div id="pay-step" style="font-size:.78rem;color:#a07810;min-height:1.2em"></div>
-  <a id="sq-fallback" href="#" style="display:none;margin-top:1rem;font-size:.82rem;color:#a07810">Taking too long? Click here →</a>
-</div>
+    <!-- STEP 2: Embedded card payment -->
+    <div id="co-payment" style="display:none;padding:1.5rem">
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem">
+        <button onclick="backToCheckoutForm()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:#6b6040;padding:.2rem .5rem;border-radius:6px;line-height:1">←</button>
+        <span style="font-weight:700;font-size:1.1rem;color:#2d2220">Secure Payment</span>
+        <span style="margin-left:auto;font-size:.75rem;color:#2e7d32;white-space:nowrap">🔒 Powered by Square</span>
+      </div>
+      <div id="co-pay-summary" style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#6b6040"></div>
+      <div id="card-loading" style="text-align:center;padding:1.2rem;color:#6b6040;font-size:.85rem">Loading payment form…</div>
+      <div id="card-container"></div>
+      <div id="card-error" style="display:none;color:#c0392b;font-size:.82rem;margin:.6rem 0;padding:.6rem .8rem;background:#fde8e8;border-radius:6px;line-height:1.5"></div>
+      <button id="pay-btn" class="mbtn" onclick="submitPayment()" style="margin-top:1rem;width:100%">Pay $0.00</button>
+      <div style="text-align:center;margin-top:.8rem">
+        <button id="co-cancel-btn" onclick="cancelPendingOrder()" style="background:none;border:none;color:#aaa;font-size:.78rem;cursor:pointer;text-decoration:underline;padding:.3rem">Cancel order</button>
+      </div>
+    </div>
+    <!-- STEP 3: Processing spinner -->
+    <div id="co-processing" style="display:none;text-align:center;padding:2.5rem 1.5rem">
+      <div style="margin:0 auto 1.2rem;width:52px;height:52px;position:relative">
+        <div style="position:absolute;inset:0;border-radius:50%;border:4px solid #f0e8d0"></div>
+        <div style="position:absolute;inset:0;border-radius:50%;border:4px solid transparent;border-top-color:#d4a017;animation:spin .8s linear infinite"></div>
+      </div>
+      <div style="font-weight:700;font-size:1.1rem;color:#2d2220;margin-bottom:.4rem">Processing payment…</div>
+      <div style="font-size:.85rem;color:#6b6040">Please wait, do not close this window.</div>
+    </div>
+    <!-- STEP 4: Result -->
+    <div id="co-result" style="display:none;text-align:center;padding:2rem 1.5rem">
+      <div style="font-size:3rem;margin-bottom:.6rem">✅</div>
+      <div style="font-weight:700;font-size:1.2rem;color:#2d2220;margin-bottom:.4rem">Payment Successful!</div>
+      <div id="co-result-body" style="font-size:.85rem;color:#6b6040;margin-bottom:1.5rem;line-height:1.6"></div>
+      <button class="mbtn" onclick="closeModal('co-modal')" style="max-width:220px;margin:0 auto">Close</button>
+    </div>
   </div>
 </div>
 

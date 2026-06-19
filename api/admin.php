@@ -155,8 +155,8 @@ if ($method === 'POST' && $action === 'save_sec_question') {
 // ── Generic setting get/set ──
 if ($method === 'POST' && $action === 'get_setting') {
     $publicKeys = ['square_fees','tax_rates','product_categories','cat_prefixes','shipping_config',
-                   'square_mode','confirm_token','major_version','minor_version','debug_mode',
-                   'log_page_changes'];
+                   'square_mode','square_app_id','square_location_id','confirm_token',
+                   'major_version','minor_version','debug_mode','log_page_changes'];
     $key = $d['key'] ?? '';
     if (!in_array($key, $publicKeys)) requireAdmin();
     dbg('admin', "get_setting key=$key");

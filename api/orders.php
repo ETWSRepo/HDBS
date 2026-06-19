@@ -9,10 +9,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 applog('orders', "$method ".($_GET['id']??$_GET['status']??''));
 dbg('orders', "REQUEST method=$method id=".($_GET['id']??'').' status='.($_GET['status']??'').' body='.substr(file_get_contents('php://input'),0,200));
 $pdo    = db();
-requireAdmin();
 
 // GET — return all orders with items
-if ($method === 'GET') { dbg('orders','GET all orders');
+if ($method === 'GET') { requireAdmin(); dbg('orders','GET all orders');
     $orders = $pdo->query("SELECT * FROM orders ORDER BY created_at DESC")->fetchAll();
     $items  = $pdo->query("SELECT * FROM order_items")->fetchAll();
 
@@ -70,10 +69,12 @@ if ($method === 'GET') { dbg('orders','GET all orders');
     ok(['orders' => $result]);
 }
 
-// POST — create new order
+// POST — create new order (public; admin token allows any status, guests locked to Awaiting Payment)
 if ($method === 'POST') { dbg('orders','POST new order body='.substr(file_get_contents('php://input'),0,300));
     $d = body();
     if (empty($d['id']) || empty($d['total'])) fail('Missing order id or total');
+    $isAdmin = !empty($_SERVER['HTTP_X_ADMIN_TOKEN']);
+    if (!$isAdmin) $d['status'] = 'Awaiting Payment'; // guests cannot set arbitrary status
 
     $pdo->beginTransaction();
     try {
@@ -132,7 +133,7 @@ if ($method === 'POST') { dbg('orders','POST new order body='.substr(file_get_co
 }
 
 // PUT — update order fields (dynamic)
-if ($method === 'PUT') { dbg('orders','PUT update id='.($_GET['id']??'?'));
+if ($method === 'PUT') { requireAdmin(); dbg('orders','PUT update id='.($_GET['id']??'?'));
     $d = body();
     if (empty($d['id'])) fail('Missing id');
     if (array_key_exists('swept_date', $d)) {
@@ -160,7 +161,7 @@ if ($method === 'PUT') { dbg('orders','PUT update id='.($_GET['id']??'?'));
 }
 
 // DELETE — delete one or all orders
-if ($method === 'DELETE') { dbg('orders','DELETE id='.($_GET['id']??'?'));
+if ($method === 'DELETE') { requireAdmin(); dbg('orders','DELETE id='.($_GET['id']??'?'));
     $d = body();
     if (!empty($d['delete_all'])) {
         $pdo->exec("DELETE FROM order_items");

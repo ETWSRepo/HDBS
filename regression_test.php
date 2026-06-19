@@ -742,6 +742,17 @@ try{
     t('htaccess blocks config.php',strpos($htaccess,'"config.php"')!==false&&strpos($htaccess,'Deny from all')!==false);
     t('htaccess blocks applog.php',strpos($htaccess,'"applog.php"')!==false);
     t('htaccess blocks secrets.php',strpos($htaccess,'secrets\.php')!==false);
+    // Verify secrets.php defines all required constants (readable one level above public_html)
+    $secretsFile=dirname($root).'/secrets.php';
+    if(file_exists($secretsFile)){
+        $secretsPhp=file_get_contents($secretsFile);
+        t('secrets.php defines SQUARE_TOKEN',strpos($secretsPhp,"define('SQUARE_TOKEN'")!==false);
+        t('secrets.php defines SQUARE_APP_ID',strpos($secretsPhp,"define('SQUARE_APP_ID'")!==false);
+        t('secrets.php defines SQUARE_WEBHOOK_SIG_KEY',strpos($secretsPhp,"define('SQUARE_WEBHOOK_SIG_KEY'")!==false);
+        t('secrets.php defines DB_PASSWORD',strpos($secretsPhp,"define('DB_PASSWORD'")!==false);
+    } else {
+        t('secrets.php exists above public_html',false,'File not found at '.$secretsFile);
+    }
     t('htaccess blocks .log/.txt files',strpos($htaccess,'\.(log|txt)$')!==false);
     // Live HTTP checks
     function httpCode($url){$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_NOBODY=>true,CURLOPT_FOLLOWLOCATION=>false]);curl_exec($ch);$c=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);return $c;}
@@ -763,7 +774,8 @@ try{
     $ocphp=file_get_contents($root.'/order_confirm.php');
     t('order_confirm.php has token gate',strpos($ocphp,'confirm_token')!==false&&strpos($ocphp,'hash_equals')!==false);
     t('order_confirm.php requires config.php at top',strpos($ocphp,"require_once __DIR__ . '/api/config.php'")!==false);
-    t('store.js passes confirm_token',strpos(file_get_contents($root.'/js/store.js'),'confirm_token:window._confirmToken')!==false);
+    // confirm emails now sent by process_payment.php server-side; store.js no longer calls order_confirm.php
+    t('store.js calls process_payment not order_confirm',strpos(file_get_contents($root.'/js/store.js'),'process_payment.php')!==false&&strpos(file_get_contents($root.'/js/store.js'),'order_confirm.php')===false);
     t('ui.js loads confirm_token',strpos(file_get_contents($root.'/js/ui.js'),"key:'confirm_token'")!==false);
     // Live: no token → 403
     $ch=curl_init('https://handmadedesignsbysuzi.com/order_confirm.php');
@@ -1452,8 +1464,10 @@ try{
     t('ui:get_github_token returns value',$r['json']&&!empty($r['json']['success'])&&isset($r['json']['value']));
 
     // Auth enforcement — protected endpoints require X-Admin-Token
+    $r=uiGet($base.'/api/orders.php');
+    t('ui:orders.php GET requires auth without token',$r['code']===401,'HTTP '.$r['code']);
     $r=uiPost($base.'/api/orders.php',[]);
-    t('ui:orders.php requires auth without token',$r['code']===401,'HTTP '.$r['code']);
+    t('ui:orders.php POST is public (customer checkout)',$r['code']!==401,'HTTP '.$r['code']);
     $r=uiGet($base.'/api/customers.php?action=list');
     t('ui:customers list requires auth without token',$r['code']===401,'HTTP '.$r['code']);
     $r=uiPost($base.'/api/admin.php',['action'=>'get_setting','key'=>'debug_mode']);
@@ -1533,6 +1547,24 @@ try{
     $subPhp=file_get_contents($root.'/api/subscribers.php');
     t('subscribers:per-IP rate limit present',strpos($subPhp,'rate_limits')!==false&&strpos($subPhp,'md5(\'sub_\'')!==false);
 
+    // orders.php POST is public (customer checkout); GET/PUT/DELETE require auth
+    $ordPhp=file_get_contents($root.'/api/orders.php');
+    t('orders:POST public — no top-level requireAdmin',strpos($ordPhp,"requireAdmin();\n\n// GET")!==false||strpos($ordPhp,'// GET — return all orders')!==false);
+    t('orders:GET requires admin',preg_match('/GET.*{.*requireAdmin\(\)/s',$ordPhp)||strpos($ordPhp,"if (\$method === 'GET') { requireAdmin()")!==false);
+    t('orders:PUT requires admin',strpos($ordPhp,"'PUT') { requireAdmin()")!==false);
+    t('orders:DELETE requires admin',strpos($ordPhp,"'DELETE') { requireAdmin()")!==false);
+    t('orders:guest POST clamped to Awaiting Payment',strpos($ordPhp,"'Awaiting Payment'")!==false&&strpos($ordPhp,'isAdmin')!==false);
+
+    // cancel_order endpoint exists in customers.php and validates status
+    $custPhp=file_get_contents($root.'/api/customers.php');
+    t('customers:cancel_order action exists',strpos($custPhp,"action === 'cancel_order'")!==false);
+    t('customers:cancel_order checks Awaiting Payment',strpos($custPhp,'Awaiting Payment')!==false&&strpos($custPhp,'cancel_order')!==false);
+    t('customers:cancel_order restores stock',strpos($custPhp,'stock = stock + ?')!==false);
+
+    // Live: cancel_order rejects unknown order
+    $r=uiPost($base.'/api/customers.php',['action'=>'cancel_order','order_id'=>'FAKE-CANCEL-999']);
+    t('customers:cancel_order rejects unknown order',$r['json']&&empty($r['json']['success']),'HTTP '.$r['code']);
+
     // rate_limits table exists on server (created on first hit; ensure it exists now)
     $pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
         key_hash CHAR(32) PRIMARY KEY,
@@ -1543,6 +1575,58 @@ try{
     t('rate_limits:table exists',count($tbls2)>0);
 
 }catch(Exception $e){t('round 4 hardening checks',false,$e->getMessage());}
+
+// ── Embedded Square SDK (process_payment.php) ──
+try{
+    $ppFile=$root.'/api/process_payment.php';
+    t('process_payment.php exists',file_exists($ppFile));
+    $ppPhp=file_exists($ppFile)?file_get_contents($ppFile):'';
+
+    // Endpoint rejects GET
+    $rGet=uiGet($base.'/api/process_payment.php');
+    t('process_payment:GET returns 405',$rGet['code']===405,'HTTP '.$rGet['code']);
+
+    // Endpoint rejects missing params
+    $rMissing=uiPost($base.'/api/process_payment.php',['source_id'=>'','order_id'=>'']);
+    t('process_payment:rejects empty params',$rMissing['json']&&empty($rMissing['json']['success']),'HTTP '.$rMissing['code']);
+
+    // test_mode requires admin auth
+    $rTmNoAuth=uiPost($base.'/api/process_payment.php',['source_id'=>'tok_test','order_id'=>'FAKE-PP-001','test_mode'=>true]);
+    t('process_payment:test_mode without token is 401',$rTmNoAuth['code']===401,'HTTP '.$rTmNoAuth['code']);
+
+    // Rejects unknown order (with admin token)
+    $rUnknown=uiPostAdmin($base.'/api/process_payment.php',['source_id'=>'tok_test','order_id'=>'FAKE-PP-999','test_mode'=>true]);
+    t('process_payment:rejects unknown order',$rUnknown['json']&&empty($rUnknown['json']['success']),'HTTP '.$rUnknown['code'].' err='.($rUnknown['json']['error']??''));
+
+    // Server-side recalculates total (tax field present)
+    t('process_payment:recalculates tax server-side',strpos($ppPhp,'0.0975')!==false);
+    t('process_payment:uses sq_curl',strpos($ppPhp,'sq_curl')!==false);
+    t('process_payment:marks order Paid',strpos($ppPhp,"status='Paid'")!==false);
+    t('process_payment:sends confirmation email',strpos($ppPhp,'sendEmail')!==false);
+    t('process_payment:test_mode requireAdmin before order lookup',
+        strpos($ppPhp,'test_mode')!==false&&strpos($ppPhp,'requireAdmin')!==false);
+
+    // index.html has new embedded SDK panels
+    $idx=file_get_contents($root.'/index.html');
+    t('index.html:co-payment panel exists',strpos($idx,'id="co-payment"')!==false);
+    t('index.html:co-processing panel exists',strpos($idx,'id="co-processing"')!==false);
+    t('index.html:co-result panel exists',strpos($idx,'id="co-result"')!==false);
+    t('index.html:card-container exists',strpos($idx,'id="card-container"')!==false);
+    t('index.html:no redirect to Square (co-pay-waiting removed)',strpos($idx,'co-pay-waiting')===false);
+
+    // store.js has new embedded SDK functions
+    $stjs=file_get_contents($root.'/js/store.js');
+    t('store.js:loadSquareSdk function',strpos($stjs,'function loadSquareSdk')!==false);
+    t('store.js:initSquareCard function',strpos($stjs,'function initSquareCard')!==false);
+    t('store.js:submitPayment function',strpos($stjs,'function submitPayment')!==false);
+    t('store.js:backToCheckoutForm function',strpos($stjs,'function backToCheckoutForm')!==false);
+    t('store.js:showPaymentStep function',strpos($stjs,'function showPaymentStep')!==false);
+    t('store.js:tax calculated in updateShippingDisplay',strpos($stjs,'0.0975')!==false);
+    t('store.js:calls process_payment.php',strpos($stjs,'process_payment.php')!==false);
+    t('store.js:no checkout.php redirect call',strpos($stjs,"fetch('checkout.php'")===false);
+    t('store.js:square_app_id hardcoded',strpos($stjs,'sq0idp-08N-GQIys4jnwilvp0STsQ')!==false);
+
+}catch(Exception $e){t('embedded Square SDK checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 

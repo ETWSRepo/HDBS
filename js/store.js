@@ -268,18 +268,20 @@ function updateShippingDisplay(){
   var base=sub>=FREE_THRESHOLD?0:(ZONE_RATES[zone]||15);
   var wsur=sub>=FREE_THRESHOLD?0:weightSurcharge(wt);
   var ship=base+wsur;
-  var tot=sub+ship;
+  var tax=Math.round(sub*0.0975*100)/100;
   var shipEl=document.getElementById('oc-ship');
   var totEl=document.getElementById('oc-tot');
+  var taxEl=document.getElementById('oc-tax');
   var zoneNames=['','Tennessee','South','East Coast','Midwest','West'];
   var zoneEl=document.getElementById('oc-zone');
+  if(taxEl)taxEl.textContent='$'+tax.toFixed(2);
   if(!st.trim()){
-    // No address yet — don't show a rate
     if(zoneEl)zoneEl.textContent='';
     if(shipEl)shipEl.textContent=sub>=FREE_THRESHOLD?'Free 🎉':'Enter address';
-    if(totEl)totEl.textContent=sub>=FREE_THRESHOLD?'$'+sub.toFixed(2):'—';
+    if(totEl)totEl.textContent=sub>=FREE_THRESHOLD?'$'+(sub+tax).toFixed(2):'—';
     return;
   }
+  var tot=sub+ship+tax;
   var zoneTxt=(zoneNames[zone]||'Zone '+zone)+(wsur>0?' + weight $'+wsur.toFixed(2):'');
   if(zoneEl)zoneEl.textContent='('+zoneTxt+')';
   if(shipEl)shipEl.textContent=ship>0?'$'+ship.toFixed(2):(sub>=FREE_THRESHOLD?'Free 🎉':'Free');
@@ -288,7 +290,8 @@ function updateShippingDisplay(){
 function orderTotal(){
   var sub=cartTotal();
   var st=document.getElementById('co-sz')?document.getElementById('co-sz').value:'';
-  return sub+calcShipping(sub,st);
+  var tax=Math.round(sub*0.0975*100)/100;
+  return sub+calcShipping(sub,st)+tax;
 }
 function updCartCount(){var t=0;for(var i=0;i<CART.length;i++)t+=CART[i].q;document.getElementById('cart-count').textContent=t;}
 function renderCart(){
@@ -308,26 +311,39 @@ function renderCart(){
 }
 
 // ── CHECKOUT ──
+function _show(id){var e=document.getElementById(id);if(e)e.style.display='block';}
+function _hide(id){var e=document.getElementById(id);if(e)e.style.display='none';}
+function _showFlex(id){var e=document.getElementById(id);if(e)e.style.display='flex';}
 function openCheckout(){
   if(!CART.length)return;
   if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Checkout'});
   closeCart();
-  // Clear address fields first so shipping calculation starts clean
+  // Reset all panels
+  var _f=document.getElementById('co-form');if(_f)_f.style.display='block';
+  var _p=document.getElementById('co-payment');if(_p)_p.style.display='none';
+  var _pr=document.getElementById('co-processing');if(_pr)_pr.style.display='none';
+  var _r=document.getElementById('co-result');if(_r)_r.style.display='none';
+  // Destroy any leftover Square card widget
+  if(window._sqCard){try{window._sqCard.destroy();}catch(e){}window._sqCard=null;}
+  // Clear address fields so shipping starts clean
   document.getElementById('co-sz').value='';
   document.getElementById('co-ad').value='';
   document.getElementById('co-ci').value='';
   var sub=cartTotal();
+  var tax=Math.round(sub*0.0975*100)/100;
   document.getElementById('oc-sub').textContent='$'+sub.toFixed(2);
+  document.getElementById('oc-tax').textContent='$'+tax.toFixed(2);
   document.getElementById('oc-ship').textContent=sub>=FREE_THRESHOLD?'Free 🎉':'Enter address';
-  document.getElementById('oc-tot').textContent=sub>=FREE_THRESHOLD?'$'+sub.toFixed(2):'—';
+  document.getElementById('oc-tot').textContent=sub>=FREE_THRESHOLD?'$'+(sub+tax).toFixed(2):'—';
   if(CUR_USER){document.getElementById('co-fn').value=CUR_USER.fn||'';document.getElementById('co-ln').value=CUR_USER.ln||'';document.getElementById('co-em').value=CUR_USER.em||'';document.getElementById('co-ph').value=CUR_USER.ph||'';}
-  document.getElementById('co-form').style.display='block';
   openModal('co-modal');
 }
 
 function _showCheckoutModal(){
-  document.getElementById('co-form').style.display='block';
-  document.getElementById('co-success').style.display='none';
+  var _f=document.getElementById('co-form');if(_f)_f.style.display='block';
+  var _p=document.getElementById('co-payment');if(_p)_p.style.display='none';
+  var _pr=document.getElementById('co-processing');if(_pr)_pr.style.display='none';
+  var _r=document.getElementById('co-result');if(_r)_r.style.display='none';
   if(CUR_USER){document.getElementById('co-fn').value=CUR_USER.fn||'';document.getElementById('co-ln').value=CUR_USER.ln||'';document.getElementById('co-em').value=CUR_USER.em||'';document.getElementById('co-ph').value=CUR_USER.ph||'';}
   openModal('co-modal');
   updateShippingDisplay();
@@ -346,7 +362,8 @@ function placeOrder(){
   var shipBase=subtotal>=FREE_THRESHOLD?0:(ZONE_RATES[shipZone]||15);
   var shipSur=subtotal>=FREE_THRESHOLD?0:weightSurcharge(shipWt);
   var shipping=shipBase+shipSur;
-  var total=subtotal+shipping;
+  var tax=Math.round(subtotal*0.0975*100)/100;
+  var total=Math.round((subtotal+shipping+tax)*100)/100;
   var now=new Date();
   var isoDate=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   var dispDate=(now.getMonth()+1)+'/'+now.getDate()+'/'+now.getFullYear();
@@ -355,74 +372,155 @@ function placeOrder(){
   var o={id:oid,date:isoDate,dispDate:dispDate,time:dispTime,cust:fn+' '+document.getElementById('co-ln').value.trim(),email:em,
     phone:document.getElementById('co-ph').value,
     addr:ad+', '+document.getElementById('co-ci').value+' '+document.getElementById('co-sz').value,
-    items:items,total:total,subtotal:subtotal,shipping:shipping,pay:'Credit Card',order_type:'Online',status:'Awaiting Payment'};
+    items:items,total:total,subtotal:subtotal,shipping:shipping,tax:tax,pay:'Credit Card',order_type:'Online',status:'Awaiting Payment'};
+  // Decrement local stock
   for(var j=0;j<CART.length;j++){var p2=findProd(CART[j].id);if(p2)p2.stock=Math.max(0,p2.stock-CART[j].q);}
+  // Update local customer list
   var ec=null;for(var k=0;k<CUSTS.length;k++)if(CUSTS[k].em===em){ec=CUSTS[k];break;}
-  if(!ec)CUSTS.push({id:'C'+Date.now(),name:fn+' '+document.getElementById('co-ln').value.trim(),fn:fn,ln:document.getElementById('co-ln').value.trim(),em:em,ph:document.getElementById('co-ph').value,joined:new Date().toLocaleDateString(),orders:1});
-  else ec.orders=(ec.orders||0)+1;
-  // Save order to database
-  apiFetch('orders.php','POST',o).then(function(){}).catch(function(){});
-  // Increment customer order count
-  apiFetch('customers.php','POST',{action:'inc_orders',em:em}).catch(function(){});
-  CART=[];updCartCount();renderStore();
-  // Show spinner while creating Square checkout
-  document.getElementById('co-form').style.display='none';
-  document.getElementById('co-success').style.display='block';
-  // ── Test mode: skip Square, show confirmation screen ──
+  if(!ec)CUSTS.push({id:'C'+Date.now(),fn:fn,ln:document.getElementById('co-ln').value.trim(),em:em,ph:document.getElementById('co-ph').value});
+  // Preserve cart for Back-button restore
+  window._pendingCartItems=JSON.parse(JSON.stringify(CART));
+  window._pendingOrder=o;
+  window._pendingOrderId=oid;
+  window._pendingTotal=total;
+  window._pendingSubtotal=subtotal;
+  window._pendingShipping=shipping;
+  window._pendingTax=tax;
+  // ── Test mode: skip card form, show mock confirmation ──
   if(SQUARE_MODE==='test'){
-    var tData=JSON.stringify({
-      order_id:oid,date:o.date,customer_name:o.cust,customer_email:o.email,
-      phone:o.phone||'',address:o.addr||'',
-      subtotal:o.subtotal||o.total,shipping:o.shipping||0,total:o.total,items:o.items
-    });
-    var tOpts={method:'POST',headers:{'Content-Type':'application/json'},body:tData};
+    apiFetch('orders.php','POST',o).then(function(){}).catch(function(){});
+    apiFetch('customers.php','POST',{action:'inc_orders',em:em}).catch(function(){});
+    CART=[];window._pendingCartItems=null;updCartCount();renderStore();
+    var tOpts={method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order_id:oid,date:o.date,customer_name:o.cust,customer_email:o.email,
+        phone:o.phone||'',address:o.addr||'',subtotal:subtotal,shipping:shipping,total:total,items:items})};
     fetch('https://handmadedesignsbysuzi.com/notify.php',tOpts).catch(function(){});
-    fetch('https://handmadedesignsbysuzi.com/verify_payment.php',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({order_id:oid,test_mode:true})
-    }).catch(function(){});
+    fetch('https://handmadedesignsbysuzi.com/verify_payment.php',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:oid,test_mode:true})}).catch(function(){});
     showTestOrderConfirm(oid,total,o);
     return;
   }
-  // ── Live mode: create Square checkout with pre-filled amount ──
-  fetch('checkout.php',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      order_id:oid,
-      total:total,
-      customer_name:o.cust,
-      customer_email:o.email,
-      mode:SQUARE_MODE
+  // ── Live mode: save order then show embedded card form ──
+  _hide('co-form');_show('co-processing');
+  apiFetch('orders.php','POST',o)
+    .then(function(){
+      apiFetch('customers.php','POST',{action:'inc_orders',em:em}).catch(function(){});
+      CART=[];updCartCount();renderStore();
+      showPaymentStep(subtotal,shipping,tax,total);
     })
-  })
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(d.success&&d.checkout_url){
-      document.getElementById('sq-fallback').href=d.checkout_url;
-      // Send confirmation emails before redirecting
-      var confirmData=JSON.stringify({
-        order_id:oid,date:o.date,customer_name:o.cust,customer_email:o.email,
-        phone:o.phone||'',address:o.addr||'',
-        subtotal:o.subtotal||o.total,shipping:o.shipping||0,total:o.total,items:o.items,
-        confirm_token:window._confirmToken||''
-      });
-      var opts={method:'POST',headers:{'Content-Type':'application/json'},body:confirmData};
-      Promise.all([
-        fetch('https://handmadedesignsbysuzi.com/order_confirm.php',opts),
-        fetch('https://handmadedesignsbysuzi.com/notify.php',opts)
-      ]).catch(function(){})
-      .finally(function(){window.location.href=d.checkout_url;});
-    } else {
-      document.getElementById('sq-fallback').href='https://square.link/u/G0Cs5vTd';
-      document.getElementById('sq-fallback').style.display='inline-block';
-      alert('Payment redirect failed: '+(d.error||'Unknown error')+'. Please use the button to pay.');
-    }
-  })
-  .catch(function(){
-    document.getElementById('sq-fallback').href='https://square.link/u/G0Cs5vTd';
-    document.getElementById('sq-fallback').style.display='inline-block';
+    .catch(function(){
+      _hide('co-processing');_show('co-form');
+      window._pendingOrderId=null;
+      window._pendingCartItems=null;
+      alert('Could not save your order. Please try again.');
+    });
+}
+
+function showPaymentStep(subtotal,shipping,tax,total){
+  // Populate summary
+  var shipLine=shipping>0?'<div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span>Shipping</span><span>$'+shipping.toFixed(2)+'</span></div>':
+    '<div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span>Shipping</span><span style="color:#2e7d32">Free &#127881;</span></div>';
+  var s=document.getElementById('co-pay-summary');
+  if(s)s.innerHTML=
+    '<div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span>Subtotal</span><span>$'+subtotal.toFixed(2)+'</span></div>'+
+    shipLine+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:.3rem"><span>Tax (9.75%)</span><span>$'+tax.toFixed(2)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;font-weight:700;color:#2d2220;border-top:1px solid #e8e0b8;padding-top:.4rem;margin-top:.3rem"><span>Total</span><span style="color:#a07810">$'+total.toFixed(2)+'</span></div>';
+  // Update pay button label
+  var btn=document.getElementById('pay-btn');
+  if(btn){btn.textContent='Pay $'+total.toFixed(2);btn.disabled=false;}
+  _show('card-loading');
+  var cc=document.getElementById('card-container');if(cc)cc.innerHTML='';
+  _hide('card-error');
+  _hide('co-processing');_show('co-payment');
+  // Load Square SDK then initialize card
+  loadSquareSdk(function(){
+    var appId=SQUARE_MODE==='test'?'sandbox-sq0idb-YOUR_SANDBOX_APP_ID':'sq0idp-08N-GQIys4jnwilvp0STsQ';
+    var locId='LJP687TQBTWTA';
+    initSquareCard(appId,locId);
   });
+}
+
+function loadSquareSdk(cb){
+  if(window.Square){cb();return;}
+  var url=SQUARE_MODE==='test'
+    ?'https://sandbox.web.squarecdn.com/v1/square.js'
+    :'https://web.squarecdn.com/v1/square.js';
+  var s=document.createElement('script');
+  s.src=url;
+  s.onload=cb;
+  s.onerror=function(){var cl=document.getElementById('card-loading');if(cl)cl.textContent='Could not load payment form. Please refresh and try again.';};
+  document.head.appendChild(s);
+}
+
+function initSquareCard(appId,locId){
+  var payments=window.Square.payments(appId,locId);
+  window._sqPayments=payments;
+  payments.card().then(function(card){
+    window._sqCard=card;
+    return card.attach('#card-container');
+  }).then(function(){
+    _hide('card-loading');
+  }).catch(function(err){
+    var cl=document.getElementById('card-loading');if(cl)cl.textContent='Could not load payment form. Please refresh and try again.';
+  });
+}
+
+function submitPayment(){
+  if(!window._sqCard)return;
+  var btn=document.getElementById('pay-btn');
+  btn.disabled=true;btn.textContent='Processing…';
+  _hide('card-error');_hide('co-payment');_show('co-processing');
+  window._sqCard.tokenize().then(function(result){
+    if(result.status==='OK'){
+      return apiFetch('process_payment.php','POST',{source_id:result.token,order_id:window._pendingOrderId});
+    } else {
+      var msg=(result.errors&&result.errors[0])?result.errors[0].message:'Please check your card details and try again.';
+      throw{cardError:true,message:msg};
+    }
+  }).then(function(d){
+    _hide('co-processing');
+    if(d.success){
+      window._pendingOrderId=null;
+      window._pendingCartItems=null;
+      var body=document.getElementById('co-result-body');
+      if(body)body.innerHTML='Your payment of <strong>$'+d.total.toFixed(2)+'</strong> was received.<br>Order #<strong>'+d.order_id+'</strong><br>A confirmation email has been sent to you.';
+      _show('co-result');
+    } else {
+      _show('co-payment');
+      showCardError(d.error||'Payment failed. Please try again.');
+      btn.disabled=false;btn.textContent='Pay $'+(window._pendingTotal||0).toFixed(2);
+    }
+  }).catch(function(err){
+    _hide('co-processing');_show('co-payment');
+    var msg=(err&&err.cardError)?err.message:'Payment failed. Please try again.';
+    showCardError(msg);
+    btn.disabled=false;btn.textContent='Pay $'+(window._pendingTotal||0).toFixed(2);
+  });
+}
+
+function showCardError(msg){
+  var el=document.getElementById('card-error');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+
+function backToCheckoutForm(){
+  // Destroy card widget
+  if(window._sqCard){try{window._sqCard.destroy();}catch(e){}window._sqCard=null;}
+  // Cancel the pending order so stock is restored
+  var oid=window._pendingOrderId;
+  if(oid){
+    apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid}).catch(function(){});
+    window._pendingOrderId=null;
+  }
+  // Restore cart items
+  if(window._pendingCartItems){
+    CART=window._pendingCartItems;
+    window._pendingCartItems=null;
+    updCartCount();renderStore();
+  }
+  _hide('co-payment');_show('co-form');
+  updateShippingDisplay();
 }
 
 // ── TEST MODE ORDER CONFIRMATION ──
@@ -457,5 +555,31 @@ function showTestOrderConfirm(oid,total,o){
     '</div>'+
     '</div>';
   document.body.appendChild(div);
+}
+
+function cancelPendingOrder(){
+  var oid=window._pendingOrderId;
+  if(!oid)return;
+  var btn=document.getElementById('co-cancel-btn');
+  if(btn){btn.disabled=true;btn.textContent='Cancelling…';}
+  apiFetch('customers.php','POST',{action:'cancel_order',order_id:oid})
+    .then(function(){
+      window._pendingOrderId=null;
+      if(window._sqCard){try{window._sqCard.destroy();}catch(e){}window._sqCard=null;}
+      // Restore cart items if cancelling from payment step
+      if(window._pendingCartItems){
+        CART=window._pendingCartItems;
+        window._pendingCartItems=null;
+        updCartCount();renderStore();
+      }
+      closeModal('co-modal');
+      // Reset panels for next time
+      _show('co-form');_hide('co-payment');_hide('co-processing');_hide('co-result');
+      showToast('Order cancelled.');
+    })
+    .catch(function(){
+      if(btn){btn.disabled=false;btn.textContent='Cancel order';}
+      showToast('Could not cancel — please contact us if you need help.','error');
+    });
 }
 

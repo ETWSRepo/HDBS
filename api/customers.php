@@ -213,4 +213,24 @@ if ($method === 'POST' && $action === 'delete_customer') {
     ok(['message' => 'Customer deleted']);
 }
 
+// POST — cancel order (public; only Awaiting Payment orders can be cancelled this way)
+if ($method === 'POST' && $action === 'cancel_order') {
+    $order_id = trim($d['order_id'] ?? '');
+    if (!$order_id) fail('Missing order_id');
+    $stmt = $pdo->prepare("SELECT id, status FROM orders WHERE id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch();
+    if (!$order) fail('Order not found');
+    if ($order['status'] !== 'Awaiting Payment') fail('Cannot cancel this order');
+    // Restore stock for all items
+    $items = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ? AND product_id != '_ship'");
+    $items->execute([$order_id]);
+    $restoreStmt = $pdo->prepare("UPDATE products SET stock = stock + ? WHERE id = ?");
+    foreach ($items->fetchAll() as $it) {
+        $restoreStmt->execute([(int)$it['quantity'], $it['product_id']]);
+    }
+    $pdo->prepare("UPDATE orders SET status = 'Cancelled' WHERE id = ?")->execute([$order_id]);
+    ok(['message' => 'Order cancelled']);
+}
+
 fail('Unknown action', 400);
