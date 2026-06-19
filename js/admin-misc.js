@@ -999,6 +999,20 @@ function saveSQ(){
   }).catch(function(){err.textContent='Network error.';err.style.display='block';});
 }
 
+function saveSmtp(){
+  var host=document.getElementById('smtp-host').value.trim();
+  var port=document.getElementById('smtp-port').value.trim()||'587';
+  var user=document.getElementById('smtp-user').value.trim();
+  var pass=document.getElementById('smtp-pass').value;
+  var ok=document.getElementById('smtp-ok'),err=document.getElementById('smtp-err');
+  ok.style.display='none';err.style.display='none';
+  if(!host||!user){err.textContent='Host and username are required.';err.style.display='block';return;}
+  apiFetch('admin.php','POST',{action:'save_smtp',host:host,port:port,user:user,pass:pass}).then(function(d){
+    if(d&&d.success){ok.textContent='SMTP settings saved!';ok.style.display='block';document.getElementById('smtp-pass').value='';}
+    else{err.textContent=(d&&d.error)||'Save failed.';err.style.display='block';}
+  }).catch(function(){err.textContent='Network error.';err.style.display='block';});
+}
+
 // ── EMAIL LOG ──
 var ELOGS=[], EL_SORT={col:'sent_at',dir:-1}, EL_F={sent_at:'',email_type:'',sent_to:'',order_id:'',status:''};
 

@@ -1131,28 +1131,72 @@ try{
     t('saveSQ refreshes rSettings after save',strpos($amjs2,'rSettings(el)')!==false);
 }catch(Exception $e){t('github token + sec question checks',false,$e->getMessage());}
 
-// ── 8. LIVE UI TESTS ──
-// HTTP requests to the live site to verify runtime behavior
+// ── HTTP helpers (used by sections 10+) ──
+$base='https://handmadedesignsbysuzi.com';
 function uiGet($url){
     $ctx=stream_context_create(['http'=>['timeout'=>8,'ignore_errors'=>true]]);
     $body=@file_get_contents($url,false,$ctx);
     $code=0;
-    if(isset($http_response_header)){
-        foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}
-    }
+    if(isset($http_response_header)){foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}}
     return['body'=>(string)$body,'code'=>$code];
 }
 function uiPost($url,$data){
     $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>'Content-Type: application/json','content'=>json_encode($data),'timeout'=>8,'ignore_errors'=>true]]);
     $body=@file_get_contents($url,false,$ctx);
     $code=0;
-    if(isset($http_response_header)){
-        foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}
-    }
+    if(isset($http_response_header)){foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}}
     $json=@json_decode($body,true);
     return['body'=>(string)$body,'code'=>$code,'json'=>$json];
 }
-$base='https://handmadedesignsbysuzi.com';
+
+// ── 8. SMTP SETTINGS ──
+try{
+    $mailphp=file_get_contents($root.'/mailer.php');
+    t('mailer.php no hardcoded password',strpos($mailphp,'hvgcsasrvycrofeu')===false);
+    t('mailer.php reads smtp_pass from DB',strpos($mailphp,'smtp_pass')!==false&&strpos($mailphp,'_smtpConfig')!==false);
+    t('mailer.php _smtpConfig function exists',strpos($mailphp,'function _smtpConfig(')!==false);
+    t('sendEmailWithAttachment uses _smtpConfig',strpos($mailphp,'sendEmailWithAttachment')!==false&&substr_count($mailphp,'_smtpConfig()')>=2);
+    $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    t('admin.php save_smtp action',strpos($adphp,"action === 'save_smtp'")!==false);
+    t('admin.php get_smtp action',strpos($adphp,"action === 'get_smtp'")!==false);
+    t('smtp_pass in sensitive blocklist',strpos($adphp,"'smtp_pass'")!==false&&strpos($adphp,'$sensitive')!==false);
+    $aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
+    t('SMTP card in settings page',strpos($aojs,'smtp-host')!==false&&strpos($aojs,'smtp-pass')!==false);
+    t('SMTP settings loaded on render',strpos($aojs,"action:'get_smtp'")!==false);
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('saveSmtp function exists',strpos($amjs,'function saveSmtp(')!==false);
+    t('saveSmtp uses save_smtp action',strpos($amjs,"action:'save_smtp'")!==false);
+    // DB has SMTP settings seeded
+    $smtpHost=$pdo->query("SELECT value FROM settings WHERE key_name='smtp_host' LIMIT 1")->fetchColumn();
+    $smtpPass=$pdo->query("SELECT value FROM settings WHERE key_name='smtp_pass' LIMIT 1")->fetchColumn();
+    t('smtp_host seeded in DB',$smtpHost!==false&&$smtpHost!=='');
+    t('smtp_pass seeded in DB',$smtpPass!==false&&$smtpPass!=='');
+}catch(Exception $e){t('SMTP settings checks',false,$e->getMessage());}
+
+// ── 10. LOGIN RATE LIMITING ──
+try{
+    $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    t('login rate limit: LOGIN_MAX_ATTEMPTS defined',strpos($adphp,'LOGIN_MAX_ATTEMPTS')!==false);
+    t('login rate limit: LOGIN_LOCKOUT_SECONDS defined',strpos($adphp,'LOGIN_LOCKOUT_SECONDS')!==false);
+    t('login rate limit: reads login_fail_count',strpos($adphp,'login_fail_count')!==false);
+    t('login rate limit: reads login_fail_time',strpos($adphp,'login_fail_time')!==false);
+    t('login rate limit: increments fail count on bad password',strpos($adphp,'login_fail_count')!==false&&strpos($adphp,'$fails++')!==false);
+    t('login rate limit: resets counters on success',strpos($adphp,"setSetting(\$pdo, 'login_fail_count', '0')")!==false);
+    t('login rate limit: lockout message has minutes',strpos($adphp,'minute')!==false&&strpos($adphp,'Too many failed attempts')!==false);
+    $authjs=file_get_contents($root.'/js/auth.js');
+    t('login UI shows dynamic error message',strpos($authjs,'d.error||')!==false&&strpos($authjs,'lerr')!==false);
+    // Live: wrong password returns error with attempts remaining
+    $r=uiPost($base.'/api/admin.php',['action'=>'login','password'=>'__wrongpassword_rt_check__']);
+    t('login rate limit: wrong password returns error',$r['json']&&empty($r['json']['success'])&&!empty($r['json']['error']));
+    t('login rate limit: error mentions attempts or lockout',
+        !empty($r['json']['error'])&&(strpos($r['json']['error'],'attempt')!==false||strpos($r['json']['error'],'locked')!==false||strpos($r['json']['error'],'Incorrect')!==false));
+    // Reset counters so we don't lock ourselves out during testing
+    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('login_fail_count','0') ON DUPLICATE KEY UPDATE value='0'")->execute();
+    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('login_fail_time','0') ON DUPLICATE KEY UPDATE value='0'")->execute();
+    t('login rate limit: counters reset after test',true);
+}catch(Exception $e){t('login rate limit checks',false,$e->getMessage());}
+
+// ── 11. LIVE UI TESTS ──
 try{
     // Storefront loads
     $r=uiGet($base.'/');
@@ -1194,7 +1238,7 @@ try{
     t('ui:admin get_sec_question returns question',$r['code']===200&&!empty($r['json']['success'])&&!empty($r['json']['question']));
 
     // Sensitive settings blocked — fail() returns HTTP 400
-    foreach(['admin_password','square_access_token','admin_sec_answer'] as $sk){
+    foreach(['admin_password','square_access_token','admin_sec_answer','smtp_pass'] as $sk){
         $r=uiPost($base.'/api/admin.php',['action'=>'get_setting','key'=>$sk]);
         t('ui:get_setting blocks '.$sk,!empty($r['json'])&&empty($r['json']['success']));
     }

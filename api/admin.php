@@ -25,10 +25,42 @@ function setSetting($pdo, $key, $value) {
 
 // ── Login ──
 if ($method === 'POST' && $action === 'login') {
+    define('LOGIN_MAX_ATTEMPTS', 5);
+    define('LOGIN_LOCKOUT_SECONDS', 900); // 15 minutes
+
+    $fails    = (int)(getSetting($pdo, 'login_fail_count') ?? 0);
+    $failTime = (int)(getSetting($pdo, 'login_fail_time')  ?? 0);
+    $now      = time();
+
+    // Reset stale lockout
+    if ($fails >= LOGIN_MAX_ATTEMPTS && ($now - $failTime) >= LOGIN_LOCKOUT_SECONDS) {
+        $fails = 0;
+        setSetting($pdo, 'login_fail_count', '0');
+    }
+
+    if ($fails >= LOGIN_MAX_ATTEMPTS) {
+        $remaining = LOGIN_LOCKOUT_SECONDS - ($now - $failTime);
+        $mins = (int)ceil($remaining / 60);
+        dbg('admin', 'login LOCKED OUT');
+        fail("Too many failed attempts. Try again in {$mins} minute" . ($mins === 1 ? '' : 's') . '.');
+    }
+
     $pw   = $d['password'] ?? '';
     $hash = getSetting($pdo, 'admin_password');
-    if (!$hash || !password_verify($pw, $hash)) { dbg('admin','login FAILED'); fail('Incorrect password'); }
-    dbg('admin','login ok');
+    if (!$hash || !password_verify($pw, $hash)) {
+        $fails++;
+        setSetting($pdo, 'login_fail_count', (string)$fails);
+        setSetting($pdo, 'login_fail_time',  (string)$now);
+        $left = LOGIN_MAX_ATTEMPTS - $fails;
+        dbg('admin', "login FAILED fails={$fails}");
+        if ($left > 0) fail("Incorrect password. {$left} attempt" . ($left === 1 ? '' : 's') . " remaining.");
+        fail('Too many failed attempts. Account locked for 15 minutes.');
+    }
+
+    // Success — clear lockout counters
+    setSetting($pdo, 'login_fail_count', '0');
+    setSetting($pdo, 'login_fail_time',  '0');
+    dbg('admin', 'login ok');
     ok(['message' => 'Logged in']);
 }
 
@@ -86,7 +118,7 @@ if ($method === 'POST' && $action === 'get_setting') {
     $key = $d['key'] ?? '';
     dbg('admin', "get_setting key=$key");
     if (!$key) fail('Missing key');
-    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
+    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret','smtp_pass'];
     if (in_array($key, $sensitive)) fail('Forbidden');
     $val = getSetting($pdo, $key);
     // default unset boolean settings to '0'
@@ -120,7 +152,7 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
     $val = $d['value'] ?? '';
     dbg('admin', "set_setting key=$key value=$val");
     if (!$key) fail('Missing key');
-    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
+    $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret','smtp_pass'];
     if (in_array($key, $sensitive)) fail('Forbidden');
     setSetting($pdo, $key, $val);
     ok(['message' => 'Setting saved']);
@@ -134,6 +166,28 @@ if ($method === 'POST' && $action === 'save_github_token') {
 
 if ($method === 'POST' && $action === 'get_github_token') {
     ok(['value' => getSetting($pdo, 'github_token')]);
+}
+
+if ($method === 'POST' && $action === 'get_smtp') {
+    ok([
+        'host' => getSetting($pdo, 'smtp_host') ?? '',
+        'port' => getSetting($pdo, 'smtp_port') ?? '587',
+        'user' => getSetting($pdo, 'smtp_user') ?? '',
+        'pass_set' => (getSetting($pdo, 'smtp_pass') !== null && getSetting($pdo, 'smtp_pass') !== ''),
+    ]);
+}
+
+if ($method === 'POST' && $action === 'save_smtp') {
+    $host = trim($d['host'] ?? '');
+    $port = (int)($d['port'] ?? 587);
+    $user = trim($d['user'] ?? '');
+    $pass = $d['pass'] ?? '';
+    if (!$host || !$user) fail('Host and user required');
+    setSetting($pdo, 'smtp_host', $host);
+    setSetting($pdo, 'smtp_port', (string)$port);
+    setSetting($pdo, 'smtp_user', $user);
+    if ($pass !== '') setSetting($pdo, 'smtp_pass', $pass);
+    ok(['message' => 'SMTP settings saved']);
 }
 
 // ── Log file reader ──

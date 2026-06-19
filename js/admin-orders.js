@@ -2012,6 +2012,18 @@ function rSettingsInner(el){
     '</div>'+
     '<button class="bp" onclick="saveSquareFees()">Save Fees</button>'+
   '</div>'+
+  '<div style="background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem;margin-bottom:1.2rem">'+
+    '<div style="font-weight:700;margin-bottom:.4rem">📧 Email (SMTP)</div>'+
+    '<div style="font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">Outgoing email settings for order confirmations and shipping notifications.</div>'+
+    '<div class="aok" id="smtp-ok" style="display:none">SMTP settings saved!</div>'+
+    '<div class="aerr" id="smtp-err" style="display:none"></div>'+
+    '<label class="fl">SMTP Host</label><input class="afi" id="smtp-host" type="text" placeholder="smtp.mail.yahoo.com">'+
+    '<label class="fl">Port</label><input class="afi" id="smtp-port" type="number" value="587" placeholder="587">'+
+    '<label class="fl">Username</label><input class="afi" id="smtp-user" type="text" placeholder="you@yahoo.com">'+
+    '<label class="fl">App Password <span style="font-weight:400;color:#6b6040">(leave blank to keep current)</span></label>'+
+    '<input class="afi" id="smtp-pass" type="password" placeholder="••••••••••••••••">'+
+    '<button class="bp" onclick="saveSmtp()">Save SMTP</button>'+
+  '</div>'+
   '<div style="background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem">'+
     '<div style="font-weight:700;margin-bottom:.7rem">Store Info</div>'+
     '<div style="font-size:.84rem;color:#6b6040;line-height:2.1">'+
@@ -2022,6 +2034,15 @@ function rSettingsInner(el){
     '</div>'+
   '</div>'+
   '</div>';
+  apiFetch('admin.php','POST',{action:'get_smtp'}).then(function(d){
+    if(!d||!d.success)return;
+    var h=document.getElementById('smtp-host'),p=document.getElementById('smtp-port'),u=document.getElementById('smtp-user');
+    if(h)h.value=d.host||'';
+    if(p)p.value=d.port||'587';
+    if(u)u.value=d.user||'';
+    var lbl=document.getElementById('smtp-ok');
+    if(lbl&&d.pass_set){lbl.textContent='Password on file.';lbl.style.display='block';setTimeout(function(){lbl.textContent='SMTP settings saved!';lbl.style.display='none';},2000);}
+  }).catch(function(){});
 }
 
 function buildTaxGrid(){

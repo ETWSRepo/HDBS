@@ -2,11 +2,31 @@
 // mailer.php — Shared SMTP mailer helper
 // Include this in notify.php and order_confirm.php
 
+function _smtpConfig() {
+    static $cfg = null;
+    if ($cfg !== null) return $cfg;
+    try {
+        require_once __DIR__ . '/api/config.php';
+        $pdo = db();
+        $rows = $pdo->query("SELECT key_name, value FROM settings WHERE key_name IN ('smtp_host','smtp_port','smtp_user','smtp_pass')")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $cfg = [
+            'host' => $rows['smtp_host'] ?? 'smtp.mail.yahoo.com',
+            'port' => (int)($rows['smtp_port'] ?? 587),
+            'user' => $rows['smtp_user'] ?? '',
+            'pass' => $rows['smtp_pass'] ?? '',
+        ];
+    } catch (Exception $e) {
+        $cfg = ['host'=>'smtp.mail.yahoo.com','port'=>587,'user'=>'','pass'=>''];
+    }
+    return $cfg;
+}
+
 function sendEmail($to, $subject, $html, $from_email, $from_name) {
-    $smtp_host = 'smtp.mail.yahoo.com';
-    $smtp_port = 587;
-    $smtp_user = 'handmadedesignsbysuzi@yahoo.com';
-    $smtp_pass = 'hvgcsasrvycrofeu';
+    $c = _smtpConfig();
+    $smtp_host = $c['host'];
+    $smtp_port = $c['port'];
+    $smtp_user = $c['user'];
+    $smtp_pass = $c['pass'];
 
     // Log to debug
     $log_prefix = date('Y-m-d g:i A', strtotime('now')) . ' EDT';
@@ -90,10 +110,11 @@ function sendEmail($to, $subject, $html, $from_email, $from_name) {
 }
 
 function sendEmailWithAttachment($to, $subject, $html, $attachName, $attachContent, $attachMime, $from_email, $from_name) {
-    $smtp_host = 'smtp.mail.yahoo.com';
-    $smtp_port = 587;
-    $smtp_user = 'handmadedesignsbysuzi@yahoo.com';
-    $smtp_pass = 'hvgcsasrvycrofeu';
+    $c = _smtpConfig();
+    $smtp_host = $c['host'];
+    $smtp_port = $c['port'];
+    $smtp_user = $c['user'];
+    $smtp_pass = $c['pass'];
 
     $sock = @fsockopen($smtp_host, $smtp_port, $errno, $errstr, 15);
     if (!$sock) {

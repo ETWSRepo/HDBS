@@ -74,8 +74,8 @@ function doLogin(){
   if(!pw)return;
   apiFetch('admin.php','POST',{action:'login',password:pw}).then(function(d){
     if(d.success){document.getElementById('lerr').style.display='none';document.getElementById('lpw').value='';goPanel();}
-    else document.getElementById('lerr').style.display='block';
-  }).catch(function(){document.getElementById('lerr').style.display='block';});
+    else{var el=document.getElementById('lerr');el.textContent=d.error||'Incorrect password. Please try again.';el.style.display='block';}
+  }).catch(function(){var el=document.getElementById('lerr');el.textContent='Network error. Please try again.';el.style.display='block';});
 }
 document.getElementById('lpw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.addEventListener('DOMContentLoaded',function(){
