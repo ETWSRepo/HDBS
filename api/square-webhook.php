@@ -4,10 +4,9 @@
 require_once __DIR__ . '/config.php';
 
 // ── Verify Square signature ──
-// TODO: after adding SQUARE_WEBHOOK_SIG_KEY to secrets.php, remove the hardcoded fallback
-// and change this line to: if (!defined('SQUARE_WEBHOOK_SIG_KEY')) { http_response_code(500); exit('Webhook key not configured'); }
 require_once dirname(dirname(__DIR__)) . '/secrets.php';
-$signature_key = defined('SQUARE_WEBHOOK_SIG_KEY') ? SQUARE_WEBHOOK_SIG_KEY : 'FjK9QJMJbxQI9tht0ZaPyQ';
+if (!defined('SQUARE_WEBHOOK_SIG_KEY')) { http_response_code(500); exit('Webhook key not configured'); }
+$signature_key = SQUARE_WEBHOOK_SIG_KEY;
 $callback_url  = 'https://handmadedesignsbysuzi.com/api/square-webhook.php';
 
 $payload = file_get_contents('php://input');

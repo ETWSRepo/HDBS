@@ -2,8 +2,7 @@
 // notify.php — Order notification using Hostinger mail()
 
 header('Content-Type: application/json');
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header('Access-Control-Allow-Origin: ' . $origin);
+header('Access-Control-Allow-Origin: https://handmadedesignsbysuzi.com');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -33,6 +32,24 @@ $from_name  = 'Handmade Designs By Suzi';
 
 // ── Data ──
 $order_id       = $data['order_id']       ?? '';
+
+// Validate order exists in DB before sending email (prevents fabricated notification spam)
+if ($order_id) {
+    try {
+        $chk = db()->prepare("SELECT id FROM orders WHERE id = ? LIMIT 1");
+        $chk->execute([$order_id]);
+        if (!$chk->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success'=>false,'error'=>'Order not found']);
+            exit();
+        }
+    } catch(Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success'=>false,'error'=>'DB error']);
+        exit();
+    }
+}
+
 $customer_name  = htmlspecialchars($data['customer_name']  ?? '');
 $customer_email = htmlspecialchars($data['customer_email'] ?? '');
 $phone          = htmlspecialchars($data['phone']          ?? 'Not provided');

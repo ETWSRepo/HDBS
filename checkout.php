@@ -114,8 +114,9 @@ $curl_error = curl_error($ch);
 curl_close($ch);
 
 if ($curl_error) {
+    error_log('checkout.php curl error: ' . $curl_error);
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Network error: ' . $curl_error]);
+    echo json_encode(['success' => false, 'error' => 'Could not reach payment provider. Please try again.']);
     exit();
 }
 

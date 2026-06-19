@@ -42,6 +42,31 @@ if ($method === 'GET') {
 
 // POST — submit a new review (pending)
 if ($method === 'POST') {
+    // Per-IP rate limit: 5 review submissions per 15 minutes
+    (function() use ($pdo) {
+        $ip  = $_SERVER['REMOTE_ADDR'] ?? '';
+        $key = md5('review_' . $ip);
+        $now = time();
+        $pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+            key_hash CHAR(32) PRIMARY KEY,
+            attempts INT NOT NULL DEFAULT 0,
+            last_at  INT NOT NULL DEFAULT 0
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $row = $pdo->prepare("SELECT attempts, last_at FROM rate_limits WHERE key_hash = ?");
+        $row->execute([$key]);
+        $row = $row->fetch() ?: ['attempts' => 0, 'last_at' => 0];
+        if ($row['attempts'] >= 5 && ($now - $row['last_at']) < 900) {
+            $mins = (int)ceil((900 - ($now - $row['last_at'])) / 60);
+            fail("Too many requests. Try again in {$mins} minute" . ($mins === 1 ? '' : 's') . '.', 429);
+        }
+        if ($row['attempts'] >= 5) {
+            $pdo->prepare("INSERT INTO rate_limits (key_hash,attempts,last_at) VALUES (?,1,?) ON DUPLICATE KEY UPDATE attempts=1,last_at=?")->execute([$key,$now,$now]);
+        } else {
+            $new = $row['attempts'] + 1;
+            $pdo->prepare("INSERT INTO rate_limits (key_hash,attempts,last_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE attempts=?,last_at=?")->execute([$key,$new,$now,$new,$now]);
+        }
+    })();
+
     $name   = trim($d['customer_name'] ?? '');
     $prod   = trim($d['product_name']  ?? '');
     $rating = max(1, min(5, (int)($d['rating'] ?? 5)));

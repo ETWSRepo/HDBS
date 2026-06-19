@@ -43,6 +43,9 @@ vlog("$ts | VP START | Order: $order_id");
 
 $pdo = db();
 
+// test_mode is an admin-only bypass — enforce auth before any other check
+if (!empty($data['test_mode'])) requireAdmin();
+
 $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ? LIMIT 1");
 $stmt->execute([$order_id]);
 $order = $stmt->fetch();

@@ -1496,6 +1496,54 @@ try{
 
 }catch(Exception $e){t('ui tests',false,$e->getMessage());}
 
+// ── 12. ROUND 4 HARDENING ──
+try{
+    // verify_payment.php test_mode requires admin token
+    $r=uiPost($base.'/verify_payment.php',['order_id'=>'FAKE-RT-001','test_mode'=>true]);
+    t('verify_payment:test_mode without token is 401',$r['code']===401,'HTTP '.$r['code']);
+    // with admin token it should pass auth (order not found → error, but not 401)
+    $r=uiPostAdmin($base.'/verify_payment.php',['order_id'=>'FAKE-RT-001','test_mode'=>true]);
+    t('verify_payment:test_mode with token passes auth',$r['code']!==401,'HTTP '.$r['code']);
+
+    // notify.php CORS is locked (not wildcard)
+    $notifyPhp=file_get_contents($root.'/notify.php');
+    t('notify:CORS not wildcard',strpos($notifyPhp,'HTTP_ORIGIN')===false&&strpos($notifyPhp,'handmadedesignsbysuzi.com')!==false);
+
+    // notify.php validates order_id against DB before sending email
+    t('notify:validates order exists in DB',strpos($notifyPhp,'Order not found')!==false&&strpos($notifyPhp,'SELECT id FROM orders WHERE id')!==false);
+
+    // notify.php live: unknown order_id rejected
+    $r=uiPost($base.'/notify.php',['order_id'=>'FAKE-RT-DOES-NOT-EXIST','customer_name'=>'Test','customer_email'=>'test@test.com','total'=>'1.00','items'=>[]]);
+    t('notify:rejects unknown order_id',$r['code']===404||(!empty($r['json'])&&empty($r['json']['success'])),'HTTP '.$r['code']);
+
+    // checkout.php curl error is not leaked to browser
+    $coPhp=file_get_contents($root.'/checkout.php');
+    t('checkout:curl error not leaked',strpos($coPhp,"'Network error: ' . \$curl_error")===false&&strpos($coPhp,'curl_error')!==false&&strpos($coPhp,'error_log')!==false);
+
+    // contact.php rate limit table created
+    $contactPhp=file_get_contents($root.'/api/contact.php');
+    t('contact:per-IP rate limit present',strpos($contactPhp,'rate_limits')!==false&&strpos($contactPhp,'md5(\'contact_\'')!==false);
+    t('contact:rate limit returns 429',strpos($contactPhp,'429')!==false);
+
+    // reviews.php rate limit
+    $revPhp=file_get_contents($root.'/api/reviews.php');
+    t('reviews:per-IP rate limit present',strpos($revPhp,'rate_limits')!==false&&strpos($revPhp,'md5(\'review_\'')!==false);
+
+    // subscribers.php rate limit
+    $subPhp=file_get_contents($root.'/api/subscribers.php');
+    t('subscribers:per-IP rate limit present',strpos($subPhp,'rate_limits')!==false&&strpos($subPhp,'md5(\'sub_\'')!==false);
+
+    // rate_limits table exists on server (created on first hit; ensure it exists now)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+        key_hash CHAR(32) PRIMARY KEY,
+        attempts INT NOT NULL DEFAULT 0,
+        last_at  INT NOT NULL DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $tbls2=$pdo->query("SHOW TABLES LIKE 'rate_limits'")->fetchAll(PDO::FETCH_COLUMN);
+    t('rate_limits:table exists',count($tbls2)>0);
+
+}catch(Exception $e){t('round 4 hardening checks',false,$e->getMessage());}
+
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 
 ob_end_clean();
