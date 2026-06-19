@@ -174,3 +174,15 @@ function body() { return json_decode(file_get_contents('php://input'), true) ?? 
 function ok($data = []) { echo json_encode(array_merge(['success'=>true], $data)); exit(); }
 function fail($msg, $code = 400) { http_response_code($code); echo json_encode(['success'=>false,'error'=>$msg]); exit(); }
 function method($allowed) { if ($_SERVER['REQUEST_METHOD'] !== $allowed) fail('Method not allowed', 405); }
+
+// ── Settings helpers (available to all endpoints) ──
+function getSetting($pdo, $key) {
+    $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
+    $s->execute([$key]);
+    $r = $s->fetch();
+    return $r ? $r['value'] : null;
+}
+function setSetting($pdo, $key, $value) {
+    $s = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?");
+    $s->execute([$key, $value, $value]);
+}

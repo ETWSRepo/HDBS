@@ -1,5 +1,6 @@
 <?php
 // api/process_payment.php — Charge card via Square Web Payments SDK token
+ini_set('display_errors', 0);  // never let PHP errors corrupt the JSON response
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/applog.php';
@@ -13,6 +14,7 @@ $order_id  = trim($d['order_id'] ?? '');
 
 if (!$source_id || !$order_id) fail('Missing source_id or order_id');
 
+applog('PAY-START', "order=$order_id src_len=".strlen($source_id));
 $pdo = db();
 
 // test_mode is admin-only bypass for regression tests
@@ -50,18 +52,18 @@ if (!empty($d['test_mode'])) {
     ok(['message' => 'Test payment accepted', 'total' => $total, 'order_id' => $order_id]);
 }
 
-// Load Square credentials
-$token  = getSetting($pdo, 'square_access_token');
-$sqMode = getSetting($pdo, 'square_mode') ?: 'live';
+// Load Square credentials — token from secrets.php, mode/location from DB
+$token    = defined('SQUARE_TOKEN') ? SQUARE_TOKEN : '';
+$sqMode   = getSetting($pdo, 'square_mode') ?: 'live';
+$location = getSetting($pdo, 'square_location_id') ?: 'LJP687TQBTWTA';
 if (!$token) fail('Payment not configured');
 
-$sqBase   = ($sqMode === 'test') ? 'https://connect.squaresandbox.com' : 'https://connect.squareup.com';
-$location = 'LJP687TQBTWTA';
+$sqBase = ($sqMode === 'test') ? 'https://connect.squaresandbox.com' : 'https://connect.squareup.com';
 
 // Charge the card
 $body = [
     'source_id'           => $source_id,
-    'idempotency_key'     => $order_id . '-' . time(),
+    'idempotency_key'     => $order_id . '-' . substr(md5($source_id), 0, 8),  // per-nonce: dedupes identical retries; allows retry with new card
     'amount_money'        => ['amount' => $amountCents, 'currency' => 'USD'],
     'location_id'         => $location,
     'note'                => $order_id,
@@ -71,8 +73,22 @@ $body = [
 $resp = sq_curl($sqBase . '/v2/payments', 'POST', $body, $token);
 
 if (!$resp || !isset($resp['payment'])) {
-    $errMsg = $resp['errors'][0]['detail'] ?? 'Payment failed. Please try again.';
-    fail($errMsg);
+    $sqErr  = $resp ? json_encode($resp) : 'sq_curl returned null';
+    applog('PAYMENT-FAIL', "order=$order_id mode=$sqMode loc=$location err=$sqErr");
+    $errCode = $resp ? ($resp['errors'][0]['code'] ?? '') : '';
+    $codeMap = [
+        'CARD_DECLINED'                => 'Your card was declined. Please try a different card.',
+        'CVV_FAILURE'                  => 'Card security code did not match. Please check and try again.',
+        'ADDRESS_VERIFICATION_FAILURE' => 'Billing ZIP code did not match. Please check and try again.',
+        'CARD_EXPIRED'                 => 'Your card has expired. Please use a different card.',
+        'INSUFFICIENT_FUNDS'           => 'Insufficient funds. Please try a different card.',
+        'INVALID_CARD'                 => 'Invalid card number. Please check and try again.',
+        'CARD_NOT_SUPPORTED'           => 'This card type is not supported. Please try a different card.',
+        'UNAUTHORIZED'                 => 'Payment configuration error. Please contact us.',
+        'NOT_FOUND'                    => 'Payment configuration error. Please contact us.',
+    ];
+    $userMsg = $codeMap[$errCode] ?? ($resp ? ($resp['errors'][0]['detail'] ?? 'Payment failed. Please try again.') : 'Payment failed. Please try again.');
+    fail($userMsg);
 }
 
 $payment = $resp['payment'];

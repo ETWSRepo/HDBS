@@ -6,12 +6,7 @@ cors();
 $pdo = db();
 requireAdmin();
 
-function getSetting($pdo, $key) {
-    $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
-    $s->execute([$key]);
-    $r = $s->fetch();
-    return $r ? $r['value'] : null;
-}
+// getSetting defined in config.php
 
 $token  = getSetting($pdo, 'github_token') ?: '';
 $owner  = 'C177LVR';

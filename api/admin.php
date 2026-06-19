@@ -11,16 +11,19 @@ $d      = body();
 $action = $d['action'] ?? '';
 dbg('admin', "REQUEST method=$method action=$action");
 
-function getSetting($pdo, $key) {
-    $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
-    $s->execute([$key]);
-    $r = $s->fetch();
-    return $r ? $r['value'] : null;
+if (!function_exists('getSetting')) {
+    function getSetting($pdo, $key) {
+        $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
+        $s->execute([$key]);
+        $r = $s->fetch();
+        return $r ? $r['value'] : null;
+    }
 }
-
-function setSetting($pdo, $key, $value) {
-    $s = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?");
-    $s->execute([$key, $value, $value]);
+if (!function_exists('setSetting')) {
+    function setSetting($pdo, $key, $value) {
+        $s = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?");
+        $s->execute([$key, $value, $value]);
+    }
 }
 
 // ── Login ──

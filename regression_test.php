@@ -1626,6 +1626,23 @@ try{
     t('store.js:no checkout.php redirect call',strpos($stjs,"fetch('checkout.php'")===false);
     t('store.js:square_app_id hardcoded',strpos($stjs,'sq0idp-08N-GQIys4jnwilvp0STsQ')!==false);
 
+    // process_payment.php correctness checks
+    $ppPhp=file_get_contents($root.'/api/process_payment.php');
+    t('process_payment.php exists',strlen($ppPhp)>100);
+    t('process_payment uses SQUARE_TOKEN constant',strpos($ppPhp,'SQUARE_TOKEN')!==false&&strpos($ppPhp,"getSetting(\$pdo, 'square_access_token')")===false);
+    t('process_payment has display_errors off',strpos($ppPhp,"ini_set('display_errors', 0)")!==false);
+    t('process_payment has PAY-START log',strpos($ppPhp,"'PAY-START'")!==false);
+    t('process_payment has PAYMENT-FAIL log',strpos($ppPhp,"'PAYMENT-FAIL'")!==false);
+    t('process_payment guards null resp on errCode',strpos($ppPhp,'$resp ? ($resp[\'errors\']')!==false);
+    t('process_payment has idempotency key with nonce hash',strpos($ppPhp,'md5($source_id)')!==false);
+    t('process_payment no debug console.log in store.js',strpos($stjs,"console.log('[SQ]")===false);
+
+    // config.php now owns getSetting/setSetting
+    $cfgPhp=file_get_contents($root.'/api/config.php');
+    t('config.php defines getSetting',strpos($cfgPhp,'function getSetting')!==false);
+    t('config.php defines setSetting',strpos($cfgPhp,'function setSetting')!==false);
+    t('admin.php wraps getSetting with function_exists',strpos(file_get_contents($root.'/api/admin.php'),"function_exists('getSetting')")!==false);
+
 }catch(Exception $e){t('embedded Square SDK checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
