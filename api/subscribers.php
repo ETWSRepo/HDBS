@@ -7,8 +7,9 @@ cors();
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo    = db();
 
-// GET — list all subscribers
+// GET — list all subscribers (admin)
 if ($method === 'GET') {
+    requireAdmin();
     $rows = $pdo->query("SELECT email, DATE_FORMAT(subscribed_at, '%m/%d/%Y') as date FROM subscribers ORDER BY subscribed_at DESC")->fetchAll();
     ok(['subscribers' => $rows]);
 }
@@ -30,6 +31,7 @@ if ($method === 'POST') {
 
 // DELETE — remove subscriber
 if ($method === 'DELETE') {
+    requireAdmin();
     $d  = body();
     $em = $d['email'] ?? '';
     if (!$em) fail('Email required');

@@ -11,6 +11,7 @@ $action = $d['action'] ?? $_GET['action'] ?? '';
 
 // GET — list all customers (admin)
 if ($method === 'GET' && $action === 'list') {
+    requireAdmin();
     $rows = $pdo->query("SELECT id, first_name, last_name, email, phone, order_count, joined_at FROM customers ORDER BY joined_at DESC")->fetchAll();
     $custs = array_map(function($r) {
         return [
@@ -130,6 +131,7 @@ if ($method === 'POST' && $action === 'inc_orders') {
 
 // POST — admin: add customer
 if ($method === 'POST' && $action === 'add_customer') {
+    requireAdmin();
     if (empty($d['em'])) fail('Email required');
     $check = $pdo->prepare("SELECT id FROM customers WHERE email = ?");
     $check->execute([$d['em']]);
@@ -143,6 +145,7 @@ if ($method === 'POST' && $action === 'add_customer') {
 
 // POST — admin: update customer
 if ($method === 'POST' && $action === 'update_customer') {
+    requireAdmin();
     $id = $d['id'] ?? '';
     if (!$id) fail('Missing id');
     $stmt = $pdo->prepare("UPDATE customers SET first_name=?, last_name=?, email=?, phone=? WHERE id=?");
@@ -152,6 +155,7 @@ if ($method === 'POST' && $action === 'update_customer') {
 
 // POST — admin: delete customer
 if ($method === 'POST' && $action === 'delete_customer') {
+    requireAdmin();
     $id = $d['id'] ?? '';
     if (!$id) fail('Missing id');
     $pdo->prepare("DELETE FROM customers WHERE id = ?")->execute([$id]);

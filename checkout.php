@@ -2,13 +2,10 @@
 // checkout.php — Creates a Square checkout session with pre-filled amount
 // Upload to public_html alongside index.html on Hostinger
 
-// ── CORS: allow your domain and local testing ──
 header('Content-Type: application/json');
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header('Access-Control-Allow-Origin: ' . $origin);
+header('Access-Control-Allow-Origin: https://handmadedesignsbysuzi.com');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -27,7 +24,7 @@ require_once dirname(__DIR__) . '/secrets.php'; // outside public_html
 // ── Test / Live mode ──
 $mode = $data['mode'] ?? 'live';
 if ($mode === 'test') {
-    define('SQUARE_ACCESS_TOKEN', 'EAAAl0SOR43xq09AVkTzfRKaZZ04ZGTyAkVMYvYWxAbFT4SoZlrod4oDQtui8jYt');
+    define('SQUARE_ACCESS_TOKEN', defined('SQUARE_SANDBOX_TOKEN') ? SQUARE_SANDBOX_TOKEN : '');
     define('SQUARE_API_URL_FINAL', 'https://connect.squareupsandbox.com/v2/online-checkout/payment-links');
 } else {
     define('SQUARE_ACCESS_TOKEN', defined('SQUARE_TOKEN') ? SQUARE_TOKEN : '');

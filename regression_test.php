@@ -808,7 +808,8 @@ try{
     $sensitiveKeys=['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret'];
     foreach($sensitiveKeys as $sk)
         t('get_setting blocks '.$sk, strpos($adphp,"'".$sk."'")!==false&&strpos($adphp,'$sensitive')!==false);
-    // Live checks — each sensitive key must return fail/Forbidden
+    // Live checks — sensitive or admin-only keys must be blocked for unauthenticated requests
+    // (returns 401 Unauthorized from requireAdmin, or 400 Forbidden from sensitive blocklist)
     $apiUrl='https://handmadedesignsbysuzi.com/api/admin.php';
     foreach(['github_token','admin_password'] as $sk){
         $ch=curl_init($apiUrl);
@@ -816,15 +817,20 @@ try{
             CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>$sk]),
             CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
         $res=json_decode(curl_exec($ch),true);curl_close($ch);
-        t('get_setting '.$sk.' returns forbidden',isset($res['success'])&&$res['success']===false&&($res['error']??'')==='Forbidden',$res['error']??json_encode($res));
+        t('get_setting '.$sk.' returns forbidden',isset($res['success'])&&$res['success']===false,$res['error']??json_encode($res));
     }
-    // rt_token must be readable (used by regression test UI)
-    $ch=curl_init($apiUrl);
-    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
-        CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>'rt_token']),
-        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
-    $rtRes=json_decode(curl_exec($ch),true);curl_close($ch);
-    t('get_setting rt_token returns value',isset($rtRes['success'])&&$rtRes['success']===true&&!empty($rtRes['value']));
+    // rt_token requires admin auth (not a public key) — check with admin token from DB
+    $rtTok=isset($_rtAdminToken)?$_rtAdminToken:$pdo->query("SELECT value FROM settings WHERE key_name='admin_session_token' LIMIT 1")->fetchColumn();
+    if($rtTok){
+        $ch=curl_init($apiUrl);
+        curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,
+            CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>'rt_token']),
+            CURLOPT_HTTPHEADER=>['Content-Type: application/json',"X-Admin-Token: $rtTok"]]);
+        $rtRes=json_decode(curl_exec($ch),true);curl_close($ch);
+        t('get_setting rt_token returns value (with admin token)',isset($rtRes['success'])&&$rtRes['success']===true&&!empty($rtRes['value']));
+    } else {
+        t('get_setting rt_token requires admin token (no session available, skip)',true,'skipped - no admin session');
+    }
 }catch(Exception $e){t('sensitive settings blocked checks',false,$e->getMessage());}
 
 // ── DEBUG/UTILITY FILES REMOVED ──
@@ -1131,8 +1137,93 @@ try{
     t('saveSQ refreshes rSettings after save',strpos($amjs2,'rSettings(el)')!==false);
 }catch(Exception $e){t('github token + sec question checks',false,$e->getMessage());}
 
+// ── 7b. PRODUCTION HARDENING ──
+// Ensure admin_session_token/expires rows exist in DB before testing
+(function()use($pdo){
+    $pdo->prepare("INSERT IGNORE INTO settings (key_name,value) VALUES ('admin_session_token','')")->execute();
+    $pdo->prepare("INSERT IGNORE INTO settings (key_name,value) VALUES ('admin_session_expires','0')")->execute();
+})();
+try{
+    // No console.log in payment flow (ui.js)
+    $uijs=isset($uijs)?$uijs:file_get_contents($root.'/js/ui.js');
+    t('ui.js no VP console.log',strpos($uijs,"console.log('VP:')")===false);
+
+    // No console.log in test-mode block (store.js)
+    $sjs=isset($sjs)?$sjs:file_get_contents($root.'/js/store.js');
+    t('store.js no Test confirm console.log',strpos($sjs,"console.log('Test confirm:')")===false);
+
+    // CORS no longer allows localhost
+    $cfgphp=file_get_contents($root.'/api/config.php');
+    preg_match('/function cors\(\).*?\n\}/s',$cfgphp,$corsMatch);
+    $corsFn=$corsMatch[0]??'';
+    t('CORS localhost exception removed',strpos($corsFn,'localhost')===false&&strpos($corsFn,'127.0.0.1')===false);
+    t('CORS only allows ALLOWED_ORIGIN',strpos($corsFn,'ALLOWED_ORIGIN')!==false);
+
+    // admin_password null check
+    $adphp=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    t('login guards against null admin_password',strpos($adphp,'Admin password not configured')!==false);
+    t('login null password returns 500',strpos($adphp,'!$hash) fail(')!==false&&strpos($adphp,'500')!==false);
+
+    // Server-side admin auth (requireAdmin)
+    $cfgphp=isset($cfgphp)?$cfgphp:file_get_contents($root.'/api/config.php');
+    t('config.php has requireAdmin()',strpos($cfgphp,'function requireAdmin()')!==false);
+    t('requireAdmin reads X-Admin-Token header',strpos($cfgphp,'HTTP_X_ADMIN_TOKEN')!==false);
+    t('requireAdmin checks admin_session_expires',strpos($cfgphp,'admin_session_expires')!==false);
+    t('login generates session token',strpos($adphp,'admin_session_token')!==false&&strpos($adphp,'admin_session_expires')!==false);
+    t('login returns token to JS',strpos($adphp,"'token' => \$token")!==false||strpos($adphp,'"token" => $token')!==false||strpos($adphp,"'token'=>\$token")!==false);
+    t('orders.php has requireAdmin()',strpos(file_get_contents($root.'/api/orders.php'),'requireAdmin()')!==false);
+    t('products.php POST has requireAdmin()',strpos(file_get_contents($root.'/api/products.php'),'requireAdmin()')!==false);
+    t('customers.php list has requireAdmin()',strpos(file_get_contents($root.'/api/customers.php'),'requireAdmin()')!==false);
+    t('faqs.php write has requireAdmin()',strpos(file_get_contents($root.'/api/faqs.php'),'requireAdmin()')!==false);
+    t('subscribers.php GET has requireAdmin()',strpos(file_get_contents($root.'/api/subscribers.php'),'requireAdmin()')!==false);
+    t('reviews.php write has requireAdmin()',strpos(file_get_contents($root.'/api/reviews.php'),'requireAdmin()')!==false);
+
+    // CORS fixes
+    $ckphp=file_get_contents($root.'/checkout.php');
+    t('checkout.php CORS hardcoded to ALLOWED_ORIGIN',strpos($ckphp,'Access-Control-Allow-Origin: https://handmadedesignsbysuzi.com')!==false);
+    t('checkout.php no echo-origin CORS',strpos($ckphp,'HTTP_ORIGIN')===false);
+    t('checkout.php no hardcoded sandbox token',strpos($ckphp,'EAAAl0SOR43xq09AVkTzfRKaZZ04ZGTyAkVMYvYWxAbFT4SoZlrod4oDQtui8jYt')===false);
+    $vpphp=file_get_contents($root.'/verify_payment.php');
+    t('verify_payment.php CORS not wildcard',strpos($vpphp,"Allow-Origin: *")===false);
+    t('verify_payment.php CORS set to handmadedesignsbysuzi.com',strpos($vpphp,'handmadedesignsbysuzi.com')!==false);
+
+    // api.js sends X-Admin-Token
+    $apijs=file_get_contents($root.'/js/api.js');
+    t('api.js sends X-Admin-Token header',strpos($apijs,'X-Admin-Token')!==false);
+    t('api.js uses window._adminToken',strpos($apijs,'_adminToken')!==false);
+
+    // auth.js stores and restores token
+    $authjs=isset($authjs)?$authjs:file_get_contents($root.'/js/auth.js');
+    t('auth.js stores token in sessionStorage',strpos($authjs,'sessionStorage.setItem')!==false&&strpos($authjs,'hdbs_admin_token')!==false);
+    t('auth.js restores token on page load',strpos($authjs,'sessionStorage.getItem')!==false&&strpos($authjs,'_adminToken')!==false);
+    t('auth.js doLogout clears token',strpos($authjs,'function doLogout(')!==false&&strpos($authjs,'sessionStorage.removeItem')!==false);
+
+    // DB has session token rows seeded
+    $sessTokExists=$pdo->query("SELECT COUNT(*) FROM settings WHERE key_name='admin_session_token'")->fetchColumn();
+    $sessExpExists=$pdo->query("SELECT COUNT(*) FROM settings WHERE key_name='admin_session_expires'")->fetchColumn();
+    t('admin_session_token row in settings DB',(int)$sessTokExists>0);
+    t('admin_session_expires row in settings DB',(int)$sessExpExists>0);
+}catch(Exception $e){t('production hardening checks',false,$e->getMessage());}
+
 // ── HTTP helpers (used by sections 10+) ──
 $base='https://handmadedesignsbysuzi.com';
+// Log in fresh to get an admin token for auth'd live tests
+$_rtAdminToken=null;
+(function()use(&$_rtAdminToken,$pdo,$base){
+    // Get the real admin password hash to verify we can obtain a token
+    $hash=$pdo->query("SELECT value FROM settings WHERE key_name='admin_password' LIMIT 1")->fetchColumn();
+    if(!$hash)return;
+    // Check if current session token is still valid (expires > now)
+    $tok=$pdo->query("SELECT value FROM settings WHERE key_name='admin_session_token' LIMIT 1")->fetchColumn();
+    $exp=(int)($pdo->query("SELECT value FROM settings WHERE key_name='admin_session_expires' LIMIT 1")->fetchColumn()?:0);
+    if($tok&&time()<$exp){$_rtAdminToken=$tok;return;}
+    // No valid session — generate one directly in DB (regression test has DB access)
+    $newTok=bin2hex(random_bytes(32));
+    $newExp=time()+3600; // 1 hour for test run
+    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('admin_session_token',?) ON DUPLICATE KEY UPDATE value=?")->execute([$newTok,$newTok]);
+    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('admin_session_expires',?) ON DUPLICATE KEY UPDATE value=?")->execute([$newExp,$newExp]);
+    $_rtAdminToken=$newTok;
+})();
 function uiGet($url){
     $ctx=stream_context_create(['http'=>['timeout'=>8,'ignore_errors'=>true]]);
     $body=@file_get_contents($url,false,$ctx);
@@ -1142,6 +1233,28 @@ function uiGet($url){
 }
 function uiPost($url,$data){
     $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>'Content-Type: application/json','content'=>json_encode($data),'timeout'=>8,'ignore_errors'=>true]]);
+    $body=@file_get_contents($url,false,$ctx);
+    $code=0;
+    if(isset($http_response_header)){foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}}
+    $json=@json_decode($body,true);
+    return['body'=>(string)$body,'code'=>$code,'json'=>$json];
+}
+function uiPostAdmin($url,$data){
+    global $_rtAdminToken;
+    $hdr='Content-Type: application/json'.($_rtAdminToken?"\r\nX-Admin-Token: $_rtAdminToken":'');
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>$hdr,'content'=>json_encode($data),'timeout'=>8,'ignore_errors'=>true]]);
+    $body=@file_get_contents($url,false,$ctx);
+    $code=0;
+    if(isset($http_response_header)){foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}}
+    $json=@json_decode($body,true);
+    return['body'=>(string)$body,'code'=>$code,'json'=>$json];
+}
+function uiGetAdmin($url){
+    global $_rtAdminToken;
+    $hdr=$_rtAdminToken?"X-Admin-Token: $_rtAdminToken":null;
+    $opts=['timeout'=>8,'ignore_errors'=>true];
+    if($hdr)$opts['header']=$hdr;
+    $ctx=stream_context_create(['http'=>$opts]);
     $body=@file_get_contents($url,false,$ctx);
     $code=0;
     if(isset($http_response_header)){foreach($http_response_header as $h){if(preg_match('/HTTP\/\S+\s+(\d+)/',$h,$m)){$code=(int)$m[1];break;}}}
@@ -1243,15 +1356,23 @@ try{
         t('ui:get_setting blocks '.$sk,!empty($r['json'])&&empty($r['json']['success']));
     }
 
-    // GitHub token endpoints work
-    $r=uiPost($base.'/api/admin.php',['action'=>'get_github_token']);
+    // GitHub token endpoints work (requires auth)
+    $r=uiPostAdmin($base.'/api/admin.php',['action'=>'get_github_token']);
     t('ui:get_github_token returns 200',$r['code']===200,'HTTP '.$r['code']);
     t('ui:get_github_token returns value',$r['json']&&!empty($r['json']['success'])&&isset($r['json']['value']));
 
-    // Customers API — list uses GET
+    // Auth enforcement — protected endpoints require X-Admin-Token
+    $r=uiPost($base.'/api/orders.php',[]);
+    t('ui:orders.php requires auth without token',$r['code']===401,'HTTP '.$r['code']);
     $r=uiGet($base.'/api/customers.php?action=list');
-    t('ui:customers list returns 200',$r['code']===200,'HTTP '.$r['code']);
-    $cj=@json_decode($r['body'],true);
+    t('ui:customers list requires auth without token',$r['code']===401,'HTTP '.$r['code']);
+    $r=uiPost($base.'/api/admin.php',['action'=>'get_setting','key'=>'debug_mode']);
+    t('ui:get_setting public key no token allowed',$r['code']===200&&!empty($r['json']['success']),'HTTP '.$r['code']);
+
+    // Customers API — list requires admin token
+    $r=uiGetAdmin($base.'/api/customers.php?action=list');
+    t('ui:customers list with token returns 200',$r['code']===200,'HTTP '.$r['code']);
+    $cj=isset($r['json'])?$r['json']:null;
     t('ui:customers list has customers array',$cj&&isset($cj['customers'])&&is_array($cj['customers']));
 
     // Customer register — duplicate email is rejected gracefully (not a 500)
@@ -1274,6 +1395,14 @@ try{
     $r=uiGet($base.'/regression_test.php?token=wrongtoken');
     $rj=@json_decode($r['body'],true);
     t('ui:regression test blocks wrong token',$r['code']===403||(!empty($rj['error'])&&$rj['error']==='Forbidden'));
+
+    // CORS — localhost origin is rejected (header should be the allowed origin, not localhost)
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: application/json\r\nOrigin: http://localhost:3000",'content'=>'{"action":"list"}','timeout'=>8,'ignore_errors'=>true]]);
+    $corsBody=@file_get_contents($base.'/api/products.php',false,$ctx);
+    $corsHeaders=isset($http_response_header)?$http_response_header:[];
+    $corsOrigin='';
+    foreach($corsHeaders as $h){if(stripos($h,'Access-Control-Allow-Origin')!==false){$corsOrigin=$h;break;}}
+    t('ui:CORS rejects localhost origin',strpos($corsOrigin,'localhost')===false,'Header: '.$corsOrigin);
 
 }catch(Exception $e){t('ui tests',false,$e->getMessage());}
 

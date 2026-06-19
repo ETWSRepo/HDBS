@@ -32,6 +32,7 @@ if ($method === 'GET') {
 
 // POST — add new FAQ or reorder
 if ($method === 'POST') {
+    requireAdmin();
     if (isset($d['action']) && $d['action'] === 'reorder') {
         $ids = $d['order'] ?? [];
         $stmt = $pdo->prepare("UPDATE faqs SET sort_order=? WHERE id=?");
@@ -50,6 +51,7 @@ if ($method === 'POST') {
 
 // PUT — update existing FAQ
 if ($method === 'PUT') {
+    requireAdmin();
     $id = (int)($d['id'] ?? 0);
     $q  = trim($d['question'] ?? '');
     $a  = trim($d['answer']   ?? '');
@@ -60,6 +62,7 @@ if ($method === 'PUT') {
 
 // DELETE — remove FAQ
 if ($method === 'DELETE') {
+    requireAdmin();
     $id = (int)($d['id'] ?? 0);
     if (!$id) fail('Missing id');
     $pdo->prepare("DELETE FROM faqs WHERE id=?")->execute([$id]);

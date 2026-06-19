@@ -380,9 +380,7 @@ function placeOrder(){
     fetch('https://handmadedesignsbysuzi.com/verify_payment.php',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({order_id:oid,test_mode:true})
-    }).then(function(r){return r.json();})
-    .then(function(d){console.log('Test confirm:',d.status);})
-    .catch(function(){});
+    }).catch(function(){});
     showTestOrderConfirm(oid,total,o);
     return;
   }

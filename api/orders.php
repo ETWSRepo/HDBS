@@ -9,6 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 applog('orders', "$method ".($_GET['id']??$_GET['status']??''));
 dbg('orders', "REQUEST method=$method id=".($_GET['id']??'').' status='.($_GET['status']??'').' body='.substr(file_get_contents('php://input'),0,200));
 $pdo    = db();
+requireAdmin();
 
 // GET — return all orders with items
 if ($method === 'GET') { dbg('orders','GET all orders');

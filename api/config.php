@@ -11,16 +11,28 @@ define('ALLOWED_ORIGIN', 'https://handmadedesignsbysuzi.com');
 
 // ── CORS ──
 function cors() {
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if ($origin === ALLOWED_ORIGIN || strpos($origin,'localhost')!==false || strpos($origin,'127.0.0.1')!==false) {
-        header('Access-Control-Allow-Origin: ' . $origin);
-    } else {
-        header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
-    }
+    header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token');
     header('Content-Type: application/json');
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
+}
+
+// ── Admin session auth ──
+function requireAdmin() {
+    $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+    if (!$token) fail('Unauthorized', 401);
+    try {
+        $pdo = db();
+        $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
+        $s->execute(['admin_session_token']);
+        $stored = ($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? '';
+        $s->execute(['admin_session_expires']);
+        $expiry = (int)(($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? 0);
+        if (!$stored || !hash_equals($stored, $token) || time() > $expiry) fail('Session expired. Please log in again.', 401);
+    } catch (Exception $e) {
+        fail('Auth error', 500);
+    }
 }
 
 // ── Debug helpers ──

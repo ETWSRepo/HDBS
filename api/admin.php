@@ -47,7 +47,8 @@ if ($method === 'POST' && $action === 'login') {
 
     $pw   = $d['password'] ?? '';
     $hash = getSetting($pdo, 'admin_password');
-    if (!$hash || !password_verify($pw, $hash)) {
+    if (!$hash) fail('Admin password not configured. Please set a password via the settings.', 500);
+    if (!password_verify($pw, $hash)) {
         $fails++;
         setSetting($pdo, 'login_fail_count', (string)$fails);
         setSetting($pdo, 'login_fail_time',  (string)$now);
@@ -57,15 +58,28 @@ if ($method === 'POST' && $action === 'login') {
         fail('Too many failed attempts. Account locked for 15 minutes.');
     }
 
-    // Success — clear lockout counters
+    // Success — clear lockout counters, issue session token
     setSetting($pdo, 'login_fail_count', '0');
     setSetting($pdo, 'login_fail_time',  '0');
+    $token   = bin2hex(random_bytes(32));
+    $expires = time() + 8 * 3600; // 8 hours
+    setSetting($pdo, 'admin_session_token',   $token);
+    setSetting($pdo, 'admin_session_expires', (string)$expires);
     dbg('admin', 'login ok');
-    ok(['message' => 'Logged in']);
+    ok(['message' => 'Logged in', 'token' => $token]);
+}
+
+// ── Logout ──
+if ($method === 'POST' && $action === 'logout') {
+    requireAdmin();
+    setSetting($pdo, 'admin_session_token',   '');
+    setSetting($pdo, 'admin_session_expires', '0');
+    ok(['message' => 'Logged out']);
 }
 
 // ── Change password ──
 if ($method === 'POST' && $action === 'change_password') {
+    requireAdmin();
     $cur  = $d['current'] ?? '';
     $new  = $d['new'] ?? '';
     $cf   = $d['confirm'] ?? '';
@@ -102,6 +116,7 @@ if ($method === 'POST' && $action === 'reset_password') {
 }
 
 if ($method === 'POST' && $action === 'save_sec_question') {
+    requireAdmin();
     $q  = $d['question'] ?? '';
     $a  = strtolower(trim($d['answer'] ?? ''));
     $a2 = strtolower(trim($d['answer2'] ?? ''));
@@ -115,7 +130,11 @@ if ($method === 'POST' && $action === 'save_sec_question') {
 
 // ── Generic setting get/set ──
 if ($method === 'POST' && $action === 'get_setting') {
+    $publicKeys = ['square_fees','tax_rates','product_categories','cat_prefixes','shipping_config',
+                   'square_mode','confirm_token','major_version','minor_version','debug_mode',
+                   'log_page_changes'];
     $key = $d['key'] ?? '';
+    if (!in_array($key, $publicKeys)) requireAdmin();
     dbg('admin', "get_setting key=$key");
     if (!$key) fail('Missing key');
     $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret','smtp_pass'];
@@ -148,6 +167,7 @@ if ($method === 'POST' && $action === 'get_setting') {
 }
 
 if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_setting')) {
+    requireAdmin();
     $key = $d['key'] ?? '';
     $val = $d['value'] ?? '';
     dbg('admin', "set_setting key=$key value=$val");
@@ -159,16 +179,19 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
 }
 
 if ($method === 'POST' && $action === 'save_github_token') {
+    requireAdmin();
     $val = $d['value'] ?? '';
     setSetting($pdo, 'github_token', $val);
     ok(['message' => 'Token saved']);
 }
 
 if ($method === 'POST' && $action === 'get_github_token') {
+    requireAdmin();
     ok(['value' => getSetting($pdo, 'github_token')]);
 }
 
 if ($method === 'POST' && $action === 'get_smtp') {
+    requireAdmin();
     ok([
         'host' => getSetting($pdo, 'smtp_host') ?? '',
         'port' => getSetting($pdo, 'smtp_port') ?? '587',
@@ -178,6 +201,7 @@ if ($method === 'POST' && $action === 'get_smtp') {
 }
 
 if ($method === 'POST' && $action === 'save_smtp') {
+    requireAdmin();
     $host = trim($d['host'] ?? '');
     $port = (int)($d['port'] ?? 587);
     $user = trim($d['user'] ?? '');
@@ -192,6 +216,7 @@ if ($method === 'POST' && $action === 'save_smtp') {
 
 // ── Log file reader ──
 if ($method === 'POST' && $action === 'read_log') {
+    requireAdmin();
     $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file = $d['file'] ?? '';
     if (!in_array($file, $allowed)) fail('Invalid log file');
@@ -203,6 +228,7 @@ if ($method === 'POST' && $action === 'read_log') {
 }
 
 if ($method === 'POST' && $action === 'clear_log') {
+    requireAdmin();
     $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file = $d['file'] ?? '';
     if (!in_array($file, $allowed)) fail('Invalid log file');
@@ -213,6 +239,7 @@ if ($method === 'POST' && $action === 'clear_log') {
 
 // ── Error log (debug mode) ──
 if ($method === 'POST' && $action === 'get_error_log') {
+    requireAdmin();
     $logfile = dirname(__DIR__) . '/error_log.txt';
     dbg('admin', "get_error_log exists=" . (file_exists($logfile) ? 'yes' : 'no'));
     if (!file_exists($logfile)) ok(['log' => '(error_log.txt not found — enable debug mode and trigger some actions first)']);
@@ -222,6 +249,7 @@ if ($method === 'POST' && $action === 'get_error_log') {
 }
 
 if ($method === 'POST' && $action === 'clear_error_log') {
+    requireAdmin();
     $logfile = dirname(__DIR__) . '/error_log.txt';
     dbg('admin', 'clear_error_log');
     file_put_contents($logfile, '');
@@ -243,6 +271,7 @@ if ($method === 'POST' && $action === 'js_debug_log') {
 
 // ── Email a log file ──
 if ($method === 'POST' && $action === 'send_log') {
+    requireAdmin();
     $allowed = ['notify_log.txt', 'webhook_log.txt', 'error_log.txt', 'pages.log'];
     $file    = $d['file']  ?? '';
     $to      = trim($d['to'] ?? '');
@@ -310,6 +339,7 @@ if ($action === 'get_version') {
 }
 
 if ($method === 'POST' && $action === 'increment_minor_version') {
+    requireAdmin();
     $minor = (int)(getSetting($pdo, 'minor_version') ?? 0);
     $minor++;
     setSetting($pdo, 'minor_version', (string)$minor);

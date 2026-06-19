@@ -120,7 +120,7 @@ function checkThankYou(){
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({order_id:oid})
       }).then(function(r){return r.json();})
-      .then(function(d){console.log('VP:',d.status,d.tax);})
+      .then(function(){/* payment status polled silently */})
       .catch(function(e){console.error('VP error:',e);});
     }
   }

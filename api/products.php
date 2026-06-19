@@ -10,7 +10,7 @@ applog('products', "$method");
 dbg('products', "REQUEST method=$method id=".($_GET['id']??'').' body='.substr(file_get_contents('php://input'),0,200));
 $pdo    = db();
 
-// GET — return all products
+// GET — return all products (public)
 if ($method === 'GET') { dbg('products','GET all products');
     $rows = $pdo->query("SELECT * FROM products ORDER BY created_at ASC")->fetchAll();
     $products = array_map(function($r) {
@@ -35,7 +35,7 @@ if ($method === 'GET') { dbg('products','GET all products');
 }
 
 // POST — create or update product
-if ($method === 'POST') { dbg('products','POST save product');
+if ($method === 'POST') { requireAdmin(); dbg('products','POST save product');
     $d = body();
     if (empty($d['id']) || empty($d['name'])) fail('Missing id or name');
 
@@ -88,7 +88,7 @@ if ($method === 'POST') { dbg('products','POST save product');
 }
 
 // DELETE — remove product
-if ($method === 'DELETE') { dbg('products','DELETE product id='.($_GET['id']??'?'));
+if ($method === 'DELETE') { requireAdmin(); dbg('products','DELETE product id='.($_GET['id']??'?'));
     $d = body();
     if (empty($d['id'])) fail('Missing id');
     $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");

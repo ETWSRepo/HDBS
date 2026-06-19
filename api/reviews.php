@@ -22,7 +22,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS reviews (
 // GET — return approved reviews (or all for admin)
 if ($method === 'GET') {
     $admin = isset($_GET['admin']) && $_GET['admin'] === '1';
-    if ($admin) {
+    if ($admin) { requireAdmin();
         $rows = $pdo->query("SELECT * FROM reviews ORDER BY created_at DESC")->fetchAll();
     } else {
         $rows = $pdo->query("SELECT * FROM reviews WHERE status='approved' ORDER BY created_at DESC")->fetchAll();
@@ -57,6 +57,7 @@ if ($method === 'POST') {
 
 // PUT — approve a review (admin)
 if ($method === 'PUT') {
+    requireAdmin();
     $id     = (int)($d['id'] ?? 0);
     $status = $d['status'] ?? 'approved';
     if (!$id) fail('Missing review id');
@@ -66,6 +67,7 @@ if ($method === 'PUT') {
 
 // DELETE — remove a review (admin)
 if ($method === 'DELETE') {
+    requireAdmin();
     $id = (int)($d['id'] ?? 0);
     if (!$id) fail('Missing review id');
     $pdo->prepare("DELETE FROM reviews WHERE id=?")->execute([$id]);

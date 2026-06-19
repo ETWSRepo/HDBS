@@ -32,7 +32,9 @@ function _dbgScreen(sec){
 }
 
 function apiFetch(endpoint,method,body){
-  var opts={method:method||'GET',headers:{'Content-Type':'application/json'}};
+  var hdrs={'Content-Type':'application/json'};
+  if(window._adminToken)hdrs['X-Admin-Token']=window._adminToken;
+  var opts={method:method||'GET',headers:hdrs};
   if(body)opts.body=JSON.stringify(body);
   _dbgLog('apiFetch',endpoint+' '+(method||'GET'),body||null);
   return fetch(API+'/'+endpoint,opts).then(function(r){

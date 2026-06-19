@@ -69,14 +69,35 @@ function changeCustPw(){
 
 
 // ── ADMIN LOGIN ──
+// Restore admin token from sessionStorage on page load
+(function(){
+  var t=sessionStorage.getItem('hdbs_admin_token');
+  if(t)window._adminToken=t;
+})();
+
 function doLogin(){
   var pw=document.getElementById('lpw').value;
   if(!pw)return;
   apiFetch('admin.php','POST',{action:'login',password:pw}).then(function(d){
-    if(d.success){document.getElementById('lerr').style.display='none';document.getElementById('lpw').value='';goPanel();}
-    else{var el=document.getElementById('lerr');el.textContent=d.error||'Incorrect password. Please try again.';el.style.display='block';}
+    if(d.success){
+      if(d.token){window._adminToken=d.token;sessionStorage.setItem('hdbs_admin_token',d.token);}
+      document.getElementById('lerr').style.display='none';
+      document.getElementById('lpw').value='';
+      goPanel();
+    } else {
+      var el=document.getElementById('lerr');
+      el.textContent=d.error||'Incorrect password. Please try again.';
+      el.style.display='block';
+    }
   }).catch(function(){var el=document.getElementById('lerr');el.textContent='Network error. Please try again.';el.style.display='block';});
 }
+
+function doLogout(){
+  apiFetch('admin.php','POST',{action:'logout'}).catch(function(){});
+  window._adminToken=null;
+  sessionStorage.removeItem('hdbs_admin_token');
+}
+
 document.getElementById('lpw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.addEventListener('DOMContentLoaded',function(){
   var nl=document.getElementById('nl-email');
