@@ -1548,6 +1548,34 @@ window.addEventListener('load', function(){
       if(mn)mn.value=d.minor||'0';
     }).catch(function(){});
 
+    // ── Database Tables card ──
+    var existingDB=document.getElementById('dbtables-card');
+    if(existingDB)existingDB.remove();
+    var cardDB=document.createElement('div');
+    cardDB.id='dbtables-card';
+    cardDB.style.cssText='background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem;margin-bottom:1.2rem;width:100%';
+    cardDB.innerHTML=
+      '<div style="font-weight:700;margin-bottom:.5rem">&#x1F5C4;&#xFE0F; Database Tables</div>'+
+      '<div style="font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">View row counts for all tables or browse contents of a selected table.</div>'+
+      '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem">'+
+        '<button class="bp" id="dbt-list-btn" onclick="dbListTables()" style="font-size:.82rem">List Row Counts</button>'+
+        '<select id="dbt-select" class="afi" style="flex:1;margin-bottom:0;font-size:.82rem"><option value="">— select table —</option></select>'+
+        '<button class="bp" id="dbt-browse-btn" onclick="dbBrowseTable(0)" style="font-size:.82rem">Browse</button>'+
+      '</div>'+
+      '<div id="dbt-result"></div>';
+    cardV.insertAdjacentElement('afterend',cardDB);
+    // Populate dropdown immediately on card render
+    apiFetch('admin.php','POST',{action:'db_table_list'}).then(function(d){
+      var sel=document.getElementById('dbt-select');
+      if(!sel||!d||!d.tables)return;
+      sel.innerHTML='<option value="">— select table —</option>';
+      d.tables.forEach(function(t){
+        var o=document.createElement('option');
+        o.value=t.table;o.textContent=t.table;
+        sel.appendChild(o);
+      });
+    }).catch(function(){});
+
     apiFetch('admin.php','POST',{action:'get_setting',key:'log_page_changes'}).then(function(d){
       var on = d && d.value === '1';
       var tog = document.getElementById('pagelog-toggle');
@@ -1603,6 +1631,78 @@ function saveVersion(){
   ]).then(function(){
     if(st)st.textContent='Saved. Version: '+major+'.'+minor;
   }).catch(function(){if(st)st.textContent='Save failed.';});
+}
+
+function dbListTables(){
+  var res=document.getElementById('dbt-result');
+  if(res)res.innerHTML='<span style="font-size:.82rem;color:#6b6040">Loading…</span>';
+  apiFetch('admin.php','POST',{action:'db_table_list'}).then(function(d){
+    if(!d||!d.tables){if(res)res.innerHTML='<span style="color:#c62828">Failed.</span>';return;}
+    var sel=document.getElementById('dbt-select');
+    if(sel){
+      sel.innerHTML='<option value="">— select table —</option>';
+      d.tables.forEach(function(t){
+        var o=document.createElement('option');
+        o.value=t.table;o.textContent=t.table;
+        sel.appendChild(o);
+      });
+    }
+    var html='<table style="width:100%;border-collapse:collapse;font-size:.82rem">'+
+      '<tr><th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid #e8e0b8">Rows</th>'+
+      '<th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid #e8e0b8">Table</th></tr>';
+    d.tables.forEach(function(t){
+      html+='<tr>'+
+        '<td style="padding:.25rem .5rem;border-bottom:1px solid #f4f0e0;text-align:right">'+t.rows.toLocaleString()+'</td>'+
+        '<td style="padding:.25rem .5rem;border-bottom:1px solid #f4f0e0">'+
+          '<a href="#" style="color:#a07810;text-decoration:none" onclick="dbSelectAndBrowse(\''+t.table+'\');return false">'+t.table+'</a>'+
+        '</td>'+
+      '</tr>';
+    });
+    html+='</table>';
+    if(res)res.innerHTML=html;
+  }).catch(function(){if(res)res.innerHTML='<span style="color:#c62828">Error.</span>';});
+}
+
+function dbSelectAndBrowse(tbl){
+  var sel=document.getElementById('dbt-select');
+  if(sel)sel.value=tbl;
+  dbBrowseTable(0);
+}
+
+function dbBrowseTable(offset){
+  var sel=document.getElementById('dbt-select');
+  var tbl=sel?sel.value:'';
+  if(!tbl){alert('Select a table first.');return;}
+  var res=document.getElementById('dbt-result');
+  if(res)res.innerHTML='<span style="font-size:.82rem;color:#6b6040">Loading…</span>';
+  apiFetch('admin.php','POST',{action:'db_table_contents',table:tbl,offset:offset,limit:50}).then(function(d){
+    if(!d||!d.rows){if(res)res.innerHTML='<span style="color:#c62828">Failed.</span>';return;}
+    var rows=d.rows;
+    var cols=rows.length?Object.keys(rows[0]):[];
+    var html='<div style="font-size:.8rem;color:#6b6040;margin-bottom:.4rem">'+
+      tbl+' — showing rows '+(offset+1)+'–'+(offset+rows.length)+' of '+d.total.toLocaleString()+
+    '</div>';
+    if(!rows.length){html+='<em style="font-size:.82rem">No rows.</em>';}else{
+      html+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.75rem;min-width:100%">'+
+        '<tr>'+cols.map(function(c){return'<th style="padding:.25rem .4rem;border:1px solid #e8e0b8;white-space:nowrap;background:#faf8f0">'+c+'</th>';}).join('')+'</tr>';
+      rows.forEach(function(row){
+        html+='<tr>'+cols.map(function(c){
+          var v=row[c];
+          var display=(v===null||v===undefined)?'<em style="color:#aaa">NULL</em>':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          var cell=display.length>80?display.substring(0,80)+'…':display;
+          return'<td style="padding:.2rem .4rem;border:1px solid #e8e0b8;vertical-align:top;max-width:200px;overflow:hidden;white-space:nowrap">'+cell+'</td>';
+        }).join('')+'</tr>';
+      });
+      html+='</table></div>';
+    }
+    var prevOff=Math.max(0,offset-50);
+    var nextOff=offset+50;
+    html+='<div style="display:flex;gap:.5rem;margin-top:.6rem">';
+    if(offset>0)html+='<button class="bp" onclick="dbBrowseTable('+prevOff+')" style="font-size:.78rem">&#8592; Prev</button>';
+    if(offset+rows.length<d.total)html+='<button class="bp" onclick="dbBrowseTable('+nextOff+')" style="font-size:.78rem">Next &#8594;</button>';
+    html+='</div>';
+    if(res)res.innerHTML=html;
+  }).catch(function(){if(res)res.innerHTML='<span style="color:#c62828">Error.</span>';});
 }
 
 function saveGitHubToken(){

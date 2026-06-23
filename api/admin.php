@@ -377,4 +377,31 @@ if ($method === 'POST' && $action === 'increment_minor_version') {
     ok(['version' => $major . '.' . $minor, 'minor' => $minor]);
 }
 
+// ── DB table list (row counts) ──
+if ($method === 'POST' && $action === 'db_table_list') {
+    requireAdmin();
+    $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+    $result = [];
+    foreach ($tables as $tbl) {
+        $count = $pdo->query("SELECT COUNT(*) FROM `" . $tbl . "`")->fetchColumn();
+        $result[] = ['table' => $tbl, 'rows' => (int)$count];
+    }
+    ok(['tables' => $result]);
+}
+
+// ── DB table contents ──
+if ($method === 'POST' && $action === 'db_table_contents') {
+    requireAdmin();
+    $tbl    = trim($d['table'] ?? '');
+    $offset = max(0, (int)($d['offset'] ?? 0));
+    $limit  = min(200, max(1, (int)($d['limit'] ?? 50)));
+    if (!$tbl) fail('table required');
+    // Whitelist table name against actual tables to prevent injection
+    $allowed = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array($tbl, $allowed, true)) fail('unknown table');
+    $total = (int)$pdo->query("SELECT COUNT(*) FROM `" . $tbl . "`")->fetchColumn();
+    $rows  = $pdo->query("SELECT * FROM `" . $tbl . "` LIMIT " . $limit . " OFFSET " . $offset)->fetchAll(PDO::FETCH_ASSOC);
+    ok(['table' => $tbl, 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'rows' => $rows]);
+}
+
 fail('Unknown action', 400);

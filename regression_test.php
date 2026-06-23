@@ -1693,6 +1693,46 @@ try {
     if ($chkRow) $pdo->prepare("DELETE FROM orders WHERE id=?")->execute([$fakeOid]);
 } catch (Exception $e) { t('round 5 hardening checks', false, $e->getMessage()); }
 
+// ── DB TABLE LIST / CONTENTS ──
+try {
+    $adphp = isset($adphp) ? $adphp : file_get_contents($root.'/api/admin.php');
+    t('db_table_list action in admin.php', strpos($adphp, "action === 'db_table_list'") !== false);
+    t('db_table_contents action in admin.php', strpos($adphp, "action === 'db_table_contents'") !== false);
+    t('db_table_contents whitelist prevents injection', strpos($adphp, 'in_array($tbl, $allowed, true)') !== false);
+    $amjs = isset($amjs) ? $amjs : file_get_contents($root.'/js/admin-misc.js');
+    t('dbtables-card in admin-misc.js', strpos($amjs, 'dbtables-card') !== false);
+    t('dbListTables function exists', strpos($amjs, 'function dbListTables(') !== false);
+    t('dbBrowseTable function exists', strpos($amjs, 'function dbBrowseTable(') !== false);
+    t('dbSelectAndBrowse function exists', strpos($amjs, 'function dbSelectAndBrowse(') !== false);
+    t('dropdown auto-populated on card render', strpos($amjs, "action:'db_table_list'") !== false);
+    // Live: db_table_list requires admin auth
+    $ch = curl_init('https://handmadedesignsbysuzi.com/api/admin.php');
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>8, CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>json_encode(['action'=>'db_table_list']),
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    $res = json_decode(curl_exec($ch), true); curl_close($ch);
+    t('db_table_list blocked unauthenticated', isset($res['success']) && $res['success'] === false);
+    // Live: db_table_contents requires admin auth
+    $ch = curl_init('https://handmadedesignsbysuzi.com/api/admin.php');
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>8, CURLOPT_POST=>true,
+        CURLOPT_POSTFIELDS=>json_encode(['action'=>'db_table_contents','table'=>'settings']),
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    $res = json_decode(curl_exec($ch), true); curl_close($ch);
+    t('db_table_contents blocked unauthenticated', isset($res['success']) && $res['success'] === false);
+    // Live: db_table_contents rejects unknown table (with admin token)
+    $rtTok = isset($_rtAdminToken) ? $_rtAdminToken : $pdo->query("SELECT value FROM settings WHERE key_name='admin_session_token' LIMIT 1")->fetchColumn();
+    if ($rtTok) {
+        $ch = curl_init('https://handmadedesignsbysuzi.com/api/admin.php');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>8, CURLOPT_POST=>true,
+            CURLOPT_POSTFIELDS=>json_encode(['action'=>'db_table_contents','table'=>'../etc/passwd']),
+            CURLOPT_HTTPHEADER=>['Content-Type: application/json', "X-Admin-Token: $rtTok"]]);
+        $res = json_decode(curl_exec($ch), true); curl_close($ch);
+        t('db_table_contents rejects unknown/malicious table name', isset($res['success']) && $res['success'] === false);
+    } else {
+        t('db_table_contents injection check (no admin session, skip)', true, 'skipped');
+    }
+} catch (Exception $e) { t('db table list/contents checks', false, $e->getMessage()); }
+
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 
 ob_end_clean();
