@@ -113,8 +113,7 @@
 
 ## Regression Tests
 - Run: `curl "https://handmadedesignsbysuzi.com/regression_test.php?token=9f21953ce5be66f40203791c4cf8055e"`
-- Currently: 461/461 passing
-- Always run and confirm passing before reporting a task done (per StandardPrompts rule)
+- Only run on an explicit "test" command (not after every change, not on checkpoint). On a test command: update the tests first, then run. See Workflow Triggers.
 
 ## Deploy
 - Single file: `.\deploy.ps1 path/to/file.php`
@@ -123,6 +122,7 @@
 - Use `Invoke-RestMethod` for JSON POSTs in deploy.ps1 (curl.exe has PS 5.1 quoting issues)
 - `watch.ps1` runs during active dev to auto-deploy on file save
 - Always explicitly report which files were deployed and when (per StandardPrompts rule)
+- **Deploy immediately after every local change** — do not batch or wait for a checkpoint (see Workflow Triggers)
 
 ## GitHub
 - Private repo: C177LVR/HandmadeDesignsBySuzi
@@ -136,5 +136,9 @@
 - After changes, provide a regression test checklist
 - Protect existing working features — preserve functionality unless explicitly asked to change it
 - Do not delete or rewrite large sections unless necessary
-- Only commit, push, or deploy when given a checkpoint command
-- When a checkpoint is given: update regression test → run it → prompt to commit and push
+
+## Workflow Triggers
+Three distinct triggers, each with one action:
+- **A change is made to local disk** → deploy that file immediately (`.\deploy.ps1 <path>`), confirm it's live, and show the site URL. Do NOT wait for a checkpoint.
+- **"test" command** → update `regression_test.php` to cover new functionality, then run it, then show the test URL (without token).
+- **"checkpoint" command** → commit and push to git (branch first if on `main`). Nothing else — not tests, not deploy.

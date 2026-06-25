@@ -74,11 +74,25 @@ function changeCustPw(){
   if(t)window._adminToken=t;
 })();
 
+// Called by apiFetch when an authenticated admin request is rejected with an
+// expired/invalid session. Clears the stale token and returns to the login
+// screen with a clear message. Guarded so parallel 401s only bounce once.
+function handleSessionExpired(){
+  if(window._sessionExpiredHandled)return;
+  window._sessionExpiredHandled=true;
+  window._adminToken=null;
+  sessionStorage.removeItem('hdbs_admin_token');
+  goAdminLogin();
+  var el=document.getElementById('lerr');
+  if(el){el.textContent='Your admin session expired. Please log in again.';el.style.display='block';}
+}
+
 function doLogin(){
   var pw=document.getElementById('lpw').value;
   if(!pw)return;
   apiFetch('admin.php','POST',{action:'login',password:pw}).then(function(d){
     if(d.success){
+      window._sessionExpiredHandled=false;   // fresh session — re-arm expiry handling
       if(d.token){window._adminToken=d.token;sessionStorage.setItem('hdbs_admin_token',d.token);}
       document.getElementById('lerr').style.display='none';
       document.getElementById('lpw').value='';

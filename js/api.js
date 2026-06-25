@@ -36,10 +36,16 @@ function apiFetch(endpoint,method,body){
   if(window._adminToken)hdrs['X-Admin-Token']=window._adminToken;
   var opts={method:method||'GET',headers:hdrs};
   if(body)opts.body=JSON.stringify(body);
+  var hadToken=!!window._adminToken;   // was this an authenticated admin request?
   _dbgLog('apiFetch',endpoint+' '+(method||'GET'),body||null);
   return fetch(API+'/'+endpoint,opts).then(function(r){
     return r.json().then(function(d){
       if(!d.success&&_dbgEnabled())_dbgLog('apiFetch-ERR',endpoint,{error:d.error,status:r.status});
+      // Expired admin session: server rejects an authenticated call with 401.
+      // Bounce the user to the login screen instead of showing a raw error on whatever screen they're on.
+      if(hadToken&&r.status===401&&d&&d.error&&/session expired|unauthorized/i.test(d.error)&&typeof handleSessionExpired==='function'){
+        handleSessionExpired();
+      }
       return d;
     });
   });

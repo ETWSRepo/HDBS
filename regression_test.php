@@ -455,6 +455,14 @@ try{$amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
     t('applyElFilters function exists',strpos($amjs,'function applyElFilters(')!==false);
     t('buildElThead function exists',strpos($amjs,'function buildElThead(')!==false);
     t('rEmailLog function exists',strpos($amjs,'function rEmailLog(')!==false);
+    // rEmailLog must not infinite-loop on an empty/error response (e.g. expired session)
+    t('ELOGS_LOADED flag defined',strpos($amjs,'ELOGS_LOADED=false')!==false);
+    t('rEmailLog gates load on ELOGS_LOADED',strpos($amjs,'if(!ELOGS_LOADED)')!==false);
+    t('rEmailLog handles load error without looping',strpos($amjs,'d.success===false')!==false&&strpos($amjs,'Could not load email log')!==false);
+    t('rEmailLog sets ELOGS_LOADED after success',strpos($amjs,'ELOGS_LOADED=true')!==false);
+    t('elRefresh re-arms ELOGS_LOADED',strpos($amjs,'ELOGS=[];ELOGS_LOADED=false')!==false);
+    // Email log scrolls window to top so the toolbar + header rows are visible
+    t('rEmailLog scrolls to top on render',strpos($amjs,'window.scrollTo(0,0)')!==false&&strpos($amjs,'scrolls the window')!==false);
     t('elRefresh function exists',strpos($amjs,'function elRefresh(')!==false);
     t('clearEmailLog function exists',strpos($amjs,'function clearEmailLog(')!==false);
     t('email log refresh button removed (on PageToolbar)',strpos($amjs,"onclick=\"elRefresh()\"")===false);
@@ -580,6 +588,9 @@ try{
     t('toolbar.css exists',file_exists($root.'/css/toolbar.css'));
     $anjs=isset($anjs)?$anjs:file_get_contents($root.'/js/admin-nav.js');
     t('showPageToolbar function exists',strpos($anjs,'function showPageToolbar(')!==false);
+    // PageToolbar Close calls window.close() (blocked in SPA); showPageToolbar overrides it to navigate to dashboard
+    t('showPageToolbar overrides toolbar Close button',strpos($anjs,'tk-btn-close')!==false&&strpos($anjs,'cloneNode')!==false);
+    t('toolbar Close override navigates in-SPA',strpos($anjs,'tk-btn-close')!==false&&strpos($anjs,"aNavById('dash')")!==false);
     t('aNavById hides toolbar on nav',strpos($anjs,"page-toolbar")!==false&&strpos($anjs,"display='none'")!==false);
     t('aNavById restores aptitle on nav',strpos($anjs,"aptitle")!==false&&strpos($anjs,"display=''")!==false);
     $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
@@ -1246,6 +1257,13 @@ try{
     t('auth.js stores token in sessionStorage',strpos($authjs,'sessionStorage.setItem')!==false&&strpos($authjs,'hdbs_admin_token')!==false);
     t('auth.js restores token on page load',strpos($authjs,'sessionStorage.getItem')!==false&&strpos($authjs,'_adminToken')!==false);
     t('auth.js doLogout clears token',strpos($authjs,'function doLogout(')!==false&&strpos($authjs,'sessionStorage.removeItem')!==false);
+
+    // Graceful expired-session handling: apiFetch detects 401 and bounces to login
+    t('api.js detects expired-session 401',strpos($apijs,'r.status===401')!==false&&strpos($apijs,'handleSessionExpired')!==false);
+    t('auth.js defines handleSessionExpired',strpos($authjs,'function handleSessionExpired(')!==false);
+    t('handleSessionExpired clears token',strpos($authjs,'function handleSessionExpired(')!==false&&strpos($authjs,'_adminToken=null')!==false&&strpos($authjs,'sessionStorage.removeItem')!==false);
+    t('handleSessionExpired returns to login',strpos($authjs,'function handleSessionExpired(')!==false&&strpos($authjs,'goAdminLogin()')!==false);
+    t('doLogin re-arms session expiry handling',strpos($authjs,'_sessionExpiredHandled=false')!==false);
 
     // DB has session token rows seeded
     $sessTokExists=$pdo->query("SELECT COUNT(*) FROM settings WHERE key_name='admin_session_token'")->fetchColumn();

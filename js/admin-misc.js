@@ -1030,7 +1030,7 @@ function saveSmtp(){
 }
 
 // ── EMAIL LOG ──
-var ELOGS=[], EL_SORT={col:'sent_at',dir:-1}, EL_F={sent_at:'',email_type:'',sent_to:'',order_id:'',status:''};
+var ELOGS=[], ELOGS_LOADED=false, EL_SORT={col:'sent_at',dir:-1}, EL_F={sent_at:'',email_type:'',sent_to:'',order_id:'',status:''};
 
 function elSort(col){if(EL_SORT.col===col)EL_SORT.dir*=-1;else EL_SORT={col:col,dir:1};rEmailLog(document.getElementById('acnt'));}
 
@@ -1134,7 +1134,7 @@ function elPreview(html){
 }
 
 function elRefresh(){
-  ELOGS=[];
+  ELOGS=[];ELOGS_LOADED=false;
   var el=document.getElementById('acnt');
   if(el)el.innerHTML='';
   rEmailLog(document.getElementById('acnt'));
@@ -1149,13 +1149,20 @@ function clearEmailLog(){
 }
 
 function rEmailLog(el){
-  if(!ELOGS.length&&!el.querySelector('#el-table')){
+  if(!ELOGS_LOADED){
     el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading email log\u2026</div>';
     apiFetch('email_log.php').then(function(d){
+      // On error (e.g. expired session \u2192 401), show a message instead of re-looping.
+      // Session expiry is bounced to login centrally by apiFetch; this just avoids the hang.
+      if(!d||d.success===false){
+        el.innerHTML='<div style="color:#c62828;padding:1rem">Could not load email log: '+escHtml(String((d&&d.error)||'unknown error'))+'</div>';
+        return;
+      }
       ELOGS=(d.logs||[]).filter(function(l){return l.email_type!=='Order Placed';});
+      ELOGS_LOADED=true;
       EL_SORT={col:'sent_at',dir:-1};EL_F={sent_at:'',email_type:'',sent_to:'',order_id:'',status:''};
       rEmailLog(el);
-    }).catch(function(e){el.innerHTML='<div style="color:#c62828;padding:1rem">Could not load: '+e+'</div>';});
+    }).catch(function(e){el.innerHTML='<div style="color:#c62828;padding:1rem">Could not load: '+escHtml(String(e))+'</div>';});
     return;
   }
   var filtered=applyElFilters();
@@ -1187,6 +1194,9 @@ function rEmailLog(el){
     '<div id="el-table" style="overflow-x:auto"><table class="tablekit">'+buildElThead()+'<tbody>'+(rows||'<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#6b6040">No emails logged.</td></tr>')+'</tbody></table></div>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
   showPageToolbar({title:'Email Log',logoText:'Handmade Designs By Suzi'});
+  // This screen scrolls the window (.amain is overflow:visible here), so reset to the
+  // top after layout settles so the toolbar + column headers + first rows are visible.
+  setTimeout(function(){window.scrollTo(0,0);var am=document.querySelector('.amain');if(am)am.scrollTop=0;},0);
 }
 
 // ── TN CITY TAX ──

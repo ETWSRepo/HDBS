@@ -4,6 +4,15 @@ function showPageToolbar(opts){
   if(typeof PageToolbar!=='undefined')PageToolbar.init(opts);
   var t=document.getElementById('aptitle');if(t)t.style.display='none';
   var ab=document.getElementById('addbtn');if(ab)ab.style.display='none';
+  // PageToolbar's built-in Close calls window.close(), which browsers block in this SPA tab
+  // ("Scripts may close only the windows that were opened by them"). Replace the button's
+  // handler with SPA navigation back to the dashboard. cloneNode drops the original listener.
+  var cb=document.querySelector('#page-toolbar .tk-btn-close');
+  if(cb&&cb.parentNode){
+    var fresh=cb.cloneNode(true);
+    cb.parentNode.replaceChild(fresh,cb);
+    fresh.addEventListener('click',function(){aNavById('dash');});
+  }
 }
 function aNavById(sec){
   var tb=document.getElementById('page-toolbar');if(tb)tb.style.display='none';
