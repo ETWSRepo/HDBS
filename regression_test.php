@@ -154,8 +154,38 @@ try{$apjs=isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js');
     t('size in PROD_F filter',strpos($apjs,"PROD_F={name:'',cat:'',sku:'',size:''")!==false);
     t('size field in product form',strpos($apjs,'pf-sz')!==false);
 }catch(Exception $e){t('admin-products checks',false,$e->getMessage());}
-// products_csv.php exists
-try{t('api/products_csv.php exists',file_exists($root.'/api/products_csv.php'));}catch(Exception $e){t('products_csv',false,$e->getMessage());}
+// products_csv.php exists and completeness
+try{
+    t('api/products_csv.php exists',file_exists($root.'/api/products_csv.php'));
+    $csvphp=file_get_contents($root.'/api/products_csv.php');
+    t('products_csv export includes sell column',strpos($csvphp,"'id','sku','name','description','price','stock','category','badge','weight','size','sell','img1','img2','img3'")!==false);
+    t('products_csv import includes sell column',strpos($csvphp,"':sell'")!==false);
+    t('products_csv ON DUPLICATE KEY updates img1',strpos($csvphp,'img1=:img1')!==false);
+    t('products_csv ON DUPLICATE KEY updates img2',strpos($csvphp,'img2=:img2')!==false);
+    t('products_csv ON DUPLICATE KEY updates img3',strpos($csvphp,'img3=:img3')!==false);
+    t('products_csv ON DUPLICATE KEY updates sell',strpos($csvphp,'sell=:sell')!==false);
+}catch(Exception $e){t('products_csv checks',false,$e->getMessage());}
+
+// admin-products.js new features
+try{
+    $apjs2=file_get_contents($root.'/js/admin-products.js');
+    t('admin-products: Weight column in table header',strpos($apjs2,'<th>Weight</th>')!==false);
+    t('admin-products: Description column in table header',strpos($apjs2,'<th>Description</th>')!==false);
+    t('admin-products: double-click row opens edit',strpos($apjs2,'ondblclick')!==false&&strpos($apjs2,'showPF(')!==false);
+    t('admin-products: saveP waits for API response',strpos($apjs2,'Save failed')!==false&&strpos($apjs2,'button.bp')!==false);
+    t('admin-products: Add Product defaults price to 1',strpos($apjs2,"p?p.price:'1'")!==false);
+    t('admin-products: Add Product defaults stock to 1',strpos($apjs2,"p?p.stock:'1'")!==false);
+    t('admin-products: Add Product sell unchecked by default',strpos($apjs2,"p&&p.sell!==0?'checked':''")!==false);
+    t('admin-products: Add Product defaults name to next sequence',strpos($apjs2,'nextSeq')!==false&&strpos($apjs2,'maxSeq+1')!==false);
+    t('admin-products: focus on name field on open',strpos($apjs2,"'pf-n'")!==false&&strpos($apjs2,'f.focus()')!==false);
+    t('admin-products: Save button in form bottom',strpos($apjs2,"onclick=\"saveP()\">💾 Save</button>")!==false||strpos($apjs2,'onclick="saveP()">💾 Save</button>')!==false);
+}catch(Exception $e){t('admin-products new features checks',false,$e->getMessage());}
+
+// config.js: admin login focuses password field
+try{
+    $cfgjs2=file_get_contents($root.'/js/config.js');
+    t('goAdminLogin focuses password field',strpos($cfgjs2,'goAdminLogin')!==false&&strpos($cfgjs2,"'lpw'")!==false&&strpos($cfgjs2,'f.focus()')!==false);
+}catch(Exception $e){t('goAdminLogin focus check',false,$e->getMessage());}
 // Manual order form
 try{$aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
     t('manual order email required',strpos($aojs,'Please enter a valid email address.')!==false);
@@ -1116,6 +1146,9 @@ try{
     // Regression test buttons
     t('btn:Run Tests wired',strpos($amjs,'runRegTests()')!==false);
     t('btn:Cancel Tests wired',strpos($amjs,'cancelRegTests()')!==false);
+    t('btn:Show Failed Only wired',strpos($amjs,'rtToggleFailedOnly()')!==false);
+    t('rtToggleFailedOnly function exists',strpos($amjs,'function rtToggleFailedOnly(')!==false);
+    t('rt-row class on skeleton rows',strpos($amjs,"class=\"rt-row\"")!==false||strpos($amjs,"class='rt-row'")!==false);
 
     // Tax sweep buttons
     t('btn:Show Add Sweep Form wired',strpos($amjs,'showAddSweepForm()')!==false);

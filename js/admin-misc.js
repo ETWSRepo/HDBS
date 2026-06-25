@@ -20,7 +20,7 @@ function rtBuildSkeleton(){
       '<div style="background:#f9f4e4;padding:.6rem 1rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a07810;border-bottom:1px solid #e8e0b8">'+grp+'</div>';
     RT_GROUPS[grp].forEach(function(t){
       var key=t.replace(/[^a-z0-9]/gi,'_');
-      html+='<div id="ico-'+key+'" style="display:flex;align-items:center;gap:.8rem;padding:.45rem 1rem;border-bottom:.5px solid #f5efe0;font-size:.83rem">'+
+      html+='<div id="ico-'+key+'" class="rt-row" style="display:flex;align-items:center;gap:.8rem;padding:.45rem 1rem;border-bottom:.5px solid #f5efe0;font-size:.83rem">'+
         '<div class="rt-ico" style="width:18px;height:18px;border-radius:50%;background:#f5f5f5;color:#999;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;font-weight:700">—</div>'+
         '<span style="flex:1">'+t+'</span>'+
         '<span id="det-'+key+'" style="font-size:.75rem;color:#c62828;font-family:monospace;margin-left:.3rem;font-style:italic"></span>'+
@@ -55,6 +55,7 @@ function rRegTest(el){
       '</div>'+
       '<button id="rt-btn" class="bp" onclick="runRegTests()" style="font-size:.82rem">▶ Run Tests</button>'+
       '<button id="rt-cancel" onclick="cancelRegTests()" style="display:none;margin-left:.5rem;background:none;border:1.5px solid #c62828;color:#c62828;border-radius:7px;padding:.3rem .9rem;font-size:.8rem;font-weight:600;cursor:pointer">✕ Cancel</button>'+
+      '<button id="rt-filter-btn" onclick="rtToggleFailedOnly()" style="background:none;border:1.5px solid #a07810;color:#a07810;border-radius:7px;padding:.3rem .9rem;font-size:.8rem;font-weight:600;cursor:pointer">Show Failed Only</button>'+
     '</div>'+
     '<div style="background:#f5f0e8;border-radius:8px;height:8px;margin-bottom:1rem;overflow:hidden"><div id="rt-bar" style="height:100%;width:0%;background:#2e7d32;border-radius:8px;transition:width .4s"></div></div>'+
     '<div id="rt-results" style="color:#6b6040;font-size:.85rem;padding:.5rem 0">Click ▶ Run Tests to begin.</div>';
@@ -64,6 +65,21 @@ function rRegTest(el){
   }).catch(function(){});
 }
 
+function rtToggleFailedOnly(){
+  var btn=document.getElementById('rt-filter-btn');
+  var rows=document.querySelectorAll('#rt-results .rt-row');
+  var isFiltered=btn&&btn.getAttribute('data-filtered')==='1';
+  if(isFiltered){
+    rows.forEach(function(r){r.style.display='';});
+    if(btn){btn.textContent='Show Failed Only';btn.style.borderColor='#a07810';btn.style.color='#a07810';btn.removeAttribute('data-filtered');}
+  } else {
+    rows.forEach(function(r){
+      var ico=r.querySelector('.rt-ico');
+      r.style.display=(ico&&ico.textContent==='✗')?'':'none';
+    });
+    if(btn){btn.textContent='Show All';btn.style.borderColor='#c62828';btn.style.color='#c62828';btn.setAttribute('data-filtered','1');}
+  }
+}
 function cancelRegTests(){
   if(window._rtCtrl)window._rtCtrl.abort();
   document.querySelectorAll('.rt-ico').forEach(function(i){i.className='rt-ico';i.style.cssText='width:18px;height:18px;border-radius:50%;background:#f0f0f0;color:#999;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;font-weight:700';i.textContent='—';});

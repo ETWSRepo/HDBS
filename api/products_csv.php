@@ -8,11 +8,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // ── EXPORT (GET) ──
 if ($method === 'GET') {
-    $rows = $pdo->query("SELECT id, sku, name, description, price, stock, category, badge, weight, size, img1, img2, img3 FROM products ORDER BY category, name")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $pdo->query("SELECT id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3 FROM products ORDER BY category, name")->fetchAll(PDO::FETCH_ASSOC);
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="products_' . date('Y-m-d') . '.csv"');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['id','sku','name','description','price','stock','category','badge','weight','size','img1','img2','img3']);
+    fputcsv($out, ['id','sku','name','description','price','stock','category','badge','weight','size','sell','img1','img2','img3']);
     foreach ($rows as $r) fputcsv($out, $r);
     fclose($out);
     exit;
@@ -59,11 +59,12 @@ if ($method === 'POST') {
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, img1, img2, img3)
-            VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :img1, :img2, :img3)
+            INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3)
+            VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :sell, :img1, :img2, :img3)
             ON DUPLICATE KEY UPDATE
                 sku=:sku, name=:name, description=:desc, price=:price, stock=:stock,
-                category=:cat, badge=:badge, weight=:weight, size=:size
+                category=:cat, badge=:badge, weight=:weight, size=:size, sell=:sell,
+                img1=:img1, img2=:img2, img3=:img3
         ");
 
         $count = 0;
@@ -79,6 +80,7 @@ if ($method === 'POST') {
                 ':badge'  => trim($r['badge'] ?? ''),
                 ':weight' => (float)($r['weight'] ?? 0),
                 ':size'   => trim($r['size'] ?? ''),
+                ':sell'   => (int)($r['sell'] ?? 1),
                 ':img1'   => trim($r['img1'] ?? ''),
                 ':img2'   => trim($r['img2'] ?? ''),
                 ':img3'   => trim($r['img3'] ?? ''),

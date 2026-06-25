@@ -158,7 +158,7 @@ function submitContact(){
       }
     }).catch(function(){if(err){err.style.display='block';err.textContent='Network error. Please email us directly.';}});
 }
-function goAdminLogin(){document.getElementById('lpw').value='';document.getElementById('lerr').style.display='none';showOnly('alog',true);}
+function goAdminLogin(){document.getElementById('lpw').value='';document.getElementById('lerr').style.display='none';showOnly('alog',true);setTimeout(function(){var f=document.getElementById('lpw');if(f)f.focus();},50);}
 function goPanel(){
   showOnly('apanel',true);
   buildAdminNav();
