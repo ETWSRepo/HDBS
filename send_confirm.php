@@ -106,17 +106,18 @@ dbg('send_confirm', "START order_id=$order_id");
     <p>Hi {$first_name}! &#127864;</p>
     <p>Thank you so much for your order! Your bag is being prepared with care.</p>
     <div style='background:#fffdf0;border-radius:8px;padding:16px;margin:20px 0;border:1px solid #e8e0b8'>
-      <div style='display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px'>
-        <div style='min-width:120px'><span style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase'>Order ID</span><br><strong>{$order_id}</strong></div>
-        <div style='min-width:90px'><span style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase'>Date</span><br>{$date}</div>
-        <div style='min-width:100px'><span style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase'>Order Type</span><br>".(htmlspecialchars($order['order_type']??'Online'))."</div>
-        <div style='min-width:90px'><span style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase'>Paid By</span><br>".(htmlspecialchars($order['payment_method']??'—'))."</div>
-        <div style='min-width:90px'><span style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase'>Total Paid</span><br><strong style='color:#a07810;font-size:1.1rem'>{$tot_str}</strong></div>
+      <div style='font-size:0;line-height:0'>
+        <div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Order ID</span><br><strong>{$order_id}</strong></div>
+        <div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Date</span><br>{$date}</div>
+        <div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Order Type</span><br>".(htmlspecialchars($order['order_type']??'Online'))."</div>
+        <div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Paid By</span><br>".(htmlspecialchars($order['payment_method']??'—'))."</div>
+        ".(!empty($order['check_number']) ? "<div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Check #</span><br>".htmlspecialchars($order['check_number'])."</div>" : "")."
+        <div style='display:inline-block;width:33%;vertical-align:top;font-size:13px;line-height:1.5;margin-bottom:10px'><span style='color:#a07810;font-size:.7rem;font-weight:700;text-transform:uppercase'>Total Paid</span><br><strong style='color:#a07810;font-size:1.05rem'>{$tot_str}</strong></div>
       </div>
     </div>
     ".($address ? "<div style='margin-bottom:20px'><div style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:6px'>Shipping To</div><div style='background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:12px'>{$address}</div></div>" : "")."
     <div style='color:#a07810;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:8px'>Your Order</div>
-    <table style='width:100%;border-collapse:collapse;font-size:.9rem'>
+    <table style='width:100%;border-collapse:collapse;font-size:.9rem;table-layout:fixed;word-wrap:break-word'>
       <thead><tr style='background:#fffdf0'>
         <th style='padding:8px 12px;text-align:left;border-bottom:2px solid #e8e0b8;color:#a07810'>Item</th>
         <th style='padding:8px 12px;text-align:center;border-bottom:2px solid #e8e0b8;color:#a07810'>Qty</th>
@@ -145,6 +146,13 @@ dbg('send_confirm', "START order_id=$order_id");
     $recipients = $no_cust_email
         ? array($from_email)
         : array($customer_email, $from_email);
+
+    // Preview mode: return the rendered email without sending or logging
+    if(!empty($data['preview'])){
+        ob_end_clean();
+        echo json_encode(array('success'=>true,'preview'=>true,'html'=>$html,'subject'=>$subject,'to'=>($no_cust_email?$from_email:$customer_email)));
+        exit;
+    }
 
     $result = sendEmail($recipients, $subject, $html, $from_email, $from_name);
 

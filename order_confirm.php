@@ -36,6 +36,8 @@ $customer_name  = htmlspecialchars($data['customer_name']  ?? '');
 $customer_email = trim($data['customer_email'] ?? '');
 $phone          = htmlspecialchars($data['phone']          ?? '');
 $address        = htmlspecialchars($data['address']        ?? '');
+$payment_method = htmlspecialchars($data['payment_method'] ?? 'Credit Card');
+$check_number   = htmlspecialchars($data['check_number']   ?? '');
 $subtotal       = number_format((float)($data['subtotal']  ?? $data['total'] ?? 0), 2);
 $shipping_amt   = (float)($data['shipping'] ?? 0);
 $shipping_str   = $shipping_amt > 0 ? '$' . number_format($shipping_amt, 2) : 'Free';
@@ -113,6 +115,9 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
           <div style='font-size:14px;font-weight:bold;font-family:monospace;color:#2d2220'>{$order_id}</div></td>
       <td style='text-align:center'><div style='font-size:11px;color:#a07810;font-weight:bold;text-transform:uppercase'>Date</div>
           <div style='font-size:14px;font-weight:600;color:#2d2220'>{$date}</div></td>
+      <td style='text-align:center'><div style='font-size:11px;color:#a07810;font-weight:bold;text-transform:uppercase'>Paid By</div>
+          <div style='font-size:13px;font-weight:600;color:#2d2220'>{$payment_method}</div></td>
+      {$check_number ? "<td style='text-align:center'><div style='font-size:11px;color:#a07810;font-weight:bold;text-transform:uppercase'>Check #</div><div style='font-size:13px;font-weight:600;color:#2d2220'>{$check_number}</div></td>" : ""}
       <td style='text-align:right'><div style='font-size:11px;color:#a07810;font-weight:bold;text-transform:uppercase'>Total</div>
           <div style='font-size:20px;font-weight:bold;color:#a07810'>\${$total}</div></td>
     </tr></table>
@@ -126,7 +131,7 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 
     <!-- Items -->
     <div style='font-size:11px;font-weight:bold;text-transform:uppercase;color:#a07810;margin-bottom:8px'>Your Order</div>
-    <table width='100%' cellpadding='0' cellspacing='0' style='font-size:13px;border-collapse:collapse;margin-bottom:16px'>
+    <table width='100%' cellpadding='0' cellspacing='0' style='font-size:13px;border-collapse:collapse;margin-bottom:16px;table-layout:fixed;word-wrap:break-word'>
       <thead><tr style='background:#fffdf0'>
         <th style='padding:8px 12px;text-align:left;color:#6b6040;border-bottom:2px solid #e8e0b8'>Item</th>
         <th style='padding:8px 12px;text-align:center;color:#6b6040;border-bottom:2px solid #e8e0b8'>Qty</th>
@@ -174,7 +179,13 @@ $recipients = [$customer_email, 'handmadedesignsbysuzi@yahoo.com'];
 $result = sendEmail($recipients, $subject, $html, $from_email, $from_name);
 $sent = ($result === true);
 
-// Log
+// Log to email_log table (for consistency with send_confirm, send_shipping, process_payment)
+try {
+    $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")
+        ->execute(['Order Confirmation', $customer_email, $order_id, $subject, $sent?'sent':'failed', $html]);
+} catch (Exception $e) {}
+
+// Also log to notify_log.txt for backward compatibility
 $dt  = new DateTime('now', new DateTimeZone('America/New_York'));
 $log = $dt->format('Y-m-d g:i A') . ' EDT | Confirm to: ' . $customer_email . ' | Order: ' . $order_id . ' | Result: ' . ($sent ? 'OK' : 'FAIL: ' . (is_string($result) ? $result : 'unknown')) . "\n";
 file_put_contents(__DIR__ . '/notify_log.txt', $log, FILE_APPEND | LOCK_EX);

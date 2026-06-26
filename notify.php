@@ -54,6 +54,8 @@ $customer_name  = htmlspecialchars($data['customer_name']  ?? '');
 $customer_email = htmlspecialchars($data['customer_email'] ?? '');
 $phone          = htmlspecialchars($data['phone']          ?? 'Not provided');
 $address        = htmlspecialchars($data['address']        ?? 'Not provided');
+$payment_method = htmlspecialchars($data['payment_method'] ?? 'Credit Card');
+$check_number   = htmlspecialchars($data['check_number']   ?? '');
 $subtotal       = number_format((float)($data['subtotal'] ?? $data['total'] ?? 0), 2);
 $shipping_amt   = (float)($data['shipping'] ?? 0);
 $shipping_str   = $shipping_amt > 0 ? '$' . number_format($shipping_amt, 2) : 'Free';
@@ -123,10 +125,15 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
       <tr><td style='color:#6b6040'>Email</td><td>{$customer_email}</td></tr>
       <tr><td style='color:#6b6040'>Phone</td><td>{$phone}</td></tr>
     </table>
+    <div style='font-size:11px;font-weight:bold;text-transform:uppercase;color:#a07810;margin-bottom:8px'>Payment</div>
+    <table cellpadding='4' style='font-size:14px;color:#2d2220;margin-bottom:20px'>
+      <tr><td style='color:#6b6040;width:60px'>Paid By</td><td style='font-weight:600'>{$payment_method}</td></tr>
+      ".(!empty($check_number) ? "<tr><td style='color:#6b6040'>Check #</td><td style='font-weight:600'>{$check_number}</td></tr>" : "")."
+    </table>
     <div style='font-size:11px;font-weight:bold;text-transform:uppercase;color:#a07810;margin-bottom:8px'>Ship To</div>
     <div style='background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:12px 16px;font-size:14px;color:#2d2220;margin-bottom:20px;line-height:1.6'>{$address}</div>
     <div style='font-size:11px;font-weight:bold;text-transform:uppercase;color:#a07810;margin-bottom:8px'>Items Ordered</div>
-    <table width='100%' cellpadding='0' cellspacing='0' style='font-size:13px;border-collapse:collapse;margin-bottom:16px'>
+    <table width='100%' cellpadding='0' cellspacing='0' style='font-size:13px;border-collapse:collapse;margin-bottom:16px;table-layout:fixed;word-wrap:break-word'>
       <thead><tr style='background:#fffdf0'>
         <th style='padding:8px 12px;text-align:left;color:#6b6040;border-bottom:2px solid #e8e0b8'>Product</th>
         <th style='padding:8px 12px;text-align:center;color:#6b6040;border-bottom:2px solid #e8e0b8'>Qty</th>
@@ -159,11 +166,18 @@ require_once __DIR__ . '/mailer.php';
 $result = sendEmail($to, $subject, $html, $from_email, $from_name);
 $sent = ($result === true);
 
+// Log to email_log table
+try {
+    require_once __DIR__ . '/api/config.php';
+    $pdo = db();
+    $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")
+        ->execute(['Order Received', $to, $order_id, $subject, $sent?'sent':'failed', $html]);
+} catch (Exception $e) {}
+
 // Log result
 $dt2 = new DateTime('now', new DateTimeZone('America/New_York'));
 $log = $dt2->format('Y-m-d g:i A') . ' EDT | RECEIVED order: ' . $order_id . ' | Result: ' . ($sent ? 'OK' : 'FAIL: ' . (is_string($result) ? $result : 'unknown')) . "\n";
 file_put_contents(__DIR__ . '/notify_log.txt', $log, FILE_APPEND | LOCK_EX);
-// Order Placed (admin notification) not logged to email_log
 
 if ($sent) {
     echo json_encode(['success' => true, 'message' => 'Notification sent']);

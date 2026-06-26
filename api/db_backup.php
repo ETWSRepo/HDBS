@@ -72,4 +72,11 @@ $result = sendEmailWithAttachment(
 
 $ok = ($result === true);
 dbg('db_backup', $ok ? 'Backup emailed OK' : 'Backup email failed: '.(is_string($result)?$result:'unknown'));
+
+// Log to email_log (every outbound email is recorded; body omitted — attachment is large)
+try {
+    $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")
+        ->execute(['DB Backup', 'handmadedesignsbysuzi@yahoo.com', '', $subject, $ok?'sent':'failed', $html]);
+} catch (Exception $e) {}
+
 ok(['sent' => $ok, 'tables' => count($tables), 'size' => strlen($sql), 'message' => $ok ? 'Backup emailed' : $result]);

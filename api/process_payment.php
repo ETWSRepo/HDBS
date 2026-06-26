@@ -139,13 +139,14 @@ $html = "<!DOCTYPE html><html><body>
   <h2 style='color:#a07810;margin-top:0'>Order Confirmed! 🎉</h2>
   <p>Hi " . htmlspecialchars($firstName) . ", thank you for your order! Your payment has been received and your order is being prepared with care.</p>
   <div style='background:#fffdf0;border:1px solid #e8e0b8;border-radius:10px;padding:16px;margin:16px 0'>
-    <table style='width:100%;border-collapse:collapse;font-size:.9rem'>
+    <table style='width:100%;border-collapse:collapse;font-size:.9rem;table-layout:fixed;word-wrap:break-word'>
       " . $itemHtml . "
       <tr><td style='padding:.3rem .5rem;border-top:1px solid #e8e0b8'>Shipping</td><td style='padding:.3rem .5rem;text-align:right;border-top:1px solid #e8e0b8'>" . ($shipping > 0 ? '$' . number_format($shipping, 2) : 'Free') . "</td></tr>
       <tr><td style='padding:.3rem .5rem'>Tax (9.75%)</td><td style='padding:.3rem .5rem;text-align:right'>$" . number_format($tax, 2) . "</td></tr>
       <tr style='font-weight:700'><td style='padding:.5rem .5rem;border-top:2px solid #d4a017'>Total Charged</td><td style='padding:.5rem .5rem;text-align:right;border-top:2px solid #d4a017;color:#a07810'>$" . number_format($total, 2) . "</td></tr>
     </table>
   </div>
+  <p><strong>Paid by:</strong> " . htmlspecialchars($order['payment_method'] ?? 'Credit Card') . (!empty($order['check_number']) ? " (Check #" . htmlspecialchars($order['check_number']) . ")" : "") . "</p>
   <p><strong>Shipping to:</strong> " . htmlspecialchars($order['shipping_address']) . "</p>
   <p>We'll send you a shipping confirmation with tracking info when your order is on its way!</p>
   <p style='color:#6b6040;font-size:.85rem'>Order #" . $order_id . " &bull; Payment ID: " . $payId . "</p>
@@ -161,6 +162,11 @@ $html = "<!DOCTYPE html><html><body>
 
 require_once dirname(__DIR__) . '/mailer.php';
 $recipients = [$order['customer_email'], 'handmadedesignsbysuzi@yahoo.com'];
-sendEmail($recipients, 'Order Confirmed — ' . $order_id, $html, 'handmadedesignsbysuzi@yahoo.com', 'Handmade Designs By Suzi');
+$mailResult = sendEmail($recipients, 'Order Confirmed — ' . $order_id, $html, 'handmadedesignsbysuzi@yahoo.com', 'Handmade Designs By Suzi');
+// Log to email_log so card-order confirmations appear in the Email Log (consistent with send_confirm/send_shipping)
+try {
+    $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")
+        ->execute(['Order Confirmation', $order['customer_email'], $order_id, 'Order Confirmed — ' . $order_id, $mailResult===true?'sent':'failed', $html]);
+} catch (Exception $e) {}
 
 ok(['message' => 'Payment successful', 'payment_id' => $payId, 'total' => $total, 'order_id' => $order_id]);

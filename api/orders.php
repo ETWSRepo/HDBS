@@ -84,7 +84,13 @@ if ($method === 'POST') { dbg('orders','POST new order body='.substr(file_get_co
     $d = body();
     if (empty($d['id']) || empty($d['total'])) fail('Missing order id or total');
     $isAdmin = isAdminRequest();
-    if (!$isAdmin) $d['status'] = 'Awaiting Payment'; // guests cannot set arbitrary status
+    // Storefront in-person cash/check sales are paid on the spot, so they keep their 'Paid' status
+    // and get a confirmation emailed + logged. Keyed on the storefront 'source' marker (not on the
+    // admin token) so it still works when an admin places a test order while logged into the panel.
+    $isInPersonPaid = (($d['source'] ?? '') === 'storefront')
+        && (($d['payment_config'] ?? '') === 'InPerson')
+        && in_array($d['pay'] ?? '', ['Cash', 'Check'], true);
+    if (!$isAdmin && !$isInPersonPaid) $d['status'] = 'Awaiting Payment'; // guests cannot set arbitrary status
 
     $pdo->beginTransaction();
     try {
@@ -143,6 +149,22 @@ if ($method === 'POST') { dbg('orders','POST new order body='.substr(file_get_co
             }
         }
         $pdo->commit();
+        // In-person cash/check storefront orders are complete on submission — send + log the
+        // customer confirmation server-side so it doesn't depend on the browser/cached JS.
+        if ($isInPersonPaid) {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'handmadedesignsbysuzi.com';
+            $ch = curl_init($scheme . '://' . $host . '/send_confirm.php');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => json_encode(['order_id' => $d['id']]),
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 20,
+            ]);
+            curl_exec($ch);
+            curl_close($ch);
+        }
         // Return a cancel token so only the order creator can cancel it
         $cancelToken = substr(hash_hmac('sha256', $d['id'], DB_PASS), 0, 24);
         ok(['message' => 'Order saved', 'cancel_token' => $cancelToken]);

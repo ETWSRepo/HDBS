@@ -22,25 +22,7 @@ function sendConfirmEmail(oid){
     if(msgEl2){msgEl2.style.color='#c62828';msgEl2.textContent='Cannot send: no valid email address on this order.';}
     return;
   }
-  var msgEl=document.getElementById('vo-msg-'+oid);
-  if(msgEl){msgEl.style.color='#6b6040';msgEl.textContent='Sending…';}
-  fetch(SITE_ORIGIN+'/send_confirm.php',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({order_id:oid})
-  }).then(function(r){return r.json();})
-  .then(function(d){
-    if(msgEl){
-      if(d.success){
-        msgEl.style.color='#2e7d32';
-        msgEl.textContent='\u2713 Confirmation email sent to '+(d.to||'customer')+'!';
-      } else {
-        msgEl.style.color='#c62828';
-        msgEl.textContent='Email failed: '+(d.error||'unknown');
-      }
-    }
-  }).catch(function(e){
-    if(msgEl){msgEl.style.color='#c62828';msgEl.textContent='Network error: '+e;}
-  });
+  emailPreviewThenSend('/send_confirm.php',oid,'Order Confirmation');
 }
 // ── Send shipping notification email ──
 function sendShippingEmail(oid){
@@ -55,23 +37,70 @@ function sendShippingEmail(oid){
   if(!order.carrier&&!order.tracking){
     if(!confirm('No carrier or tracking set. Send anyway?'))return;
   }
+  emailPreviewThenSend('/send_shipping.php',oid,'Shipping Notification');
+}
+// ── Email preview-before-send ──
+// Fetches the rendered email (preview mode, no send) and shows it in a modal;
+// the email is only sent when the user clicks Send Email.
+function emailPreviewThenSend(endpoint,oid,label){
   var msgEl=document.getElementById('vo-msg-'+oid);
-  if(msgEl){msgEl.style.color='#6b6040';msgEl.textContent='Sending shipping notification…';}
-  fetch(SITE_ORIGIN+'/send_shipping.php',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({order_id:oid})
-  }).then(function(r){return r.json();})
+  if(msgEl){msgEl.style.color='#6b6040';msgEl.textContent='Loading preview…';}
+  fetch(SITE_ORIGIN+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({order_id:oid,preview:true})})
+  .then(function(r){return r.json();})
   .then(function(d){
+    if(!d||!d.success||!d.html){
+      if(msgEl){msgEl.style.color='#c62828';msgEl.textContent='Could not load preview: '+((d&&d.error)||'unknown');}
+      return;
+    }
+    if(msgEl)msgEl.textContent='';
+    showEmailPreviewModal(endpoint,oid,label,d);
+  }).catch(function(e){if(msgEl){msgEl.style.color='#c62828';msgEl.textContent='Network error: '+e;}});
+}
+function showEmailPreviewModal(endpoint,oid,label,d){
+  var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var existing=document.getElementById('email-preview-modal');if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='email-preview-modal';
+  div.className='modal-ov on';
+  div.style.zIndex='400';
+  div.innerHTML=
+    '<div class="modal-box" style="max-width:640px;width:95%;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh">'+
+      '<div style="padding:1rem 1.4rem;border-bottom:1px solid #e8e0b8;display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="font-weight:700;color:#2d2220">Preview: '+esc(label)+'</div>'+
+        '<button onclick="document.getElementById(\'email-preview-modal\').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b6040;line-height:1">×</button>'+
+      '</div>'+
+      '<div style="padding:.7rem 1.4rem;background:#fffdf0;border-bottom:1px solid #e8e0b8;font-size:.82rem;color:#6b6040">'+
+        '<div><strong>To:</strong> '+esc(d.to)+'</div>'+
+        '<div><strong>Subject:</strong> '+esc(d.subject)+'</div>'+
+      '</div>'+
+      '<iframe id="email-preview-frame" style="flex:1;width:100%;min-height:360px;border:0;background:#fff"></iframe>'+
+      '<div style="padding:.9rem 1.4rem;border-top:1px solid #e8e0b8;display:flex;justify-content:flex-end;gap:.6rem">'+
+        '<button class="bs" onclick="document.getElementById(\'email-preview-modal\').remove()">Cancel</button>'+
+        '<button class="bp" id="email-preview-send">Send Email</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(div);
+  var frame=document.getElementById('email-preview-frame');
+  if(frame)frame.srcdoc=d.html;
+  var sendBtn=document.getElementById('email-preview-send');
+  if(sendBtn)sendBtn.onclick=function(){emailSendNow(endpoint,oid,label,sendBtn);};
+}
+function emailSendNow(endpoint,oid,label,btn){
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  fetch(SITE_ORIGIN+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({order_id:oid})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var modal=document.getElementById('email-preview-modal');if(modal)modal.remove();
+    var msgEl=document.getElementById('vo-msg-'+oid);
     if(msgEl){
-      if(d.success){
-        msgEl.style.color='#2e7d32';
-        msgEl.textContent='\u2713 Shipping email sent to '+(d.to||'customer')+'!';
-      } else {
-        msgEl.style.color='#c62828';
-        msgEl.textContent='Failed: '+(d.error||'unknown');
-      }
+      if(d&&d.success){msgEl.style.color='#2e7d32';msgEl.textContent='✓ '+label+' sent to '+(d.to||'customer')+'!';}
+      else{msgEl.style.color='#c62828';msgEl.textContent='Email failed: '+((d&&d.error)||'unknown');}
     }
   }).catch(function(e){
+    var modal=document.getElementById('email-preview-modal');if(modal)modal.remove();
+    var msgEl=document.getElementById('vo-msg-'+oid);
     if(msgEl){msgEl.style.color='#c62828';msgEl.textContent='Network error: '+e;}
   });
 }
@@ -2057,6 +2086,10 @@ function rSettingsInner(el){
     if(u)u.value=d.user||'';
     var lbl=document.getElementById('smtp-ok');
     if(lbl&&d.pass_set){lbl.textContent='Password on file.';lbl.style.display='block';setTimeout(function(){lbl.textContent='SMTP settings saved!';lbl.style.display='none';},2000);}
+  }).catch(function(){});
+  // Load saved Payment Configuration from DB so the dropdown reflects the persisted value (not the page-load default)
+  apiFetch('admin.php','POST',{action:'get_setting',key:'payment_configuration'}).then(function(d){
+    if(d&&d.success&&d.value){PAY_CONFIG=d.value;var sel=document.getElementById('payconf-sel');if(sel)sel.value=d.value;}
   }).catch(function(){});
 }
 

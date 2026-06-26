@@ -409,6 +409,7 @@ function placeOrder(){
     addr:addr,
     items:items,total:total,subtotal:subtotal,shipping:shipping,tax:tax,
     pay:method,order_type:(mode==='InPerson'?'In Person':'Online'),payment_config:mode,check_number:checkNum,
+    source:'storefront',
     status:(mode==='InPerson'&&!isCard)?'Paid':'Awaiting Payment'};
   // Decrement local stock
   for(var j=0;j<CART.length;j++){var p2=findProd(CART[j].id);if(p2)p2.stock=Math.max(0,p2.stock-CART[j].q);}
@@ -439,6 +440,7 @@ function placeOrder(){
   }
   // ── InPerson cash/check: save as Paid, no online payment ──
   if(mode==='InPerson'&&!isCard){
+    // orders.php sends + logs the customer confirmation server-side for in-person cash/check sales
     apiFetch('orders.php','POST',o).then(function(){}).catch(function(){});
     apiFetch('customers.php','POST',{action:'inc_orders',em:em}).catch(function(){});
     CART=[];window._pendingCartItems=null;updCartCount();renderStore();

@@ -112,8 +112,8 @@ try{$vp=isset($vp)?$vp:file_get_contents($root.'/verify_payment.php');t('verify_
 try{$vp=isset($vp)?$vp:file_get_contents($root.'/verify_payment.php');t('verify_payment updates total',strpos($vp,'total=?')!==false&&strpos($vp,'sq_total')!==false);}catch(Exception $e){t('verify_payment total',false,$e->getMessage());}
 // verify_payment uses location_id in Square API call
 try{$vp=isset($vp)?$vp:file_get_contents($root.'/verify_payment.php');t('verify_payment uses location_id',strpos($vp,'location_id=LJP687TQBTWTA')!==false);}catch(Exception $e){t('verify_payment location_id',false,$e->getMessage());}
-// notify.php does NOT log Order Placed to email_log
-try{$np=file_get_contents($root.'/notify.php');t('notify.php no Order Placed log',strpos($np,"INSERT INTO email_log")===false);}catch(Exception $e){t('notify.php no Order Placed log',false,$e->getMessage());}
+// notify.php logs the owner "Order Received" notification to email_log
+try{$np=file_get_contents($root.'/notify.php');t('notify.php logs Order Received to email_log',strpos($np,"INSERT INTO email_log")!==false&&strpos($np,'Order Received')!==false);}catch(Exception $e){t('notify.php logs Order Received to email_log',false,$e->getMessage());}
 // verify_payment.php logs email_body to email_log
 try{$vp=isset($vp)?$vp:file_get_contents($root.'/verify_payment.php');t('verify_payment logs email_body',strpos($vp,'email_body')!==false&&strpos($vp,'INSERT INTO email_log')!==false);}catch(Exception $e){t('verify_payment logs email_body',false,$e->getMessage());}
 // notify.php includes SKU in items
@@ -395,9 +395,65 @@ try{
     t('confirm email uses biz_email',strpos($scphp,'biz_email')!==false);
     t('confirm email shows order type',strpos($scphp,'Order Type')!==false);
     t('confirm email shows paid by',strpos($scphp,'Paid By')!==false);
+    t('confirm email shows check # when present',strpos($scphp,'Check #')!==false&&strpos($scphp,"check_number")!==false);
+    t('confirm email logs to email_log',strpos($scphp,'INSERT INTO email_log')!==false);
+    t('confirm email supports preview mode',strpos($scphp,"!empty(\$data['preview'])")!==false&&strpos($scphp,"'html'=>")!==false);
+    t('confirm email info box wraps (inline-block, not flex)',strpos($scphp,'display:inline-block')!==false);
     t('confirm email website prefix',strpos($scphp,'Website:')!==false);
     t('confirm email email prefix',strpos($scphp,'Email:')!==false);
 }catch(Exception $e){t('send_confirm checks',false,$e->getMessage());}
+// ── Email logging, payment fields, preview-before-send, source flag (2026-06-26) ──
+try{
+    // send_shipping: preview + logging + mobile-safe table
+    $ssp2=file_get_contents($root.'/send_shipping.php');
+    t('send_shipping supports preview mode',strpos($ssp2,"!empty(\$data['preview'])")!==false);
+    t('send_shipping logs to email_log',strpos($ssp2,'INSERT INTO email_log')!==false);
+    t('send_shipping table-layout fixed (mobile)',strpos($ssp2,'table-layout:fixed')!==false);
+    // process_payment: paid by + logging + mobile
+    $ppp2=file_get_contents($root.'/api/process_payment.php');
+    t('process_payment shows Paid by',strpos($ppp2,'Paid by:')!==false);
+    t('process_payment logs to email_log',strpos($ppp2,'INSERT INTO email_log')!==false);
+    t('process_payment table-layout fixed (mobile)',strpos($ppp2,'table-layout:fixed')!==false);
+    // order_confirm (legacy): extracts fields, displays them, logs, mobile
+    $ocp2=file_get_contents($root.'/order_confirm.php');
+    t('order_confirm extracts payment_method',strpos($ocp2,"\$data['payment_method']")!==false);
+    t('order_confirm extracts check_number',strpos($ocp2,"\$data['check_number']")!==false);
+    t('order_confirm shows Paid By',strpos($ocp2,'Paid By')!==false);
+    t('order_confirm logs to email_log',strpos($ocp2,'INSERT INTO email_log')!==false);
+    t('order_confirm table-layout fixed (mobile)',strpos($ocp2,'table-layout:fixed')!==false);
+    // notify (owner): paid by/check, logging as Order Received, mobile
+    $ntf2=file_get_contents($root.'/notify.php');
+    t('notify extracts payment_method',strpos($ntf2,"\$data['payment_method']")!==false);
+    t('notify owner email shows Paid By',strpos($ntf2,'Paid By')!==false);
+    t('notify logs to email_log as Order Received',strpos($ntf2,'INSERT INTO email_log')!==false&&strpos($ntf2,'Order Received')!==false);
+    t('notify table-layout fixed (mobile)',strpos($ntf2,'table-layout:fixed')!==false);
+    // every outbound email logs: contact + db_backup
+    t('contact.php logs to email_log',strpos(file_get_contents($root.'/api/contact.php'),'INSERT INTO email_log')!==false);
+    t('db_backup logs to email_log',strpos(file_get_contents($root.'/api/db_backup.php'),'INSERT INTO email_log')!==false);
+    // store.js: storefront source flag, no client-side send_confirm (handled server-side)
+    $stj2=file_get_contents($root.'/js/store.js');
+    t('store.js stamps source storefront',strpos($stj2,"source:'storefront'")!==false);
+    t('store.js InPerson uses server-side confirm (no client send_confirm)',strpos($stj2,'/send_confirm.php')===false);
+    // orders.php: source-keyed InPerson paid + server-side confirmation
+    $ordp2=file_get_contents($root.'/api/orders.php');
+    t('orders.php keys InPerson paid on source flag',strpos($ordp2,"=== 'storefront'")!==false);
+    t('orders.php sends server-side confirmation',strpos($ordp2,'/send_confirm.php')!==false);
+    // admin-orders.js: preview-before-send + settings dropdown fetch
+    $aoj2=file_get_contents($root.'/js/admin-orders.js');
+    t('admin-orders has emailPreviewThenSend',strpos($aoj2,'function emailPreviewThenSend')!==false);
+    t('admin-orders preview uses preview flag',strpos($aoj2,'preview:true')!==false);
+    t('sendConfirmEmail uses preview flow',strpos($aoj2,"emailPreviewThenSend('/send_confirm.php'")!==false);
+    t('sendShippingEmail uses preview flow',strpos($aoj2,"emailPreviewThenSend('/send_shipping.php'")!==false);
+    t('settings loads saved payment_configuration',strpos($aoj2,"key:'payment_configuration'")!==false&&strpos($aoj2,'payconf-sel')!==false);
+    // admin-products.js: order detail quick-edit fields removed
+    $apj2=file_get_contents($root.'/js/admin-products.js');
+    t('order detail removed Status/Paid By quick-edit',strpos($apj2,'vo-status-')===false&&strpos($apj2,'vo-pay-')===false);
+    t('order detail removed Update Order field block',strpos($apj2,'>Update Order<')===false);
+    // index.html: cache-busting on app scripts
+    $idx2=file_get_contents($root.'/index.html');
+    t('index.html cache-busts store.js',strpos($idx2,'js/store.js?v=')!==false);
+    t('index.html cache-busts admin-products.js',strpos($idx2,'js/admin-products.js?v=')!==false);
+}catch(Exception $e){t('email/order 2026-06-26 checks',false,$e->getMessage());}
 // Email log clear button
 try{$amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
     t('clearEmailLog function exists',strpos($amjs,'function clearEmailLog(')!==false);
@@ -1335,7 +1391,7 @@ try{
     $stEnv=file_get_contents($root.'/js/store.js');
     t('store.js notify/verify use SITE_ORIGIN',strpos($stEnv,"SITE_ORIGIN+'/notify.php'")!==false&&strpos($stEnv,"SITE_ORIGIN+'/verify_payment.php'")!==false);
     $aoEnv=file_get_contents($root.'/js/admin-orders.js');
-    t('admin-orders send_* use SITE_ORIGIN',strpos($aoEnv,"SITE_ORIGIN+'/send_confirm.php'")!==false&&strpos($aoEnv,"SITE_ORIGIN+'/send_shipping.php'")!==false);
+    t('admin-orders send_* use SITE_ORIGIN',strpos($aoEnv,'SITE_ORIGIN+endpoint')!==false&&strpos($aoEnv,"emailPreviewThenSend('/send_confirm.php'")!==false&&strpos($aoEnv,"emailPreviewThenSend('/send_shipping.php'")!==false);
     t('admin-misc db_backup uses SITE_ORIGIN',strpos(file_get_contents($root.'/js/admin-misc.js'),"SITE_ORIGIN+'/api/db_backup.php")!==false);
     // Dev banner (staging-only) must never be able to render in production: hidden by default + hostname-gated
     $ihDev=file_get_contents($root.'/index.html');

@@ -76,6 +76,12 @@ $html_body = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 
 $result = sendEmail($to, $fullsubj, $html_body, trim($d['email'] ?? ''), $name);
 
+// Log to email_log (every outbound email is recorded)
+try {
+    $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")
+        ->execute(['Contact Form', $to, '', $fullsubj, $result===true?'sent':'failed', $html_body]);
+} catch (Exception $e) {}
+
 if ($result === true) {
     ok(['message' => 'Message sent']);
 } else {

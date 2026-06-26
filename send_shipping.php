@@ -65,7 +65,7 @@ dbg('send_shipping', "START order_id=$order_id");
     if(!empty($items)){
         $items_html  = "<div style='margin:20px 0'>";
         $items_html .= "<div style='font-size:.75rem;font-weight:700;text-transform:uppercase;color:#a07810;margin-bottom:.5rem'>Items in Your Order</div>";
-        $items_html .= "<table style='width:100%;border-collapse:collapse;font-size:.85rem'>";
+        $items_html .= "<table style='width:100%;border-collapse:collapse;font-size:.85rem;table-layout:fixed;word-wrap:break-word'>";
         $items_html .= "<tr style='background:#f9f4e4'>";
         $items_html .= "<th style='text-align:left;padding:6px 8px;border-bottom:2px solid #e8e0b8' colspan='2'>Item</th>";
         $items_html .= "<th style='text-align:center;padding:6px 8px;border-bottom:2px solid #e8e0b8'>Qty</th>";
@@ -148,6 +148,14 @@ dbg('send_shipping', "START order_id=$order_id");
 
     $no_cust   = empty(trim($customer_email));
     $recipients = $no_cust ? [$from_email] : [$customer_email, $from_email];
+
+    // Preview mode: return the rendered email without sending or logging
+    if(!empty($data['preview'])){
+        ob_end_clean();
+        echo json_encode(['success'=>true,'preview'=>true,'html'=>$html,'subject'=>$subject,'to'=>($no_cust?$from_email:$customer_email)]);
+        exit;
+    }
+
     $result    = sendEmail($recipients, $subject, $html, $from_email, $from_name);
 
     // Persist shipping sent timestamp and log email
