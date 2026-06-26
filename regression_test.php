@@ -38,11 +38,15 @@ header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
 set_time_limit(20);
 $results=[];$pass=0;$fail=0;
 function t($n,$ok,$d=''){global $results,$pass,$fail;$ok?$pass++:$fail++;$results[]=['name'=>$n,'ok'=>(bool)$ok,'detail'=>(string)$d];}
+// tProd: a check that is only meaningful on production. On the staging subdomain (Basic-Auth
+// gated, own .htaccess, separate DB) it is reported as skipped instead of failing.
+function tProd($n,$ok,$d=''){global $isStaging; if($isStaging){t($n,true,'skipped — N/A on staging');}else{t($n,$ok,$d);}}
 
 try{
 require_once __DIR__.'/api/config.php';
 $pdo=db();
 $root=__DIR__;
+$isStaging=stripos($_SERVER['HTTP_HOST'] ?? '', 'staging')!==false;
 
 // ── 1. DB SCHEMA ──
 $ocols=$pdo->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
@@ -732,7 +736,7 @@ try{
         curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>15,CURLOPT_HTTPHEADER=>$ghHdrs]);
         $body=curl_exec($ch);curl_close($ch);
         $gd=json_decode($body,true);
-        t('github_log returns commits',isset($gd['commits'])&&count($gd['commits'])>0);
+        tProd('github_log returns commits',isset($gd['commits'])&&count($gd['commits'])>0);
     }else{
         t('github_log returns commits',true,'skipped — no github_token set yet');
     }
@@ -786,10 +790,10 @@ try{
 // ── SECURITY: HTACCESS ──
 try{
     $htaccess=file_get_contents($root.'/.htaccess');
-    t('htaccess disables directory listing',strpos($htaccess,'Options -Indexes')!==false);
-    t('htaccess blocks config.php',strpos($htaccess,'"config.php"')!==false&&strpos($htaccess,'Deny from all')!==false);
-    t('htaccess blocks applog.php',strpos($htaccess,'"applog.php"')!==false);
-    t('htaccess blocks secrets.php',strpos($htaccess,'secrets\.php')!==false);
+    tProd('htaccess disables directory listing',strpos($htaccess,'Options -Indexes')!==false);
+    tProd('htaccess blocks config.php',strpos($htaccess,'"config.php"')!==false&&strpos($htaccess,'Deny from all')!==false);
+    tProd('htaccess blocks applog.php',strpos($htaccess,'"applog.php"')!==false);
+    tProd('htaccess blocks secrets.php',strpos($htaccess,'secrets\.php')!==false);
     // Verify secrets.php defines all required constants (readable one level above public_html)
     $secretsFile=dirname($root).'/secrets.php';
     if(file_exists($secretsFile)){
@@ -801,7 +805,7 @@ try{
     } else {
         t('secrets.php exists above public_html',false,'File not found at '.$secretsFile);
     }
-    t('htaccess blocks .log/.txt files',strpos($htaccess,'\.(log|txt)$')!==false);
+    tProd('htaccess blocks .log/.txt files',strpos($htaccess,'\.(log|txt)$')!==false);
     // Live HTTP checks
     function httpCode($url){$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_NOBODY=>true,CURLOPT_FOLLOWLOCATION=>false]);curl_exec($ch);$c=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);return $c;}
     $base='https://handmadedesignsbysuzi.com';
@@ -891,7 +895,7 @@ try{
             CURLOPT_POSTFIELDS=>json_encode(['action'=>'get_setting','key'=>'rt_token']),
             CURLOPT_HTTPHEADER=>['Content-Type: application/json',"X-Admin-Token: $rtTok"]]);
         $rtRes=json_decode(curl_exec($ch),true);curl_close($ch);
-        t('get_setting rt_token returns value (with admin token)',isset($rtRes['success'])&&$rtRes['success']===true&&!empty($rtRes['value']));
+        tProd('get_setting rt_token returns value (with admin token)',isset($rtRes['success'])&&$rtRes['success']===true&&!empty($rtRes['value']));
     } else {
         t('get_setting rt_token requires admin token (no session available, skip)',true,'skipped - no admin session');
     }
@@ -899,7 +903,7 @@ try{
 
 // ── DEBUG/UTILITY FILES REMOVED ──
 foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php','get_products.php'] as $df)
-    t($df.' removed from server',!file_exists($root.'/'.$df));
+    tProd($df.' removed from server',!file_exists($root.'/'.$df));
 
 // ── FAVICON ──
 try{
@@ -1263,6 +1267,14 @@ try{
     $aoEnv=file_get_contents($root.'/js/admin-orders.js');
     t('admin-orders send_* use SITE_ORIGIN',strpos($aoEnv,"SITE_ORIGIN+'/send_confirm.php'")!==false&&strpos($aoEnv,"SITE_ORIGIN+'/send_shipping.php'")!==false);
     t('admin-misc db_backup uses SITE_ORIGIN',strpos(file_get_contents($root.'/js/admin-misc.js'),"SITE_ORIGIN+'/api/db_backup.php")!==false);
+    // Dev banner (staging-only) must never be able to render in production: hidden by default + hostname-gated
+    $ihDev=file_get_contents($root.'/index.html');
+    if(strpos($ihDev,'dev-banner')!==false){
+        t('dev banner hidden by default (prod-safe)',strpos($ihDev,'id="dev-banner"')!==false&&strpos($ihDev,'display:none')!==false);
+        t('dev banner gated on staging hostname',strpos($ihDev,"indexOf('staging')")!==false);
+    } else {
+        t('dev banner absent here (production) — nothing to render',true,'no dev-banner in this environment');
+    }
 
     // CORS fixes
     $ckphp=file_get_contents($root.'/checkout.php');
@@ -1537,8 +1549,8 @@ try{
 
     // GitHub token endpoints work (requires auth)
     $r=uiPostAdmin($base.'/api/admin.php',['action'=>'get_github_token']);
-    t('ui:get_github_token returns 200',$r['code']===200,'HTTP '.$r['code']);
-    t('ui:get_github_token returns value',$r['json']&&!empty($r['json']['success'])&&isset($r['json']['value']));
+    tProd('ui:get_github_token returns 200',$r['code']===200,'HTTP '.$r['code']);
+    tProd('ui:get_github_token returns value',$r['json']&&!empty($r['json']['success'])&&isset($r['json']['value']));
 
     // Auth enforcement — protected endpoints require X-Admin-Token
     $r=uiGet($base.'/api/orders.php');
@@ -1552,9 +1564,9 @@ try{
 
     // Customers API — list requires admin token
     $r=uiGetAdmin($base.'/api/customers.php?action=list');
-    t('ui:customers list with token returns 200',$r['code']===200,'HTTP '.$r['code']);
+    tProd('ui:customers list with token returns 200',$r['code']===200,'HTTP '.$r['code']);
     $cj=isset($r['json'])?$r['json']:null;
-    t('ui:customers list has customers array',$cj&&isset($cj['customers'])&&is_array($cj['customers']));
+    tProd('ui:customers list has customers array',$cj&&isset($cj['customers'])&&is_array($cj['customers']));
 
     // Customer register — duplicate email is rejected gracefully (not a 500)
     $r=uiPost($base.'/api/customers.php',['action'=>'register','em'=>'regression_dupe@test.com','pw'=>'Test1234!','fn'=>'Reg','ln'=>'Test','secQ'=>'What city were you born in?','secA'=>'test','secA2'=>'test']);
@@ -1594,7 +1606,7 @@ try{
     t('verify_payment:test_mode without token is 401',$r['code']===401,'HTTP '.$r['code']);
     // with admin token it should pass auth (order not found → error, but not 401)
     $r=uiPostAdmin($base.'/verify_payment.php',['order_id'=>'FAKE-RT-001','test_mode'=>true]);
-    t('verify_payment:test_mode with token passes auth',$r['code']!==401,'HTTP '.$r['code']);
+    tProd('verify_payment:test_mode with token passes auth',$r['code']!==401,'HTTP '.$r['code']);
 
     // notify.php CORS is locked (not wildcard)
     $notifyPhp=file_get_contents($root.'/notify.php');
