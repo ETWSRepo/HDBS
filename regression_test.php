@@ -1245,6 +1245,25 @@ try{
     t('subscribers.php GET has requireAdmin()',strpos(file_get_contents($root.'/api/subscribers.php'),'requireAdmin()')!==false);
     t('reviews.php write has requireAdmin()',strpos(file_get_contents($root.'/api/reviews.php'),'requireAdmin()')!==false);
 
+    // ── Staging / environment-aware config (production defaults must be preserved) ──
+    $cfgEnv=file_get_contents($root.'/api/config.php');
+    t('config.php branches on staging host',strpos($cfgEnv,'$__staging')!==false&&strpos($cfgEnv,"\$_SERVER['HTTP_HOST']")!==false&&strpos($cfgEnv,"'staging'")!==false);
+    t('config.php keeps prod DB name default',strpos($cfgEnv,"'u541882440_hdbs_data'")!==false);
+    t('config.php has staging DB name',strpos($cfgEnv,"'u541882440_hdbs_staging'")!==false);
+    t('config.php env-aware secrets path',strpos($cfgEnv,'secrets.staging.php')!==false&&strpos($cfgEnv,'secrets.php')!==false);
+    t('config.php keeps prod+staging origins',strpos($cfgEnv,"'https://handmadedesignsbysuzi.com'")!==false&&strpos($cfgEnv,"'https://staging.handmadedesignsbysuzi.com'")!==false);
+    $apiEnv=file_get_contents($root.'/js/api.js');
+    t('api.js defines env-aware SITE_ORIGIN',strpos($apiEnv,'SITE_ORIGIN')!==false&&strpos($apiEnv,'location.hostname')!==false&&strpos($apiEnv,"'staging'")!==false);
+    t('SITE_ORIGIN falls back to prod URL',strpos($apiEnv,"'https://handmadedesignsbysuzi.com'")!==false);
+    t('api.js API base uses SITE_ORIGIN',strpos($apiEnv,"var API=SITE_ORIGIN+'/api'")!==false);
+    t('api.js no hardcoded prod API base',strpos($apiEnv,"var API='https://handmadedesignsbysuzi.com/api'")===false);
+    t('config.js API base uses SITE_ORIGIN',strpos(file_get_contents($root.'/js/config.js'),"var API=SITE_ORIGIN+'/api'")!==false);
+    $stEnv=file_get_contents($root.'/js/store.js');
+    t('store.js notify/verify use SITE_ORIGIN',strpos($stEnv,"SITE_ORIGIN+'/notify.php'")!==false&&strpos($stEnv,"SITE_ORIGIN+'/verify_payment.php'")!==false);
+    $aoEnv=file_get_contents($root.'/js/admin-orders.js');
+    t('admin-orders send_* use SITE_ORIGIN',strpos($aoEnv,"SITE_ORIGIN+'/send_confirm.php'")!==false&&strpos($aoEnv,"SITE_ORIGIN+'/send_shipping.php'")!==false);
+    t('admin-misc db_backup uses SITE_ORIGIN',strpos(file_get_contents($root.'/js/admin-misc.js'),"SITE_ORIGIN+'/api/db_backup.php")!==false);
+
     // CORS fixes
     $ckphp=file_get_contents($root.'/checkout.php');
     t('checkout.php CORS hardcoded to ALLOWED_ORIGIN',strpos($ckphp,'Access-Control-Allow-Origin: https://handmadedesignsbysuzi.com')!==false);

@@ -116,7 +116,7 @@ function checkThankYou(){
     window.history.replaceState({},'',window.location.pathname);
     if(oid&&!sessionStorage.getItem('vp_'+oid)){
       sessionStorage.setItem('vp_'+oid,'1');
-      fetch('https://handmadedesignsbysuzi.com/verify_payment.php',{
+      fetch(SITE_ORIGIN+'/verify_payment.php',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({order_id:oid})
       }).then(function(r){return r.json();})

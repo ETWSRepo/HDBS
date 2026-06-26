@@ -1,13 +1,18 @@
 <?php
 // api/config.php — Shared database connection and helpers
 
-require_once dirname(dirname(__DIR__)) . '/secrets.php';
+// Staging subdomain uses its own DB + origin; production is unchanged. Each environment
+// loads its own secrets file from above the webroot (prod: secrets.php, staging: secrets.staging.php).
+$__staging = (stripos($_SERVER['HTTP_HOST'] ?? '', 'staging') !== false);
+require_once ($__staging
+    ? dirname(dirname(dirname(__DIR__))) . '/secrets.staging.php'
+    : dirname(dirname(__DIR__)) . '/secrets.php');
 define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'u541882440_hdbs_data');
-define('DB_USER', 'u541882440_hdbs_admin');
+define('DB_NAME', $__staging ? 'u541882440_hdbs_staging' : 'u541882440_hdbs_data');
+define('DB_USER', $__staging ? 'u541882440_hdbs_staging' : 'u541882440_hdbs_admin');
 define('DB_PASS', defined('DB_PASSWORD') ? DB_PASSWORD : '');
 define('PUBLIC_HTML', __DIR__ . '/..');
-define('ALLOWED_ORIGIN', 'https://handmadedesignsbysuzi.com');
+define('ALLOWED_ORIGIN', $__staging ? 'https://staging.handmadedesignsbysuzi.com' : 'https://handmadedesignsbysuzi.com');
 
 // ── CORS ──
 function cors() {

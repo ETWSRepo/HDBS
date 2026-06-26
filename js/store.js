@@ -394,8 +394,8 @@ function placeOrder(){
     var tOpts={method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({order_id:oid,date:o.date,customer_name:o.cust,customer_email:o.email,
         phone:o.phone||'',address:o.addr||'',subtotal:subtotal,shipping:shipping,total:total,items:items})};
-    fetch('https://handmadedesignsbysuzi.com/notify.php',tOpts).catch(function(){});
-    fetch('https://handmadedesignsbysuzi.com/verify_payment.php',{method:'POST',
+    fetch(SITE_ORIGIN+'/notify.php',tOpts).catch(function(){});
+    fetch(SITE_ORIGIN+'/verify_payment.php',{method:'POST',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:oid,test_mode:true})}).catch(function(){});
     showTestOrderConfirm(oid,total,o);
     return;

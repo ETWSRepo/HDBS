@@ -76,7 +76,7 @@ var WEIGHT_TIERS=[
   {min:1,   max:3,    charge:3},
   {min:0,   max:1,    charge:0}
 ];
-var API='https://handmadedesignsbysuzi.com/api';
+var API=SITE_ORIGIN+'/api';
 var LB_IMGS=[];var LB_IDX=0;
 var BLAST_TARGET='subs';
 var ORDER_FILTER='';

@@ -1,5 +1,7 @@
 // ── API BASE ──
-var API='https://handmadedesignsbysuzi.com/api';
+// Environment-aware origin: the staging subdomain talks to itself; production is unchanged.
+var SITE_ORIGIN=(location.hostname.indexOf('staging')!==-1)?location.origin:'https://handmadedesignsbysuzi.com';
+var API=SITE_ORIGIN+'/api';
 
 // ── Debug ──
 function _dbgEnabled(){return localStorage.getItem('hdbs_debug')==='1';}

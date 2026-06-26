@@ -24,7 +24,7 @@ function sendConfirmEmail(oid){
   }
   var msgEl=document.getElementById('vo-msg-'+oid);
   if(msgEl){msgEl.style.color='#6b6040';msgEl.textContent='Sending…';}
-  fetch('https://handmadedesignsbysuzi.com/send_confirm.php',{
+  fetch(SITE_ORIGIN+'/send_confirm.php',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({order_id:oid})
   }).then(function(r){return r.json();})
@@ -57,7 +57,7 @@ function sendShippingEmail(oid){
   }
   var msgEl=document.getElementById('vo-msg-'+oid);
   if(msgEl){msgEl.style.color='#6b6040';msgEl.textContent='Sending shipping notification…';}
-  fetch('https://handmadedesignsbysuzi.com/send_shipping.php',{
+  fetch(SITE_ORIGIN+'/send_shipping.php',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({order_id:oid})
   }).then(function(r){return r.json();})
@@ -320,7 +320,7 @@ function moSendConfirm(){
   var email=document.getElementById('mo-email').value.trim();
   if(!email){if(msg){msg.style.color='#c62828';msg.textContent='No email address on this order.';}return;}
   if(msg){msg.style.color='#6b6040';msg.textContent='Sending…';}
-  fetch('https://handmadedesignsbysuzi.com/send_confirm.php',{
+  fetch(SITE_ORIGIN+'/send_confirm.php',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({order_id:_moSavedOrderId})
   }).then(function(r){return r.json();})

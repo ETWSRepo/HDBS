@@ -593,7 +593,7 @@ function runDbBackup(){
   btn.disabled=true;btn.textContent='Running…';res.textContent='';
   apiFetch('admin.php','POST',{action:'get_setting',key:'backup_token'}).then(function(d){
     var token=d.value||'';
-    return fetch('https://handmadedesignsbysuzi.com/api/db_backup.php?token='+encodeURIComponent(token),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})});
+    return fetch(SITE_ORIGIN+'/api/db_backup.php?token='+encodeURIComponent(token),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})});
   }).then(function(r){return r.json();}).then(function(d){
     btn.disabled=false;btn.textContent='▶ Run Backup Now';
     if(d.success&&d.sent){
