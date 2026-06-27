@@ -171,7 +171,7 @@ function fmtPhone(input){
 }
 
 // ── CART ──
-function openCart(){if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Your Cart'});document.getElementById('cart-ov').classList.add('on');document.getElementById('cart-drawer').classList.add('on');renderCart();}
+function openCart(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'Your Cart',page_path:'/#cart'});if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Your Cart'});document.getElementById('cart-ov').classList.add('on');document.getElementById('cart-drawer').classList.add('on');renderCart();}
 function closeCart(){document.getElementById('cart-ov').classList.remove('on');document.getElementById('cart-drawer').classList.remove('on');}
 function addToCart(id){
   var p=findProd(id);if(!p||p.stock<=0)return;
@@ -327,6 +327,7 @@ function _hide(id){var e=document.getElementById(id);if(e)e.style.display='none'
 function _showFlex(id){var e=document.getElementById(id);if(e)e.style.display='flex';}
 function openCheckout(){
   if(!CART.length)return;
+  if(typeof gtag==='function')gtag('event','page_view',{page_title:'Checkout',page_path:'/#checkout'});
   if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Checkout'});
   closeCart();
   // Reset all panels

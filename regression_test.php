@@ -1083,6 +1083,27 @@ try{
     t('up/down arrow buttons removed',strpos($aojs,'moveCat(')===false);
 }catch(Exception $e){t('drag-and-drop reorder checks',false,$e->getMessage());}
 
+// ── GOOGLE ANALYTICS ──
+try{
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    t('GA4 measurement ID in index.html',strpos($ihtml,'G-0ELY03XGRE')!==false);
+    t('GA4 gtag.js script tag present',strpos($ihtml,'googletagmanager.com/gtag/js')!==false);
+    t('GA4 gtag config call present',strpos($ihtml,"gtag('config', 'G-0ELY03XGRE')")!==false);
+    $cfgGA=file_get_contents($root.'/js/config.js');
+    t('showPage function defined in config.js',strpos($cfgGA,'function showPage(')!==false);
+    t('goStore fires gtag page_view',strpos($cfgGA,"gtag('event','page_view'")!==false&&strpos($cfgGA,"page_path:'/#store'")!==false);
+    t('goAbout fires gtag page_view',strpos($cfgGA,"page_title:'About Suzi'")!==false&&strpos($cfgGA,"page_path:'/#about'")!==false);
+    t('goFAQ fires gtag page_view',strpos($cfgGA,"page_title:'FAQ'")!==false&&strpos($cfgGA,"page_path:'/#faq'")!==false);
+    t('goCustom fires gtag page_view',strpos($cfgGA,"page_title:'Custom Orders'")!==false&&strpos($cfgGA,"page_path:'/#custom'")!==false);
+    t('goContact fires gtag page_view',strpos($cfgGA,"page_title:'Contact Us'")!==false&&strpos($cfgGA,"page_path:'/#contact'")!==false);
+    t('goAuth fires gtag page_view',strpos($cfgGA,"page_path:'/#auth'")!==false);
+    $sjsGA=file_get_contents($root.'/js/store.js');
+    t('openCart fires gtag page_view',strpos($sjsGA,"page_title:'Your Cart'")!==false&&strpos($sjsGA,"page_path:'/#cart'")!==false);
+    t('openCheckout fires gtag page_view',strpos($sjsGA,"page_title:'Checkout'")!==false&&strpos($sjsGA,"page_path:'/#checkout'")!==false);
+    t('gtag guarded with typeof check in config.js',strpos($cfgGA,"typeof gtag==='function'")!==false);
+    t('gtag guarded with typeof check in store.js',strpos($sjsGA,"typeof gtag==='function'")!==false);
+}catch(Exception $e){t('Google Analytics checks',false,$e->getMessage());}
+
 // ── WATCH SCRIPT ──
 t('watch.ps1 not deployed to server',!file_exists($root.'/watch.ps1'));
 
