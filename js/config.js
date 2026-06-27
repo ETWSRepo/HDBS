@@ -135,6 +135,22 @@ function showOnly(id,flex){
     }
   }
 }
+function injectProductSchemas(){
+  document.querySelectorAll('script[data-type="product-schema"]').forEach(function(s){s.remove();});
+  (PRODS||[]).filter(function(p){return p.sell==1&&p.stock>0;}).forEach(function(p){
+    var imgs=[p.img1,p.img2,p.img3].filter(Boolean);
+    var schema={"@context":"https://schema.org","@type":"Product","name":p.name,"description":p.desc||'',
+      "image":imgs,"sku":p.sku||'',
+      "offers":{"@type":"Offer","url":"https://handmadedesignsbysuzi.com","priceCurrency":"USD",
+        "price":parseFloat(p.price).toFixed(2),
+        "availability":p.stock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock",
+        "seller":{"@type":"Organization","name":"Handmade Designs By Suzi"}}};
+    var s=document.createElement('script');
+    s.type='application/ld+json';s.setAttribute('data-type','product-schema');
+    s.textContent=JSON.stringify(schema);
+    document.head.appendChild(s);
+  });
+}
 function goStore(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'Store',page_path:'/#store'});showOnly('store');updateNav();}
 function showPage(name){if(name==='store')goStore();else if(name==='about')goAbout();else if(name==='faq')goFAQ();else if(name==='custom')goCustom();else if(name==='contact')goContact();else goStore();}
 function submitContact(){

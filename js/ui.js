@@ -1,8 +1,11 @@
 // ── IMAGE LIGHTBOX ──
 var LB_IMGS=[];var LB_IDX=0;
-function openLightbox(imgs,idx){
-  LB_IMGS=imgs;LB_IDX=idx||0;
-  document.getElementById('lightbox-img').src=LB_IMGS[LB_IDX];
+var LB_ALT='';
+function openLightbox(imgs,idx,altText){
+  LB_IMGS=imgs;LB_IDX=idx||0;LB_ALT=altText||'';
+  var lbImg=document.getElementById('lightbox-img');
+  lbImg.src=LB_IMGS[LB_IDX];
+  lbImg.alt=LB_ALT?(LB_ALT+(LB_IMGS.length>1?' photo '+(LB_IDX+1):'')):'';
   document.getElementById('lightbox').classList.add('on');
   document.body.style.overflow='hidden';
   updateLightboxCounter();
@@ -17,6 +20,7 @@ function lightboxNav(dir){
   img.style.opacity='0';
   setTimeout(function(){
     img.src=LB_IMGS[LB_IDX];
+    img.alt=LB_ALT?(LB_ALT+(LB_IMGS.length>1?' photo '+(LB_IDX+1):'')):'';
     img.style.opacity='1';
     updateLightboxCounter();
   },120);
@@ -63,7 +67,7 @@ function tryLoad(){
     var cached=localStorage.getItem('suzi_products_cache');
     if(cached){
       var parsed=JSON.parse(cached);
-      if(parsed&&parsed.length){PRODS=parsed;renderStore();}
+      if(parsed&&parsed.length){PRODS=parsed;renderStore();injectProductSchemas();}
     }
   }catch(e){}
   // Fetch all products from DB
@@ -71,9 +75,9 @@ function tryLoad(){
     if(d.success&&d.products){
       PRODS=d.products;
       try{localStorage.setItem('suzi_products_cache',JSON.stringify(stripImgs(PRODS)));}catch(e){}
-      renderStore();
+      renderStore();injectProductSchemas();
     }
-    checkThankYou();
+    checkThankYou();checkProductParam();
   }).catch(function(){renderStore();checkThankYou();});
   // Load reviews
   loadReviews();
@@ -106,6 +110,14 @@ function tryLoad(){
   apiFetch('admin.php','POST',{action:'get_setting',key:'confirm_token'}).then(function(d){
     if(d.success&&d.value)window._confirmToken=d.value;
   }).catch(function(){});
+}
+function checkProductParam(){
+  var params=new URLSearchParams(window.location.search);
+  var pid=params.get('p');
+  if(pid&&typeof findProd==='function'&&findProd(pid)){
+    history.replaceState({},'',window.location.pathname);
+    openPD(pid);
+  }
 }
 function checkThankYou(){
   var params=new URLSearchParams(window.location.search);

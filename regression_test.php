@@ -1104,6 +1104,49 @@ try{
     t('gtag guarded with typeof check in store.js',strpos($sjsGA,"typeof gtag==='function'")!==false);
 }catch(Exception $e){t('Google Analytics checks',false,$e->getMessage());}
 
+// ── STRUCTURED DATA (JSON-LD) ──
+try{
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    t('LocalBusiness JSON-LD in index.html',strpos($ihtml,'application/ld+json')!==false&&strpos($ihtml,'"LocalBusiness"')!==false);
+    t('LocalBusiness has name',strpos($ihtml,'"Handmade Designs By Suzi"')!==false);
+    t('LocalBusiness has address (Knoxville TN)',strpos($ihtml,'"Knoxville"')!==false&&strpos($ihtml,'"TN"')!==false);
+    t('LocalBusiness has email',strpos($ihtml,'"handmadedesignsbysuzi@yahoo.com"')!==false);
+    $cfgLD=file_get_contents($root.'/js/config.js');
+    t('injectProductSchemas function exists',strpos($cfgLD,'function injectProductSchemas(')!==false);
+    t('injectProductSchemas uses p.desc (not p.description)',strpos($cfgLD,'p.desc||')!==false&&strpos($cfgLD,'p.description')===false);
+    t('injectProductSchemas removes stale schemas',strpos($cfgLD,'product-schema')!==false&&strpos($cfgLD,'remove()')!==false);
+    t('injectProductSchemas filters sell==1 and stock>0',strpos($cfgLD,'p.sell==1')!==false&&strpos($cfgLD,'p.stock>0')!==false);
+    $uiLD=file_get_contents($root.'/js/ui.js');
+    t('injectProductSchemas called after API load',strpos($uiLD,'injectProductSchemas()')!==false);
+    t('checkProductParam function exists',strpos($uiLD,'function checkProductParam(')!==false);
+    t('checkProductParam reads ?p= URL param',strpos($uiLD,"params.get('p')")!==false);
+    t('checkProductParam called after products load',strpos($uiLD,'checkProductParam()')!==false);
+}catch(Exception $e){t('structured data checks',false,$e->getMessage());}
+
+// ── PER-PRODUCT SEO (title, meta, URL) ──
+try{
+    $sjsSEO=file_get_contents($root.'/js/store.js');
+    t('openPD updates document.title',strpos($sjsSEO,"document.title=p.name+' | Handmade Designs By Suzi'")!==false);
+    t('openPD updates meta description',strpos($sjsSEO,'meta[name="description"]')!==false&&strpos($sjsSEO,'setAttribute(')!==false);
+    t('openPD pushes ?p= URL state',strpos($sjsSEO,"history.pushState({p:p.id}")!==false);
+    t('closePD restores original title',strpos($sjsSEO,'Handcrafted Bags & Purses | Knoxville, TN')!==false);
+    t('closePD restores URL to pathname',strpos($sjsSEO,'window.location.pathname')!==false);
+}catch(Exception $e){t('per-product SEO checks',false,$e->getMessage());}
+
+// ── IMAGE ALT TEXT ──
+try{
+    $sjsAlt=file_get_contents($root.'/js/store.js');
+    t('store card image has alt=product name',strpos($sjsAlt,"alt=\"'+p.name+'\"")!==false);
+    t('detail thumbnails have numbered alt text',strpos($sjsAlt,"alt=\"'+p.name+' photo '+(t+1)+'\"")!==false);
+    t('cart item image has alt=product name',strpos($sjsAlt,"alt=\"'+p.name+'\"")!==false);
+    t('gallery slides have alt=product name',substr_count($sjsAlt,"alt=\"'+p.name+'\"")>=2);
+    t('openLightbox passes product name to lightbox',strpos($sjsAlt,'openLightbox(window._pdImgs,idx,p.name)')!==false);
+    $uiAlt=file_get_contents($root.'/js/ui.js');
+    t('openLightbox accepts altText parameter',strpos($uiAlt,'function openLightbox(imgs,idx,altText)')!==false);
+    t('lightbox img alt set on open',strpos($uiAlt,'lbImg.alt=')!==false);
+    t('lightbox img alt updated on nav',strpos($uiAlt,'img.alt=LB_ALT')!==false);
+}catch(Exception $e){t('image alt text checks',false,$e->getMessage());}
+
 // ── WATCH SCRIPT ──
 t('watch.ps1 not deployed to server',!file_exists($root.'/watch.ps1'));
 

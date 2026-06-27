@@ -32,7 +32,7 @@ function renderStore(){
     var validImgs=[];for(var x=0;x<imgs.length;x++)if(imgs[x])validImgs.push(imgs[x]);
     var imgHtml='';
     if(validImgs.length>0){
-      imgHtml='<img src="'+validImgs[0]+'">';
+      imgHtml='<img src="'+validImgs[0]+'" alt="'+p.name+'">';
       if(validImgs.length>1){imgHtml+='<div class="cimg-dots">';for(var d=0;d<validImgs.length;d++)imgHtml+='<div class="cimg-dot'+(d===0?' on':'')+'"></div>';imgHtml+='</div>';}
     } else {imgHtml='<div style="font-size:3rem;opacity:.28">👜</div>';}
     var qvMeta='';
@@ -86,7 +86,7 @@ function openPD(id){
     }
     if(validImgs.length>1){
       thumbsHtml='<div class="pd-thumbs">';
-      for(var t=0;t<validImgs.length;t++)thumbsHtml+='<img class="pd-thumb'+(t===0?' on':'')+'" src="'+validImgs[t]+'" onclick="goSlide('+t+')" onerror="this.style.display=\'none\'">';
+      for(var t=0;t<validImgs.length;t++)thumbsHtml+='<img class="pd-thumb'+(t===0?' on':'')+'" src="'+validImgs[t]+'" alt="'+p.name+' photo '+(t+1)+'" onclick="goSlide('+t+')" onerror="this.style.display=\'none\'">';
       thumbsHtml+='</div>';
     }
   }
@@ -124,7 +124,7 @@ function openPD(id){
       (function(idx){
         galImgs[idx].onclick=function(e){
           e.stopPropagation();
-          openLightbox(window._pdImgs,idx);
+          openLightbox(window._pdImgs,idx,p.name);
         };
       })(gi);
     }
@@ -141,8 +141,18 @@ function openPD(id){
     if(pel)pel.style.display=(pages[pi]==='pd-page'?'block':'none');
   }
   window.scrollTo(0,0);
+  // Update title, meta description, and URL for SEO
+  document.title=p.name+' | Handmade Designs By Suzi';
+  var _md=document.querySelector('meta[name="description"]');
+  if(_md)_md.setAttribute('content',(p.desc||'').replace(/<[^>]+>/g,'').substring(0,155));
+  history.pushState({p:p.id},'','?p='+p.id);
 }
 function closePD(){
+  // Restore original title, meta description, and URL
+  document.title='Handmade Designs By Suzi — Handcrafted Bags & Purses | Knoxville, TN';
+  var _md=document.querySelector('meta[name="description"]');
+  if(_md)_md.setAttribute('content','Handmade Designs By Suzi — one-of-a-kind handmade tote bags and purses crafted with love in Knoxville, TN. Unique Corvette and car show themed bags, embroidered designs, and custom gifts for car enthusiasts.');
+  history.pushState({},'',window.location.pathname);
   var pages=['store','authpage','alog','apanel','pd-page'];
   for(var pi=0;pi<pages.length;pi++){
     var pel=document.getElementById(pages[pi]);
@@ -313,7 +323,7 @@ function renderCart(){
     var it=CART[i],p=findProd(it.id);if(!p)continue;
     var thumb=firstImg(p);
     h+='<div class="cart-item">'+
-      '<div class="cart-item-img">'+(thumb?'<img src="'+thumb+'">':'👜')+'</div>'+
+      '<div class="cart-item-img">'+(thumb?'<img src="'+thumb+'" alt="'+p.name+'">':'👜')+'</div>'+
       '<div class="cart-item-info"><div class="cart-item-name">'+p.name+'</div><div class="cart-item-price">$'+p.price.toFixed(2)+'</div>'+
       '<div class="cart-qty"><button class="qbtn" onclick="chCartQ(\''+it.id+'\',-1)">−</button><span class="qval">'+it.q+'</span><button class="qbtn" onclick="chCartQ(\''+it.id+'\',1)">+</button></div>'+
       '</div><button class="cart-rem" onclick="remFromCart(\''+it.id+'\')">×</button></div>';
