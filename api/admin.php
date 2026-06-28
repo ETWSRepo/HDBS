@@ -66,6 +66,13 @@ if ($method === 'POST' && $action === 'login') {
     setSetting($pdo, 'login_fail_time',  '0');
     $token   = bin2hex(random_bytes(32));
     $expires = time() + 8 * 3600; // 8 hours
+    // Per-session token (supports concurrent admin sessions; not clobbered by other logins/tools)
+    try {
+        adminSessionsTable($pdo);
+        $pdo->prepare("DELETE FROM admin_sessions WHERE expires < ?")->execute([time()]);
+        $pdo->prepare("INSERT INTO admin_sessions (token, expires) VALUES (?, ?)")->execute([$token, $expires]);
+    } catch (Exception $e) {}
+    // Legacy single token (kept for backward compatibility during transition)
     setSetting($pdo, 'admin_session_token',   $token);
     setSetting($pdo, 'admin_session_expires', (string)$expires);
     dbg('admin', 'login ok');
@@ -75,6 +82,8 @@ if ($method === 'POST' && $action === 'login') {
 // ── Logout ──
 if ($method === 'POST' && $action === 'logout') {
     requireAdmin();
+    $tok = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+    try { $pdo->prepare("DELETE FROM admin_sessions WHERE token = ?")->execute([$tok]); } catch (Exception $e) {}
     setSetting($pdo, 'admin_session_token',   '');
     setSetting($pdo, 'admin_session_expires', '0');
     ok(['message' => 'Logged out']);
@@ -136,7 +145,8 @@ if ($method === 'POST' && ($action === 'verify_sec_answer' || $action === 'reset
     $new = $d['new'] ?? '';
     if (!$new) fail('Password cannot be empty');
     setSetting($pdo, 'admin_password', password_hash($new, PASSWORD_DEFAULT));
-    // Invalidate any existing admin session so the user must log in with the new password
+    // Invalidate ALL existing admin sessions so the user must log in with the new password
+    try { $pdo->exec("DELETE FROM admin_sessions"); } catch (Exception $e) {}
     setSetting($pdo, 'admin_session_token',   '');
     setSetting($pdo, 'admin_session_expires', '0');
     ok(['message' => 'Password reset']);

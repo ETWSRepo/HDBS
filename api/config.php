@@ -24,35 +24,40 @@ function cors() {
 }
 
 // ── Admin session auth ──
-function isAdminRequest() {
-    $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+function adminSessionsTable($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS admin_sessions (token VARCHAR(64) PRIMARY KEY, expires BIGINT NOT NULL)");
+}
+// Validate an admin token against the per-session table first (preferred — supports
+// concurrent sessions), then the legacy single settings token (backward compatible).
+function validAdminToken($pdo, $token) {
     if (!$token) return false;
     try {
-        $pdo = db();
-        $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
-        $s->execute(['admin_session_token']);
-        $stored = ($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? '';
-        $s->execute(['admin_session_expires']);
-        $expiry = (int)(($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? 0);
-        return $stored && hash_equals($stored, $token) && time() <= $expiry;
-    } catch (Exception $e) {
-        return false;
-    }
+        $s = $pdo->prepare("SELECT expires FROM admin_sessions WHERE token = ? LIMIT 1");
+        $s->execute([$token]);
+        $row = $s->fetch(PDO::FETCH_ASSOC);
+        if ($row && (int)$row['expires'] >= time()) return true;
+    } catch (Exception $e) { /* table not created yet — fall back to legacy */ }
+    $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
+    $s->execute(['admin_session_token']);
+    $stored = ($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? '';
+    $s->execute(['admin_session_expires']);
+    $expiry = (int)(($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? 0);
+    return $stored && hash_equals($stored, $token) && time() <= $expiry;
+}
+function isAdminRequest() {
+    $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+    try { return validAdminToken(db(), $token); }
+    catch (Exception $e) { return false; }
 }
 function requireAdmin() {
     $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
     if (!$token) fail('Unauthorized', 401);
     try {
-        $pdo = db();
-        $s = $pdo->prepare("SELECT value FROM settings WHERE key_name = ?");
-        $s->execute(['admin_session_token']);
-        $stored = ($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? '';
-        $s->execute(['admin_session_expires']);
-        $expiry = (int)(($s->fetch(PDO::FETCH_ASSOC) ?: [])['value'] ?? 0);
-        if (!$stored || !hash_equals($stored, $token) || time() > $expiry) fail('Session expired. Please log in again.', 401);
+        if (validAdminToken(db(), $token)) return;
     } catch (Exception $e) {
         fail('Auth error', 500);
     }
+    fail('Session expired. Please log in again.', 401);
 }
 
 // ── Debug helpers ──

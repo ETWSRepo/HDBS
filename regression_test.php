@@ -960,6 +960,22 @@ try{
     // Tripwire: admin password must be a valid bcrypt hash — catches corruption/lockout early
     $apHash=$pdo->query("SELECT value FROM settings WHERE key_name='admin_password' LIMIT 1")->fetchColumn();
     t('admin_password is a valid bcrypt hash',is_string($apHash)&&(strncmp($apHash,'$2y$',4)===0||strncmp($apHash,'$2b$',4)===0),'starts: '.substr((string)$apHash,0,4));
+    // #4: per-session admin token table (concurrent sessions; test no longer clobbers live session)
+    $cfgAuth=file_get_contents($root.'/api/config.php');
+    t('config.php has validAdminToken helper',strpos($cfgAuth,'function validAdminToken(')!==false);
+    t('requireAdmin checks admin_sessions table',strpos($cfgAuth,'FROM admin_sessions WHERE token')!==false);
+    $adAuth=file_get_contents($root.'/api/admin.php');
+    t('login inserts into admin_sessions',strpos($adAuth,'INSERT INTO admin_sessions')!==false);
+    t('logout deletes session row',strpos($adAuth,'DELETE FROM admin_sessions WHERE token')!==false);
+    t('reset_password clears all sessions',strpos($adAuth,'DELETE FROM admin_sessions"')!==false);
+    // #5 tripwire: production must not have debug logging enabled (body logging)
+    $dch=curl_init('https://handmadedesignsbysuzi.com/api/admin.php');
+    curl_setopt_array($dch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>'{"action":"get_setting","key":"debug_mode"}',CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
+    $dresp=json_decode(curl_exec($dch),true);curl_close($dch);
+    t('prod debug_mode is off',isset($dresp['value'])&&(string)$dresp['value']==='0','value='.($dresp['value']??'?'));
+    // #3: order_confirm.php uses fixed CORS origin (no Origin reflection)
+    $ocCors=file_get_contents($root.'/order_confirm.php');
+    t('order_confirm.php no echo-origin CORS',strpos($ocCors,'HTTP_ORIGIN')===false&&strpos($ocCors,'ALLOWED_ORIGIN')!==false);
 }catch(Exception $e){t('input validation / password integrity checks',false,$e->getMessage());}
 
 // ── ORDER CONFIRM TOKEN GATE ──
@@ -1651,11 +1667,12 @@ $_rtAdminToken=null;
     $tok=$pdo->query("SELECT value FROM settings WHERE key_name='admin_session_token' LIMIT 1")->fetchColumn();
     $exp=(int)($pdo->query("SELECT value FROM settings WHERE key_name='admin_session_expires' LIMIT 1")->fetchColumn()?:0);
     if($tok&&time()<$exp){$_rtAdminToken=$tok;return;}
-    // No valid session — generate one directly in DB (regression test has DB access)
+    // No valid session — generate one in the per-session table (does NOT clobber the
+    // live admin's settings token, so running the suite no longer logs the admin out)
     $newTok=bin2hex(random_bytes(32));
     $newExp=time()+3600; // 1 hour for test run
-    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('admin_session_token',?) ON DUPLICATE KEY UPDATE value=?")->execute([$newTok,$newTok]);
-    $pdo->prepare("INSERT INTO settings (key_name,value) VALUES ('admin_session_expires',?) ON DUPLICATE KEY UPDATE value=?")->execute([$newExp,$newExp]);
+    $pdo->exec("CREATE TABLE IF NOT EXISTS admin_sessions (token VARCHAR(64) PRIMARY KEY, expires BIGINT NOT NULL)");
+    $pdo->prepare("INSERT INTO admin_sessions (token,expires) VALUES (?,?)")->execute([$newTok,$newExp]);
     $_rtAdminToken=$newTok;
 })();
 function uiGet($url){
