@@ -209,12 +209,12 @@ var SHIP_ZONES={
   'AK':5,'AZ':5,'CA':5,'CO':5,'HI':5,'ID':5,'MT':5,'NM':5,'NV':5,'OR':5,'UT':5,'WA':5,'WY':5
 };
 var ZONE_RATES=[0,1,1,1,1,1]; // loaded from DB — fallback matches DB defaults
-var FREE_THRESHOLD=75;
+var FREE_THRESHOLD=Infinity; // free shipping eliminated — threshold never reached
 
 function applyShippingConfig(cfg){
   if(!cfg)return;
   if(cfg.zone_rates&&Array.isArray(cfg.zone_rates))ZONE_RATES=cfg.zone_rates;
-  if(cfg.free_threshold!==undefined)FREE_THRESHOLD=cfg.free_threshold;
+  // free_threshold intentionally ignored — free shipping has been eliminated
   if(cfg.weight_tiers&&Array.isArray(cfg.weight_tiers))WEIGHT_TIERS=cfg.weight_tiers;
 }
 function getZone(stateStr){

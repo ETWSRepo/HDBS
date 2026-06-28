@@ -664,7 +664,7 @@ function moCalcTotal(){
     var zone=getZone(st);
     var zoneNames=['','Tennessee','South','East Coast','Midwest','West'];
     var zInfo=document.getElementById('mo-zone-info');
-    if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?')+(sub>=FREE_THRESHOLD?' — Free shipping':'');
+    if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?');
   }
 
   // 4. Sales tax from state + city
@@ -736,7 +736,7 @@ function moCalcShipping(){
   var zone=getZone(st);
   var zoneNames=['','Tennessee','South','East Coast','Midwest','West'];
   var zInfo=document.getElementById('mo-zone-info');
-  if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?')+(sub>=FREE_THRESHOLD?' — Free shipping':'');
+  if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?');
 }
 function printOrdersPdf(){
   var filt=applyOrdFilters();
@@ -1760,16 +1760,6 @@ function _rShippingRender(el){
     '<div style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.8rem 1rem;font-size:.82rem;color:#6b6040;margin-bottom:1.2rem;line-height:1.6">'+
     'Changes here update shipping rates immediately. Click <strong>Save Changes</strong> to make them permanent.</div>'+
 
-    '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.1rem;margin-bottom:.9rem">'+
-      '<div style="font-weight:700;margin-bottom:.7rem">Free Shipping Threshold</div>'+
-      '<div style="display:flex;align-items:center;gap:.6rem;font-size:.88rem">'+
-        '<span style="color:#6b6040">Orders over</span>'+
-        '<input id="free-thresh" type="number" step="1" min="0" value="'+FREE_THRESHOLD+'" '+
-        'style="width:75px;padding:.38rem .6rem;border:1.5px solid #e8e0b8;border-radius:6px;font-size:.88rem;text-align:center">'+
-        '<span style="color:#6b6040">get free shipping</span>'+
-      '</div>'+
-    '</div>'+
-
     '<div style="font-weight:700;margin-bottom:.7rem;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810">Shipping Charges by Zone</div>'+
     zonesHtml+
 
@@ -1846,8 +1836,6 @@ function saveShipping(){
     var el=document.getElementById('zrate-'+z);
     zoneRates.push(el?parseFloat(el.value)||0:ZONE_RATES[z]||0);
   }
-  var ftEl=document.getElementById('free-thresh');
-  var freeThresh=ftEl?parseFloat(ftEl.value)||75:FREE_THRESHOLD;
   var tiers=[];
   var rows=document.querySelectorAll('#weight-tiers-body tr');
   for(var r=0;r<rows.length;r++){
@@ -1859,8 +1847,8 @@ function saveShipping(){
   }
   if(!tiers.length)tiers=WEIGHT_TIERS;
   // Update in-memory vars too
-  ZONE_RATES=zoneRates;FREE_THRESHOLD=freeThresh;WEIGHT_TIERS=tiers;
-  var config={zone_rates:zoneRates,free_threshold:freeThresh,weight_tiers:tiers};
+  ZONE_RATES=zoneRates;WEIGHT_TIERS=tiers;
+  var config={zone_rates:zoneRates,weight_tiers:tiers};
   var btn=document.querySelector('#acnt button.bp');
   if(btn){btn.textContent='Saving…';btn.disabled=true;}
   apiFetch('admin.php','POST',{action:'save_setting',key:'shipping_config',value:JSON.stringify(config)})

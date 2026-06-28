@@ -70,7 +70,7 @@ var SHIP_ZONES={
   'AK':5,'AZ':5,'CA':5,'CO':5,'HI':5,'ID':5,'MT':5,'NM':5,'NV':5,'OR':5,'UT':5,'WA':5,'WY':5
 };
 var ZONE_RATES=[0,1,1,1,1,1]; // loaded from DB — fallback matches DB defaults
-var FREE_THRESHOLD=75;
+var FREE_THRESHOLD=Infinity; // free shipping eliminated — threshold never reached
 var WEIGHT_TIERS=[
   {min:5,   max:null, charge:10},
   {min:3,   max:5,    charge:6},
