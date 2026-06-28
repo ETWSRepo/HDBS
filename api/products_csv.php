@@ -4,15 +4,19 @@ require_once __DIR__ . '/config.php';
 cors();
 $pdo = db();
 requireAdmin();
+// Ensure per-item shipping columns exist (weight|fixed mode + fixed per-unit amount)
+foreach (['ship_mode' => "VARCHAR(10) NOT NULL DEFAULT 'weight'", 'ship_fixed' => "DECIMAL(10,2) NOT NULL DEFAULT 0"] as $col => $def) {
+    if (empty($pdo->query("SHOW COLUMNS FROM products LIKE '$col'")->fetchAll())) $pdo->exec("ALTER TABLE products ADD COLUMN `$col` $def");
+}
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ── EXPORT (GET) ──
 if ($method === 'GET') {
-    $rows = $pdo->query("SELECT id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3 FROM products ORDER BY category, name")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $pdo->query("SELECT id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3, ship_mode, ship_fixed FROM products ORDER BY category, name")->fetchAll(PDO::FETCH_ASSOC);
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="products_' . date('Y-m-d') . '.csv"');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['id','sku','name','description','price','stock','category','badge','weight','size','sell','img1','img2','img3']);
+    fputcsv($out, ['id','sku','name','description','price','stock','category','badge','weight','size','sell','img1','img2','img3','ship_mode','ship_fixed']);
     foreach ($rows as $r) fputcsv($out, $r);
     fclose($out);
     exit;
@@ -59,12 +63,12 @@ if ($method === 'POST') {
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3)
-            VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :sell, :img1, :img2, :img3)
+            INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, sell, img1, img2, img3, ship_mode, ship_fixed)
+            VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :sell, :img1, :img2, :img3, :ship_mode, :ship_fixed)
             ON DUPLICATE KEY UPDATE
                 sku=:sku, name=:name, description=:desc, price=:price, stock=:stock,
                 category=:cat, badge=:badge, weight=:weight, size=:size, sell=:sell,
-                img1=:img1, img2=:img2, img3=:img3
+                img1=:img1, img2=:img2, img3=:img3, ship_mode=:ship_mode, ship_fixed=:ship_fixed
         ");
 
         $count = 0;
@@ -84,6 +88,8 @@ if ($method === 'POST') {
                 ':img1'   => trim($r['img1'] ?? ''),
                 ':img2'   => trim($r['img2'] ?? ''),
                 ':img3'   => trim($r['img3'] ?? ''),
+                ':ship_mode'  => (trim($r['ship_mode'] ?? 'weight') === 'fixed') ? 'fixed' : 'weight',
+                ':ship_fixed' => (float)($r['ship_fixed'] ?? 0),
             ]);
             $count++;
         }

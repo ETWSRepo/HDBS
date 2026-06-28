@@ -655,16 +655,18 @@ function moCalcTotal(){
     }
   }
 
-  // 3. Shipping from zone
+  // 3. Shipping: per-item fixed + zone/weight for by-weight items
   var ship=0;
-  if(st){
-    ship=calcShipping(sub,st);
+  if(st||!moHasWeightItems()){
+    ship=moCalcShippingAmt(st);
     var shipEl=document.getElementById('mo-shipping');
     if(shipEl)shipEl.value=ship.toFixed(2);
-    var zone=getZone(st);
-    var zoneNames=['','Tennessee','South','East Coast','Midwest','West'];
-    var zInfo=document.getElementById('mo-zone-info');
-    if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?');
+    if(st){
+      var zone=getZone(st);
+      var zoneNames=['','Tennessee','South','East Coast','Midwest','West'];
+      var zInfo=document.getElementById('mo-zone-info');
+      if(zInfo)zInfo.textContent='Zone '+zone+': '+(zoneNames[zone]||'?');
+    }
   }
 
   // 4. Sales tax from state + city
@@ -707,6 +709,20 @@ function moUpdateFee(){
   }
   moRecalc();
 }
+// Manual-order shipping mirrors the storefront per-item logic but reads MO_ITEMS:
+// fixed items add $ per unit; by-weight items get the zone base + weight surcharge.
+function moFixedShip(){var s=0;for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEMS[i];if(!it||!it.pid)continue;var p=findProd(it.pid);if(p&&p.ship_mode==='fixed')s+=(parseFloat(p.ship_fixed)||0)*(it.qty||1);}return s;}
+function moWeightItems(){var w=0;for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEMS[i];if(!it||!it.pid)continue;var p=findProd(it.pid);if(p&&p.ship_mode!=='fixed')w+=(parseFloat(p.weight)||0)*(it.qty||1);}return w;}
+function moHasWeightItems(){for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEMS[i];if(!it||!it.pid)continue;var p=findProd(it.pid);if(p&&p.ship_mode!=='fixed')return true;}return false;}
+function moCalcShippingAmt(st){
+  var fixed=moFixedShip();
+  var weightShip=0;
+  if(moHasWeightItems()){
+    var zone=getZone(st);
+    weightShip=(ZONE_RATES[zone]||15)+weightSurcharge(moWeightItems());
+  }
+  return fixed+weightShip;
+}
 function moCalcShipping(){
   // Parse state from mo-state field, or extract from address
   var stEl=document.getElementById('mo-state');
@@ -719,8 +735,9 @@ function moCalcShipping(){
     if(stEl&&st)stEl.value=st;
   }
   var sub=parseFloat(document.getElementById('mo-subtotal').value)||0;
-  if(!st)return; // no state yet
-  var ship=calcShipping(sub,st);
+  // Need a state only when there are by-weight items (fixed shipping is address-independent)
+  if(!st&&moHasWeightItems())return;
+  var ship=moCalcShippingAmt(st);
   var shipEl=document.getElementById('mo-shipping');
   if(shipEl){shipEl.value=ship.toFixed(2);}
   // Auto-estimate fee if Square

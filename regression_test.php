@@ -170,6 +170,31 @@ try{
     t('products_csv ON DUPLICATE KEY updates sell',strpos($csvphp,'sell=:sell')!==false);
 }catch(Exception $e){t('products_csv checks',false,$e->getMessage());}
 
+// ── PER-ITEM SHIPPING (weight | fixed) ──
+try{
+    $pphp=file_get_contents($root.'/api/products.php');
+    t('products.php GET returns ship_mode/ship_fixed',strpos($pphp,"'ship_mode'")!==false&&strpos($pphp,"'ship_fixed'")!==false);
+    t('products.php migrates ship columns',strpos($pphp,'ADD COLUMN')!==false&&strpos($pphp,'ship_mode')!==false&&strpos($pphp,'ship_fixed')!==false);
+    t('products.php INSERT binds ship columns',strpos($pphp,':ship_mode')!==false&&strpos($pphp,':ship_fixed')!==false);
+    $csv2=file_get_contents($root.'/api/products_csv.php');
+    t('products_csv export includes ship columns',strpos($csv2,"'ship_mode','ship_fixed'")!==false);
+    t('products_csv import binds ship columns',strpos($csv2,':ship_mode')!==false&&strpos($csv2,':ship_fixed')!==false);
+    t('products_csv migrates ship columns',strpos($csv2,'ADD COLUMN')!==false&&strpos($csv2,'ship_mode')!==false);
+    $sj=file_get_contents($root.'/js/store.js');
+    t('store.js per-item shipping helpers',strpos($sj,'function cartFixedShip(')!==false&&strpos($sj,'function hasWeightItems(')!==false&&strpos($sj,'function cartWeightItems(')!==false);
+    t('store.js calcShipping uses fixed + weight items',strpos($sj,'cartFixedShip()')!==false&&strpos($sj,'cartWeightItems()')!==false);
+    $apj=file_get_contents($root.'/js/admin-products.js');
+    t('product form has shipping mode select',strpos($apj,'id="pf-shipmode"')!==false&&strpos($apj,'Fixed amount per item')!==false);
+    t('product form fixed amount is currency field',strpos($apj,'id="pf-shipfixed"')!==false&&strpos($apj,'toFixed(2)')!==false);
+    t('pfToggleShipFixed function exists',strpos($apj,'function pfToggleShipFixed(')!==false);
+    t('saveP sends ship_mode/ship_fixed',strpos($apj,'ship_mode:shipMode')!==false&&strpos($apj,'ship_fixed:shipFixed')!==false);
+    t('product table has Shipping column',strpos($apj,'<th>Shipping</th>')!==false);
+    t('product table shows fixed amount',strpos($apj,"'Fixed \$'+(parseFloat(p.ship_fixed)")!==false);
+    $aoj=file_get_contents($root.'/js/admin-orders.js');
+    t('manual order per-item shipping helpers',strpos($aoj,'function moCalcShippingAmt(')!==false&&strpos($aoj,'function moFixedShip(')!==false&&strpos($aoj,'function moHasWeightItems(')!==false);
+    t('manual order uses moCalcShippingAmt',substr_count($aoj,'moCalcShippingAmt(')>=2);
+}catch(Exception $e){t('per-item shipping checks',false,$e->getMessage());}
+
 // admin-products.js new features
 try{
     $apjs2=file_get_contents($root.'/js/admin-products.js');

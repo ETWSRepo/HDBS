@@ -263,21 +263,31 @@ function cartWeight(){
   }
   return w;
 }
+// Per-item shipping: a product ships 'by weight' (zone rate + weight surcharge) or
+// 'fixed' (a flat dollar amount per unit). Fixed items add on top; the zone base
+// applies once if the cart contains any by-weight items.
+function isFixedShip(p){return p&&p.ship_mode==='fixed';}
+function cartFixedShip(){var s=0;for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(isFixedShip(p))s+=(parseFloat(p.ship_fixed)||0)*CART[i].q;}return s;}
+function cartWeightItems(){var w=0;for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(p&&!isFixedShip(p))w+=(parseFloat(p.weight)||0)*CART[i].q;}return w;}
+function hasWeightItems(){for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(p&&!isFixedShip(p))return true;}return false;}
 function calcShipping(subtotal,stateStr){
-  if(subtotal>=FREE_THRESHOLD)return 0;
-  var zone=getZone(stateStr);
-  var base=ZONE_RATES[zone]||15;
-  var surcharge=weightSurcharge(cartWeight());
-  return base+surcharge;
+  var fixed=cartFixedShip();
+  var weightShip=0;
+  if(hasWeightItems()){
+    var zone=getZone(stateStr);
+    weightShip=(ZONE_RATES[zone]||15)+weightSurcharge(cartWeightItems());
+  }
+  return fixed+weightShip;
 }
 function updateShippingDisplay(){
   var sub=cartTotal();
   var st=document.getElementById('co-sz')?document.getElementById('co-sz').value:'';
-  var wt=cartWeight();
+  var fixed=cartFixedShip();
+  var hasWt=hasWeightItems();
   var zone=getZone(st);
-  var base=sub>=FREE_THRESHOLD?0:(ZONE_RATES[zone]||15);
-  var wsur=sub>=FREE_THRESHOLD?0:weightSurcharge(wt);
-  var ship=base+wsur;
+  var wsur=hasWt?weightSurcharge(cartWeightItems()):0;
+  var base=hasWt?(ZONE_RATES[zone]||15):0;
+  var ship=fixed+base+wsur;
   // InPerson: shipping is optional via the "Add shipping charge" checkbox
   var shipReqEl=document.getElementById('co-ship-req');
   var noShip=PAY_CONFIG==='InPerson'&&shipReqEl&&!shipReqEl.checked;
@@ -296,16 +306,19 @@ function updateShippingDisplay(){
     if(totEl)totEl.textContent='$'+(sub+tax).toFixed(2);
     return;
   }
-  if(!st.trim()){
+  // The zone rate needs the address only when there are by-weight items
+  if(hasWt&&!st.trim()){
     if(zoneEl)zoneEl.textContent='';
-    if(shipEl)shipEl.textContent=sub>=FREE_THRESHOLD?'Free 🎉':'Enter address';
-    if(totEl)totEl.textContent=sub>=FREE_THRESHOLD?'$'+(sub+tax).toFixed(2):'—';
+    if(shipEl)shipEl.textContent='Enter address';
+    if(totEl)totEl.textContent='—';
     return;
   }
   var tot=sub+ship+tax;
-  var zoneTxt=(zoneNames[zone]||'Zone '+zone)+(wsur>0?' + weight $'+wsur.toFixed(2):'');
-  if(zoneEl)zoneEl.textContent='('+zoneTxt+')';
-  if(shipEl)shipEl.textContent=ship>0?'$'+ship.toFixed(2):(sub>=FREE_THRESHOLD?'Free 🎉':'Free');
+  var parts=[];
+  if(hasWt)parts.push((zoneNames[zone]||'Zone '+zone)+(wsur>0?' + weight $'+wsur.toFixed(2):''));
+  if(fixed>0)parts.push('fixed $'+fixed.toFixed(2));
+  if(zoneEl)zoneEl.textContent=parts.length?'('+parts.join(', ')+')':'';
+  if(shipEl)shipEl.textContent=ship>0?'$'+ship.toFixed(2):'Free';
   if(totEl)totEl.textContent='$'+tot.toFixed(2);
 }
 function orderTotal(){
@@ -402,11 +415,7 @@ function placeOrder(){
   var items=[];for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(p)items.push({id:CART[i].id,name:p.name,price:p.price,q:CART[i].q});}
   var subtotal=cartTotal();
   var shipState=document.getElementById('co-sz').value||'';
-  var shipWt=cartWeight();
-  var shipZone=getZone(shipState);
-  var shipBase=subtotal>=FREE_THRESHOLD?0:(ZONE_RATES[shipZone]||15);
-  var shipSur=subtotal>=FREE_THRESHOLD?0:weightSurcharge(shipWt);
-  var shipping=noShip?0:(shipBase+shipSur);
+  var shipping=noShip?0:calcShipping(subtotal,shipState);
   var tax=Math.round(subtotal*0.0975*100)/100;
   var total=Math.round((subtotal+shipping+tax)*100)/100;
   var now=new Date();

@@ -29,6 +29,8 @@ if ($method === 'GET') { dbg('products','GET all products');
             'imgs'   => [$r['img1'] ?? '', $r['img2'] ?? '', $r['img3'] ?? ''],
             'hasImg' => !empty($r['img1']),
             'sku'    => $r['sku'] ?? '',
+            'ship_mode'  => $r['ship_mode'] ?? 'weight',
+            'ship_fixed' => (float)($r['ship_fixed'] ?? 0),
         ];
     }, $rows);
     ok(['products' => $products]);
@@ -41,12 +43,18 @@ if ($method === 'POST') { requireAdmin(); dbg('products','POST save product');
     // Product id is used to build image filenames on disk — restrict to a safe charset (no path traversal)
     if (!preg_match('/^[A-Za-z0-9_-]+$/', $d['id'])) fail('Invalid product id', 400);
 
+    // Ensure per-item shipping columns exist (weight|fixed mode + fixed per-unit amount)
+    foreach (['ship_mode' => "VARCHAR(10) NOT NULL DEFAULT 'weight'", 'ship_fixed' => "DECIMAL(10,2) NOT NULL DEFAULT 0"] as $col => $def) {
+        if (empty($pdo->query("SHOW COLUMNS FROM products LIKE '$col'")->fetchAll())) $pdo->exec("ALTER TABLE products ADD COLUMN `$col` $def");
+    }
+
     $stmt = $pdo->prepare("
-        INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, img1, img2, img3, sell)
-        VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :img1, :img2, :img3, :sell)
+        INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, img1, img2, img3, sell, ship_mode, ship_fixed)
+        VALUES (:id, :sku, :name, :desc, :price, :stock, :cat, :badge, :weight, :size, :img1, :img2, :img3, :sell, :ship_mode, :ship_fixed)
         ON DUPLICATE KEY UPDATE
             sku=:sku, name=:name, description=:desc, price=:price, stock=:stock,
-            category=:cat, badge=:badge, weight=:weight, size=:size, img1=:img1, img2=:img2, img3=:img3, sell=:sell
+            category=:cat, badge=:badge, weight=:weight, size=:size, img1=:img1, img2=:img2, img3=:img3, sell=:sell,
+            ship_mode=:ship_mode, ship_fixed=:ship_fixed
     ");
     $imgs = $d['imgs'] ?? ['', '', ''];
     $prod_id = $d['id'];
@@ -93,6 +101,8 @@ if ($method === 'POST') { requireAdmin(); dbg('products','POST save product');
         ':img1'   => $saved_imgs[0],
         ':img2'   => $saved_imgs[1],
         ':img3'   => $saved_imgs[2],
+        ':ship_mode'  => (($d['ship_mode'] ?? 'weight') === 'fixed') ? 'fixed' : 'weight',
+        ':ship_fixed' => (float)($d['ship_fixed'] ?? 0),
     ]);
     ok(['message' => 'Product saved']);
 }
