@@ -7,8 +7,8 @@ body{font-family:var(--font-body);background:var(--ivory);min-height:100vh}
 #coming-soon .sh h2{color:var(--ivory);font-family:var(--font-head)}
 .cs-eyebrow{text-align:center;color:var(--gold);letter-spacing:.22em;text-transform:uppercase;font-size:.78rem;font-family:var(--font-body);margin-bottom:.1rem}
 .cs-card{background:var(--ivory);border:1px solid #e7e1d6;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
-.cs-img{position:relative;aspect-ratio:1/1;background:#ece7de;overflow:hidden}
-.cs-img img{width:100%;height:100%;object-fit:cover}
+.cs-img{position:relative;aspect-ratio:1/1;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cs-img img{width:100%;height:100%;object-fit:contain;padding:10px}
 .cs-noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;opacity:.3}
 .cs-badge{position:absolute;top:10px;left:10px;background:var(--gold);color:var(--charcoal);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:2px;font-weight:500}
 .cs-body{padding:1rem 1.1rem 1.2rem}
