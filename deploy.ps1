@@ -50,14 +50,6 @@ function Deploy-File($rel) {
     else { Write-Host "  FAILED: $out" -ForegroundColor Red }
 }
 
-function Increment-MinorVersion {
-    try {
-        $body = @{action='increment_minor_version'} | ConvertTo-Json -Compress
-        $json = Invoke-RestMethod -Uri "$apiBase/admin.php" -Method Post -Body $body -ContentType "application/json"
-        Write-Host "  Version incremented to $($json.version)" -ForegroundColor Cyan
-    } catch {}
-}
-
 function Delete-FtpFile($rel) {
     $remotePath = $remotePrefix + ($rel -replace "\\", "/")
     $url = "ftp://${ftpHost}:${ftpPort}/${remotePath}"
@@ -71,7 +63,11 @@ function Log-Deploy($fileList, $mode) {
     try {
         $normalized = @($fileList | ForEach-Object { $_ -replace '\\','/' })
         $body = @{ files = $normalized; count = $normalized.Count; mode = $mode } | ConvertTo-Json -Compress
-        Invoke-RestMethod -Uri "$apiBase/deploy_log.php" -Method Post -Body $body -ContentType "application/json" | Out-Null
+        $resp = Invoke-RestMethod -Uri "$apiBase/deploy_log.php" -Method Post -Body $body -ContentType "application/json"
+        if ($resp.version) {
+            if ($resp.bumped) { Write-Host "  Version incremented to $($resp.version)" -ForegroundColor Cyan }
+            else { Write-Host "  Version $($resp.version) (same logical change)" -ForegroundColor DarkGray }
+        }
     } catch {}
 }
 
@@ -80,7 +76,6 @@ Write-Host "Target: $Environment" -ForegroundColor Magenta
 # Single / explicit file mode
 if ($Files -and $Files.Count -gt 0) {
     foreach ($f in $Files) { Deploy-File $f }
-    if ($Files -like '*regression_test.php') { Increment-MinorVersion }
     Log-Deploy $Files 'single'
     exit
 }
@@ -97,6 +92,5 @@ foreach ($file in $srcFiles) {
     Deploy-File $rel
     $deployed += $rel
 }
-if ($deployed -contains 'regression_test.php') { Increment-MinorVersion }
 Log-Deploy $deployed 'full'
 Write-Host "Deploy complete ($Environment)." -ForegroundColor Green

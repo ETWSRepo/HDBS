@@ -97,7 +97,7 @@
 ## Site Version
 - Stored as `major_version` and `minor_version` in settings table
 - Displayed in all 4 footers via `.site-version-line` div (opacity 0.5)
-- `minor_version` auto-increments when `regression_test.php` is deployed
+- `minor_version` auto-increments once per logical change — deploys within 5 minutes of each other count as one change (matches Deploy History session grouping), so a multi-file task bumps the version once
 - Settings screen has Version card to manually set major/minor
 
 ## Admin Nav
@@ -118,7 +118,7 @@
 ## Deploy
 - Single file: `.\deploy.ps1 path/to/file.php`
 - Full deploy: `.\deploy.ps1`
-- Deploying `regression_test.php` auto-increments minor version and logs deploy
+- Each deploy logs to deploy history; the minor version auto-increments once per logical change (deploys within 5 min are grouped as one — see Site Version)
 - Use `Invoke-RestMethod` for JSON POSTs in deploy.ps1 (curl.exe has PS 5.1 quoting issues)
 - `watch.ps1` runs during active dev to auto-deploy on file save
 - Always explicitly report which files were deployed and when (per StandardPrompts rule)
@@ -141,4 +141,4 @@
 Three distinct triggers, each with one action:
 - **A change is made to local disk** → deploy that file immediately (`.\deploy.ps1 <path>`), confirm it's live, and show the site URL. Do NOT wait for a checkpoint.
 - **"test" command** → update `regression_test.php` to cover new functionality, then run it, then show the test URL (without token).
-- **"checkpoint" command** → commit and push to git (branch first if on `main`). Nothing else — not tests, not deploy.
+- **"checkpoint" command** → show the target branch + staged changes and confirm, then: commit on the current branch → push to GitHub → promote to production (merge `dev`→`main`, push `main`, deploy the changed files to prod via `deploy.ps1`). Does NOT run the regression suite.

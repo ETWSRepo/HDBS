@@ -1157,6 +1157,34 @@ try{
     t('lightbox img alt updated on nav',strpos($uiAlt,'img.alt=LB_ALT')!==false);
 }catch(Exception $e){t('image alt text checks',false,$e->getMessage());}
 
+// ── CHANGE HISTORY STATS HEADER + REPO STATS ──
+try{
+    t('api/repo_stats.php exists',file_exists($root.'/api/repo_stats.php'));
+    $rsphp=file_get_contents($root.'/api/repo_stats.php');
+    t('repo_stats.php is admin-gated',strpos($rsphp,'requireAdmin()')!==false);
+    t('repo_stats.php scans deployment dir',strpos($rsphp,'RecursiveDirectoryIterator')!==false&&strpos($rsphp,'dirname(__DIR__)')!==false);
+    t('repo_stats.php returns file counts + LOC',strpos($rsphp,"'total_files'")!==false&&strpos($rsphp,"'code_files'")!==false&&strpos($rsphp,"'lines_of_code'")!==false);
+    t('repo_stats.php returns repo + path',strpos($rsphp,"'C177LVR/HandmadeDesignsBySuzi'")!==false&&strpos($rsphp,"'path'")!==false);
+    // github_log.php — full pagination, total commit count, refresh cache bypass
+    $ghphp=file_get_contents($root.'/api/github_log.php');
+    t('github_log paginates all commits',strpos($ghphp,'per_page=$perPage&page=$page')!==false&&strpos($ghphp,'array_merge($commits')!==false);
+    t('github_log returns total_commits',strpos($ghphp,'total_commits')!==false&&strpos($ghphp,'function ghTotalCommits')!==false);
+    t('github_log refresh bypasses cache',strpos($ghphp,'$noCache')!==false&&strpos($ghphp,"_GET['refresh']")!==false);
+    // admin-misc.js — Change History stats header, layout, refresh
+    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    t('rGitLog accepts force (cache bypass) arg',strpos($amjs,'function rGitLog(el,force)')!==false&&strpos($amjs,"force?'?refresh=1'")!==false);
+    t('Change History Refresh forces bypass',strpos($amjs,"getElementById(\\'acnt\\'),true")!==false);
+    t('Change History fetches repo_stats',strpos($amjs,"apiFetch('repo_stats.php')")!==false);
+    t('Change History has stat cards',strpos($amjs,'id="gl-path"')!==false&&strpos($amjs,'id="gl-total"')!==false&&strpos($amjs,'id="gl-code"')!==false&&strpos($amjs,'id="gl-loc"')!==false);
+    t('Change History form centered + narrower',strpos($amjs,'max-width:1000px;margin:0 auto')!==false);
+    t('Change History entries scroll vertically',strpos($amjs,'max-height:55vh;overflow-y:auto')!==false);
+    // deploy_log.php — minor version auto-increment, one per logical change
+    $dlphp2=file_get_contents($root.'/api/deploy_log.php');
+    t('deploy_log increments minor version',strpos($dlphp2,'minor_version')!==false&&strpos($dlphp2,'setSetting(')!==false);
+    t('deploy_log uses 5-min session window',strpos($dlphp2,'last_deploy_ts')!==false&&strpos($dlphp2,'> 300')!==false);
+    t('deploy_log returns bumped flag',strpos($dlphp2,'$bumped')!==false&&strpos($dlphp2,"'bumped'")!==false);
+}catch(Exception $e){t('change history stats checks',false,$e->getMessage());}
+
 // ── WATCH SCRIPT ──
 t('watch.ps1 not deployed to server',!file_exists($root.'/watch.ps1'));
 

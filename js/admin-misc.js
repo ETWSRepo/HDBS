@@ -665,9 +665,9 @@ function rDeployLog(el){
   });
 }
 
-function rGitLog(el){
+function rGitLog(el,force){
   el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading commit history…</div>';
-  apiFetch('github_log.php').then(function(d){
+  apiFetch('github_log.php'+(force?'?refresh=1':'')).then(function(d){
     if(!d||d.error){
       var msg=d&&d.error?d.error:'Unknown error';
       var isAuth=(d&&d.code===404)||msg.indexOf('404')!==-1;
@@ -717,14 +717,40 @@ function _renderGitLog(el,d,deploys){
       '<td style="text-align:center;font-family:monospace;font-size:.8rem;color:#6b6040">'+ver+'</td>'+
       '<td>'+sha+'</td></tr>';
   }).join('');
+  var totalChanges=(d.total_commits!=null?d.total_commits:d.commits.length);
+  var statsHtml=
+    '<div style="margin-bottom:1rem">'+
+      '<div class="stats">'+
+        '<div class="stat"><div class="stl">Repo</div><div class="stv" style="font-size:.9rem;word-break:break-all">C177LVR/HandmadeDesignsBySuzi</div></div>'+
+        '<div class="stat"><div class="stl">Deploy Path</div><div class="stv" id="gl-path" style="font-size:.78rem;font-family:monospace;word-break:break-all">…</div></div>'+
+        '<div class="stat"><div class="stl">Files in Repo</div><div class="stv" id="gl-total">…</div></div>'+
+        '<div class="stat"><div class="stl">Files Deployed</div><div class="stv" id="gl-code">…</div></div>'+
+        '<div class="stat"><div class="stl">Lines of Code</div><div class="stv" id="gl-loc">…</div></div>'+
+        '<div class="stat"><div class="stl">Changes</div><div class="stv">'+totalChanges.toLocaleString()+'</div></div>'+
+      '</div>'+
+    '</div>';
   el.innerHTML=
+    '<div style="max-width:1000px;margin:0 auto">'+
+    statsHtml+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">'+
-      '<div style="font-size:.85rem;color:#6b6040">Last '+d.commits.length+' commits · Version <span id="gitlog-ver" style="font-family:monospace;color:#a07810">…</span> · <span style="font-size:.78rem">cached 10 min</span></div>'+
-      '<button class="bp" onclick="rGitLog(document.getElementById(\'acnt\'))" style="font-size:.78rem;padding:.35rem .8rem">↻ Refresh</button>'+
+      '<div style="font-size:.85rem;color:#6b6040">'+d.commits.length+' commits · Version <span id="gitlog-ver" style="font-family:monospace;color:#a07810">…</span> · <span style="font-size:.78rem">cached 10 min</span></div>'+
+      '<button class="bp" onclick="rGitLog(document.getElementById(\'acnt\'),true)" style="font-size:.78rem;padding:.35rem .8rem">↻ Refresh</button>'+
     '</div>'+
+    '<div style="max-height:55vh;overflow-y:auto;border:1px solid #e8e0b8;border-radius:8px">'+
     '<table class="tablekit"><thead><tr><th>Date</th><th>Description</th><th>Files</th><th>Version</th><th>SHA</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody></table>';
+    '<tbody>'+rows+'</tbody></table>'+
+    '</div>'+
+    '</div>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
+  // Live repo stats (deployment path, file counts, lines of code)
+  apiFetch('repo_stats.php').then(function(s){
+    if(!s||!s.success)return;
+    var setT=function(id,val){var e=document.getElementById(id);if(e)e.textContent=val;};
+    setT('gl-path',s.path||'—');
+    setT('gl-total',s.total_files!=null?Number(s.total_files).toLocaleString():'—');
+    setT('gl-code',s.code_files!=null?Number(s.code_files).toLocaleString():'—');
+    setT('gl-loc',s.lines_of_code!=null?Number(s.lines_of_code).toLocaleString():'—');
+  }).catch(function(){});
   apiFetch('admin.php','POST',{action:'get_version'}).then(function(v){var s=document.getElementById('gitlog-ver');if(s)s.textContent=(v&&v.version)?v.version:'—';}).catch(function(){});
   showPageToolbar({title:'Change History',logoText:'Handmade Designs By Suzi'});
 }
