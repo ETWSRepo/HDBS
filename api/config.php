@@ -211,3 +211,9 @@ function setSetting($pdo, $key, $value) {
     $s = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?");
     $s->execute([$key, $value, $value]);
 }
+// Ensure per-item shipping + coming-soon columns exist on the products table (lazy migration)
+function ensureProductColumns($pdo) {
+    foreach (['ship_mode' => "VARCHAR(10) NOT NULL DEFAULT 'weight'", 'ship_fixed' => "DECIMAL(10,2) NOT NULL DEFAULT 0", 'coming_soon' => "TINYINT NOT NULL DEFAULT 0"] as $col => $def) {
+        if (empty($pdo->query("SHOW COLUMNS FROM products LIKE '$col'")->fetchAll())) $pdo->exec("ALTER TABLE products ADD COLUMN `$col` $def");
+    }
+}

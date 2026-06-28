@@ -44,10 +44,7 @@ if ($method === 'POST') { requireAdmin(); dbg('products','POST save product');
     // Product id is used to build image filenames on disk — restrict to a safe charset (no path traversal)
     if (!preg_match('/^[A-Za-z0-9_-]+$/', $d['id'])) fail('Invalid product id', 400);
 
-    // Ensure per-item shipping + coming-soon columns exist
-    foreach (['ship_mode' => "VARCHAR(10) NOT NULL DEFAULT 'weight'", 'ship_fixed' => "DECIMAL(10,2) NOT NULL DEFAULT 0", 'coming_soon' => "TINYINT NOT NULL DEFAULT 0"] as $col => $def) {
-        if (empty($pdo->query("SHOW COLUMNS FROM products LIKE '$col'")->fetchAll())) $pdo->exec("ALTER TABLE products ADD COLUMN `$col` $def");
-    }
+    ensureProductColumns($pdo);
 
     $stmt = $pdo->prepare("
         INSERT INTO products (id, sku, name, description, price, stock, category, badge, weight, size, img1, img2, img3, sell, ship_mode, ship_fixed, coming_soon)

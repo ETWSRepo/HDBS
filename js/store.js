@@ -345,14 +345,15 @@ function isFixedShip(p){return p&&p.ship_mode==='fixed';}
 function cartFixedShip(){var s=0;for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(isFixedShip(p))s+=(parseFloat(p.ship_fixed)||0)*CART[i].q;}return s;}
 function cartWeightItems(){var w=0;for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(p&&!isFixedShip(p))w+=(parseFloat(p.weight)||0)*CART[i].q;}return w;}
 function hasWeightItems(){for(var i=0;i<CART.length;i++){var p=findProd(CART[i].id);if(p&&!isFixedShip(p))return true;}return false;}
-function calcShipping(subtotal,stateStr){
-  var fixed=cartFixedShip();
+// Shared shipping math used by both storefront (CART) and manual order (MO_ITEMS):
+// fixed-item total + (zone base + weight surcharge) when any by-weight item is present.
+function combineShipping(fixed,hasWeight,weightLbs,stateStr){
   var weightShip=0;
-  if(hasWeightItems()){
-    var zone=getZone(stateStr);
-    weightShip=(ZONE_RATES[zone]||15)+weightSurcharge(cartWeightItems());
-  }
+  if(hasWeight){var zone=getZone(stateStr);weightShip=(ZONE_RATES[zone]||15)+weightSurcharge(weightLbs);}
   return fixed+weightShip;
+}
+function calcShipping(subtotal,stateStr){
+  return combineShipping(cartFixedShip(),hasWeightItems(),cartWeightItems(),stateStr);
 }
 function updateShippingDisplay(){
   var sub=cartTotal();

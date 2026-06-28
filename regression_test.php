@@ -174,12 +174,14 @@ try{
 try{
     $pphp=file_get_contents($root.'/api/products.php');
     t('products.php GET returns ship_mode/ship_fixed',strpos($pphp,"'ship_mode'")!==false&&strpos($pphp,"'ship_fixed'")!==false);
-    t('products.php migrates ship columns',strpos($pphp,'ADD COLUMN')!==false&&strpos($pphp,'ship_mode')!==false&&strpos($pphp,'ship_fixed')!==false);
+    t('products.php uses ensureProductColumns',strpos($pphp,'ensureProductColumns($pdo)')!==false);
     t('products.php INSERT binds ship columns',strpos($pphp,':ship_mode')!==false&&strpos($pphp,':ship_fixed')!==false);
+    $cfgmig=file_get_contents($root.'/api/config.php');
+    t('config.php has ensureProductColumns helper',strpos($cfgmig,'function ensureProductColumns(')!==false&&strpos($cfgmig,'ADD COLUMN')!==false&&strpos($cfgmig,'ship_mode')!==false&&strpos($cfgmig,'ship_fixed')!==false);
     $csv2=file_get_contents($root.'/api/products_csv.php');
     t('products_csv export includes ship columns',strpos($csv2,"'ship_mode','ship_fixed'")!==false);
     t('products_csv import binds ship columns',strpos($csv2,':ship_mode')!==false&&strpos($csv2,':ship_fixed')!==false);
-    t('products_csv migrates ship columns',strpos($csv2,'ADD COLUMN')!==false&&strpos($csv2,'ship_mode')!==false);
+    t('products_csv uses ensureProductColumns',strpos($csv2,'ensureProductColumns($pdo)')!==false);
     $sj=file_get_contents($root.'/js/store.js');
     t('store.js per-item shipping helpers',strpos($sj,'function cartFixedShip(')!==false&&strpos($sj,'function hasWeightItems(')!==false&&strpos($sj,'function cartWeightItems(')!==false);
     t('store.js calcShipping uses fixed + weight items',strpos($sj,'cartFixedShip()')!==false&&strpos($sj,'cartWeightItems()')!==false);
@@ -193,13 +195,14 @@ try{
     $aoj=file_get_contents($root.'/js/admin-orders.js');
     t('manual order per-item shipping helpers',strpos($aoj,'function moCalcShippingAmt(')!==false&&strpos($aoj,'function moFixedShip(')!==false&&strpos($aoj,'function moHasWeightItems(')!==false);
     t('manual order uses moCalcShippingAmt',substr_count($aoj,'moCalcShippingAmt(')>=2);
+    t('shipping math shared via combineShipping',strpos($sj,'function combineShipping(')!==false&&strpos($sj,'return combineShipping(')!==false&&strpos($aoj,'return combineShipping(')!==false);
 }catch(Exception $e){t('per-item shipping checks',false,$e->getMessage());}
 
 // ── HOMEPAGE REDESIGN + COMING SOON ──
 try{
     $cpphp=file_get_contents($root.'/api/products.php');
     t('products.php GET returns coming_soon',strpos($cpphp,"'coming_soon'")!==false);
-    t('products.php migrates coming_soon column',strpos($cpphp,"'coming_soon' => \"TINYINT")!==false);
+    t('ensureProductColumns migrates coming_soon',strpos(file_get_contents($root.'/api/config.php'),"'coming_soon' => \"TINYINT")!==false);
     t('products.php INSERT binds coming_soon',strpos($cpphp,':coming_soon')!==false);
     $ccsv=file_get_contents($root.'/api/products_csv.php');
     t('products_csv includes coming_soon',strpos($ccsv,"'ship_fixed','coming_soon'")!==false&&strpos($ccsv,':coming_soon')!==false);
@@ -238,10 +241,11 @@ try{
     t('cat filter uses muted gold',strpos($rsj,"active?'#B88A44'")!==false);
     $rcss=file_get_contents($root.'/css/shop.css');
     t('shop.css masonry styles',strpos($rcss,'.masonry{column-count')!==false);
-    t('nav recolored charcoal',strpos($rcss,'nav{background:#2B2B2B')!==false);
+    t('nav recolored charcoal',strpos($rcss,'nav{background:var(--charcoal)')!==false);
     t('body background ivory',strpos($rcss,'body{font-family:var(--font-body);background:var(--ivory)')!==false);
-    t('product price muted gold',strpos($rcss,'.price{font-weight:700;color:#B88A44')!==false);
-    t('footer charcoal',strpos($rcss,'footer{background:#2B2B2B')!==false);
+    t('product price muted gold',strpos($rcss,'.price{font-weight:700;color:var(--gold)')!==false);
+    t('footer charcoal',strpos($rcss,'footer{background:var(--charcoal)')!==false);
+    t('palette centralized (hex only in :root)',substr_count($rcss,'#2B2B2B')===1&&substr_count($rcss,'#B88A44')===1);
     t('newsletter sage band',strpos($rcss,'.newsletter{background:var(--sage)')!==false);
     t('reviews section neutral',strpos($rcss,'.reviews-section{background:var(--ivory)')!==false);
     t('newsletter gold gradient removed',strpos($rcss,'.newsletter{background:linear-gradient')===false);

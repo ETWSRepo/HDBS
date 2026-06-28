@@ -715,13 +715,7 @@ function moFixedShip(){var s=0;for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEM
 function moWeightItems(){var w=0;for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEMS[i];if(!it||!it.pid)continue;var p=findProd(it.pid);if(p&&p.ship_mode!=='fixed')w+=(parseFloat(p.weight)||0)*(it.qty||1);}return w;}
 function moHasWeightItems(){for(var i=0;i<MO_ITEMS.length;i++){var it=MO_ITEMS[i];if(!it||!it.pid)continue;var p=findProd(it.pid);if(p&&p.ship_mode!=='fixed')return true;}return false;}
 function moCalcShippingAmt(st){
-  var fixed=moFixedShip();
-  var weightShip=0;
-  if(moHasWeightItems()){
-    var zone=getZone(st);
-    weightShip=(ZONE_RATES[zone]||15)+weightSurcharge(moWeightItems());
-  }
-  return fixed+weightShip;
+  return combineShipping(moFixedShip(),moHasWeightItems(),moWeightItems(),st);
 }
 function moCalcShipping(){
   // Parse state from mo-state field, or extract from address

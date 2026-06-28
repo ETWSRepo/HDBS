@@ -4,10 +4,7 @@ require_once __DIR__ . '/config.php';
 cors();
 $pdo = db();
 requireAdmin();
-// Ensure per-item shipping + coming-soon columns exist
-foreach (['ship_mode' => "VARCHAR(10) NOT NULL DEFAULT 'weight'", 'ship_fixed' => "DECIMAL(10,2) NOT NULL DEFAULT 0", 'coming_soon' => "TINYINT NOT NULL DEFAULT 0"] as $col => $def) {
-    if (empty($pdo->query("SHOW COLUMNS FROM products LIKE '$col'")->fetchAll())) $pdo->exec("ALTER TABLE products ADD COLUMN `$col` $def");
-}
+ensureProductColumns($pdo);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ── EXPORT (GET) ──
