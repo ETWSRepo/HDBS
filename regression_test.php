@@ -180,7 +180,7 @@ try{$apjs=isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js');
 try{
     t('api/products_csv.php exists',file_exists($root.'/api/products_csv.php'));
     $csvphp=file_get_contents($root.'/api/products_csv.php');
-    t('products_csv export includes sell column',strpos($csvphp,"'id','sku','name','description','price','stock','category','badge','weight','size','sell','img1','img2','img3'")!==false);
+    t('products_csv export includes sell column',strpos($csvphp,"'id','sku','name','description','price','cogm','launch_date','stock','category','badge','weight','size','sell','img1','img2','img3'")!==false);
     t('products_csv import includes sell column',strpos($csvphp,"':sell'")!==false);
     t('products_csv ON DUPLICATE KEY updates img1',strpos($csvphp,'img1=:img1')!==false);
     t('products_csv ON DUPLICATE KEY updates img2',strpos($csvphp,'img2=:img2')!==false);
@@ -232,6 +232,19 @@ try{
     t('store.js renderComingSoon + notifyMe',strpos($csj,'function renderComingSoon(')!==false&&strpos($csj,'function notifyMe(')!==false);
     t('store.js excludes coming_soon from buy grid',strpos($csj,'p.sell!==0&&!p.coming_soon')!==false);
     t('notifyMe writes tagged subscriber',strpos($csj,"source:'Coming Soon: '")!==false);
+    // COGM and Launch Date columns
+    t('products.php GET includes cogm and launch_date',strpos($cpphp,"'cogm'")!==false&&strpos($cpphp,"'launch_date'")!==false);
+    t('products.php INSERT binds cogm and launch_date',strpos($cpphp,':cogm')!==false&&strpos($cpphp,':launch_date')!==false);
+    t('products.php defaults COGM to 50% of price',strpos($cpphp,'$default_cogm = $price * 0.5')!==false);
+    t('products.php defaults launch_date to 2026-07-01',strpos($cpphp,"'launch_date'] ?? '2026-07-01'")!==false);
+    t('config.php migrates cogm + launch_date columns',strpos(file_get_contents($root.'/api/config.php'),"'cogm' => \"DECIMAL")!==false&&strpos(file_get_contents($root.'/api/config.php'),"'launch_date' => \"DATE")!==false);
+    t('admin-products.js form includes COGM field',strpos($apj,"id=\"pf-cogm\"")!==false&&strpos($apj,"50% of price")!==false);
+    t('admin-products.js form includes Launch Date field',strpos($apj,"id=\"pf-launch\"")!==false&&strpos($apj,"type=\"date\"")!==false);
+    t('admin-products.js table shows COGM column',strpos($apj,"p.cogm?p.cogm.toFixed(2):'0.00'")!==false);
+    t('admin-products.js table shows Launch Date column',strpos($apj,"p.launch_date")!==false);
+    t('admin-products.js saveP sends cogm and launch_date',strpos($apj,'cogm:cogm')!==false&&strpos($apj,'launch_date:launch')!==false);
+    t('products_csv export includes cogm and launch_date',strpos($ccsv,"'cogm','launch_date'")!==false);
+    t('products_csv import binds cogm and launch_date',strpos($ccsv,':cogm')!==false&&strpos($ccsv,':launch_date')!==false);
     $chtml=file_get_contents($root.'/index.php');
     t('index.php has Coming Soon section',strpos($chtml,'id="coming-soon"')!==false&&strpos($chtml,'id="cs-grid"')!==false);
     t('Coming Soon has First look eyebrow',strpos($chtml,'First look')!==false);
