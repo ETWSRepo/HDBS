@@ -28,7 +28,6 @@
 - `api/email_log.php` — email send log
 - `api/github_log.php` — GitHub commit proxy (private repo, requires `github_token` setting)
 - `api/deploy_log.php` — deploy history log (POST appends, GET returns reversed)
-- `api/prompt_log.php` — prompt history CRUD
 - `api/applog.php` — general application log
 - `api/products_csv.php` — CSV product import/export
 - `api/tax_sweep.php` — batch tax recalculation
@@ -82,7 +81,7 @@
 - **FAQs** — FAQ CRUD
 - **Subscribers** — newsletter list
 - **Settings** — site settings (version, Square keys, SMTP, etc.)
-- **Logs** — email log, deploy log, app log, GitHub log, prompt log
+- **Logs** — email log, deploy log, app log, GitHub log
 
 ## Palette (Gold / Brown theme — NOT the blue ETCC palette)
 | Role | Color | Hex |

@@ -5,7 +5,6 @@ var RT_GROUPS={
   'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','api/email_log.php','api/fetch_tax.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.html','css/shop.css','css/table.css','js/api.js','js/config.js','js/store.js','js/table.js','js/admin-orders.js','js/admin-misc.js'],
   'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax','JS:setPageLogMode','JS:rGitLog','JS:toggleNavFolder'],
   'Site Version':['major_version in settings','minor_version in settings','get_version action','increment_minor_version action','version line in footer','version fetch script in index.html','saveVersion function exists','version card in settings'],
-  'Prompt History':['api/prompt_log.php exists','prompt_log creates table','prompt_log add action','prompt_log update action','prompt_log delete action','rPromptLog function exists','showAddPrompt exists','savePrompt exists','deletePrompt exists','promptlog in nav','promptlog in developer folder'],
   'Nav Submenus':['ADMIN_NAV_LABELS defined','ADMIN_NAV_STRUCTURE_DEFAULT has shop folder','ADMIN_NAV_STRUCTURE_DEFAULT has developer folder','shop folder contains prods','shop folder contains orders','developer folder contains regtest','developer folder contains settings','toggleNavFolder exists','toggleNavFolder saves to localStorage','loadNavOrder handles nested format','loadNavOrder migrates old flat format','loadNavOrder adds missing secs','saveNavOrder reads DOM structure','buildAdminNav renders folders','drag item into folder on header drop','drag item to root on container drop','folder collapse state in localStorage'],
   'Deploy History':['api/deploy_log.php exists','deploy_log appends entries','deploy_log returns deploys','deploy_log.php POST handler exists','deploy_log.php GET handler exists','deploylog in nav titles','rDeployLog in nav','rDeployLog function exists','rDeployLog fetches deploy_log','rDeployLog groups by 5-min window','rDeployLog shows deploy sessions'],
   'Change History':['api/github_log.php exists','github_log returns commits','gitlog in nav titles','rGitLog wired in nav','rGitLog fetches github_log','github token card in settings'],
@@ -391,7 +390,7 @@ function doTaxSweep(){
 // Flat label map for all known sections
 var ADMIN_NAV_LABELS={
   dash:'📊 Dashboard',prods:'👜 Products',orders:'📦 Orders',
-  manord:'📋 Manual Order',custs:'👥 Customers',sales:'💰 Sales',
+  custs:'👥 Customers',sales:'💰 Sales',
   subs:'✉️ Subscribers',blast:'📣 Email Blast',faqs:'❓ FAQs',
   tncity:'🏙️ TN City Sales Taxes',reviews:'⭐ Reviews',
   cats:'🏷️ Categories',shipping:'🚚 Shipping Charges',
@@ -400,7 +399,6 @@ var ADMIN_NAV_LABELS={
   logs:'📋 Error Logs',bizprofile:'🏢 Business Profile',
   settings:'⚙️ Settings',gitlog:'📜 Change History',
   deploylog:'🚀 Deploy History',inv:'📦 Inventory',
-  promptlog:'💬 Prompt History',
   dbbackup:'🗄️ DB Backup'
 };
 // Keep ADMIN_NAV_DEFAULT as flat list for backwards-compat references in RT_GROUPS etc.
@@ -408,8 +406,8 @@ var ADMIN_NAV_DEFAULT=Object.keys(ADMIN_NAV_LABELS).map(function(s){return{sec:s
 // Default nested structure with Shop and Developer folders
 var ADMIN_NAV_STRUCTURE_DEFAULT=[
   {type:'item',sec:'dash'},
-  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','manord','custs','sales','subs','blast','inv']},
-  {type:'folder',sec:'developer',label:'🔧 Developer',children:['promptlog','regtest','gitlog','deploylog','dbbackup','emaillog','logs','bizprofile','settings']},
+  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast','inv']},
+  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','emaillog','logs','bizprofile','settings']},
   {type:'item',sec:'faqs'},
   {type:'item',sec:'tncity'},
   {type:'item',sec:'reviews'},
@@ -439,6 +437,11 @@ function loadNavOrder(callback){
         structure=JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT)); // migrate
       }
     }catch(e){structure=JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT));}
+    // Prune secs no longer known (e.g. removed features left over in saved nav_order)
+    structure=structure.filter(function(n){return n.type==='folder'||ADMIN_NAV_LABELS[n.sec];}).map(function(n){
+      if(n.type==='folder')n.children=(n.children||[]).filter(function(s){return ADMIN_NAV_LABELS[s];});
+      return n;
+    });
     // Add any new secs not yet present anywhere in structure
     var existing=[];
     structure.forEach(function(n){
@@ -451,112 +454,6 @@ function loadNavOrder(callback){
     callback(structure);
   }).catch(function(){callback(JSON.parse(JSON.stringify(ADMIN_NAV_STRUCTURE_DEFAULT)));});
 }
-function rPromptLog(el){
-  function load(){
-    el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading…</div>';
-    apiFetch('prompt_log.php','GET').then(function(d){
-      var rows=(d.prompts||[]).map(function(p){
-        var dt=new Date(p.created_at);
-        var dateStr=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-        var timeStr=dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-        var preview=p.prompt.length>120?escHtml(p.prompt.substring(0,120))+'…':escHtml(p.prompt);
-        return '<tr>'+
-          '<td style="white-space:nowrap">'+dateStr+'<br><span style="font-size:.78rem;color:#999">'+timeStr+'</span></td>'+
-          '<td>'+(p.category?'<span style="background:#f0ebe0;border-radius:4px;padding:.1rem .45rem;font-size:.78rem">'+escHtml(p.category)+'</span>':'')+'</td>'+
-          '<td><details><summary style="cursor:pointer;font-size:.83rem;color:#4a3c28">'+preview+'</summary>'+
-            '<div style="margin-top:.6rem;font-size:.83rem;white-space:pre-wrap;background:#f9f6ee;border-radius:6px;padding:.7rem;line-height:1.6">'+escHtml(p.prompt)+'</div>'+
-            (p.notes?'<div style="margin-top:.4rem;font-size:.78rem;color:#6b6040;font-style:italic">'+escHtml(p.notes)+'</div>':'')+
-          '</details></td>'+
-          '<td style="white-space:nowrap">'+
-            '<button class="bp" style="font-size:.75rem;padding:.2rem .6rem;margin-right:.3rem" onclick="editPrompt('+p.id+',this)">Edit</button>'+
-            '<button class="bd" style="font-size:.75rem;padding:.2rem .6rem" onclick="deletePrompt('+p.id+')">Del</button>'+
-          '</td>'+
-          '</tr>';
-      }).join('');
-      el.innerHTML=
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">'+
-          '<div style="font-size:.85rem;color:#6b6040">'+(d.prompts||[]).length+' prompt'+(( d.prompts||[]).length!==1?'s':'')+' recorded</div>'+
-          '<button class="bp" onclick="showAddPrompt()" style="font-size:.82rem">+ Add Prompt</button>'+
-        '</div>'+
-        '<div id="pl-form" style="display:none;background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.2rem;margin-bottom:1.2rem">'+
-          '<div style="font-weight:700;margin-bottom:.7rem" id="pl-form-title">Add Prompt</div>'+
-          '<input id="pl-cat" class="afi" placeholder="Category (e.g. TableKit Integration, Page Logging…)" style="margin-bottom:.5rem">'+
-          '<textarea id="pl-text" class="afi" rows="6" placeholder="Paste the prompt here…" style="resize:vertical;font-family:monospace;font-size:.82rem"></textarea>'+
-          '<textarea id="pl-notes" class="afi" rows="2" placeholder="Notes (optional — what this prompt accomplished)" style="resize:vertical;margin-top:.4rem;font-size:.82rem"></textarea>'+
-          '<input type="hidden" id="pl-edit-id" value="">'+
-          '<div style="display:flex;gap:.6rem;margin-top:.6rem">'+
-            '<button class="bp" onclick="savePrompt()" id="pl-save-btn">Save</button>'+
-            '<button onclick="document.getElementById(\'pl-form\').style.display=\'none\'" style="background:none;border:1.5px solid #c9bfa8;border-radius:7px;padding:.3rem .9rem;cursor:pointer;font-size:.85rem">Cancel</button>'+
-          '</div>'+
-        '</div>'+
-        (rows
-          ?'<table class="tablekit"><thead><tr><th>Date</th><th>Category</th><th>Prompt</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table>'
-          :'<div style="padding:2rem;text-align:center;color:#6b6040">No prompts yet. Click + Add Prompt to start recording.</div>');
-      if(typeof TableKit!=='undefined')TableKit.initAll();
-      showPageToolbar({title:'Prompt History',logoText:'Handmade Designs By Suzi'});
-    }).catch(function(e){
-      el.innerHTML='<div style="padding:2rem;color:#c62828">Error: '+escHtml(e.message)+'</div>';
-    });
-  }
-  load();
-  window._reloadPromptLog=load;
-}
-function showAddPrompt(){
-  document.getElementById('pl-form-title').textContent='Add Prompt';
-  document.getElementById('pl-cat').value='';
-  document.getElementById('pl-text').value='';
-  document.getElementById('pl-notes').value='';
-  document.getElementById('pl-edit-id').value='';
-  document.getElementById('pl-save-btn').textContent='Save';
-  document.getElementById('pl-form').style.display='block';
-  document.getElementById('pl-text').focus();
-}
-function editPrompt(id,btn){
-  var row=btn.closest('tr');
-  var details=row.querySelector('details');
-  var fullText=row.querySelector('pre-wrap')||row.querySelector('[style*="pre-wrap"]');
-  // Re-fetch to get full data
-  apiFetch('prompt_log.php','GET').then(function(d){
-    var p=(d.prompts||[]).find(function(x){return parseInt(x.id)===id;});
-    if(!p)return;
-    document.getElementById('pl-form-title').textContent='Edit Prompt';
-    document.getElementById('pl-cat').value=p.category||'';
-    document.getElementById('pl-text').value=p.prompt||'';
-    document.getElementById('pl-notes').value=p.notes||'';
-    document.getElementById('pl-edit-id').value=id;
-    document.getElementById('pl-save-btn').textContent='Update';
-    document.getElementById('pl-form').style.display='block';
-    document.getElementById('pl-text').focus();
-    document.getElementById('pl-form').scrollIntoView({behavior:'smooth',block:'nearest'});
-  });
-}
-function savePrompt(){
-  var cat=document.getElementById('pl-cat').value.trim();
-  var text=document.getElementById('pl-text').value.trim();
-  var notes=document.getElementById('pl-notes').value.trim();
-  var editId=document.getElementById('pl-edit-id').value;
-  if(!text){alert('Prompt text is required.');return;}
-  var btn=document.getElementById('pl-save-btn');
-  btn.disabled=true;btn.textContent='Saving…';
-  var action=editId?'update_prompt':'add_prompt';
-  var payload={action:action,category:cat,prompt:text,notes:notes};
-  if(editId)payload.id=parseInt(editId);
-  apiFetch('prompt_log.php','POST',payload).then(function(){
-    document.getElementById('pl-form').style.display='none';
-    btn.disabled=false;
-    if(window._reloadPromptLog)window._reloadPromptLog();
-  }).catch(function(e){
-    btn.disabled=false;btn.textContent=editId?'Update':'Save';
-    alert('Save failed: '+e.message);
-  });
-}
-function deletePrompt(id){
-  if(!confirm('Delete this prompt entry?'))return;
-  apiFetch('prompt_log.php','POST',{action:'delete_prompt',id:id}).then(function(){
-    if(window._reloadPromptLog)window._reloadPromptLog();
-  }).catch(function(e){alert('Delete failed: '+e.message);});
-}
-
 function rDbBackup(el){
   el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading backup settings…</div>';
   // Fetch the backup token to display cron command
@@ -712,7 +609,7 @@ function _renderGitLog(el,d,deploys){
     var sha='<a href="'+c.url+'" target="_blank" style="color:#a07810;font-family:monospace;font-size:.8rem">'+c.sha+'</a>';
     var ver=verForCommit(c.date)||'—';
     return '<tr><td style="white-space:nowrap">'+dateStr+'<br><span style="font-size:.78rem;color:#999">'+timeStr+'</span></td>'+
-      '<td>'+escHtml(c.message)+'</td>'+
+      '<td style="white-space:pre-wrap">'+escHtml(c.message)+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+files+'</td>'+
       '<td style="text-align:center;font-family:monospace;font-size:.8rem;color:#6b6040">'+ver+'</td>'+
       '<td>'+sha+'</td></tr>';

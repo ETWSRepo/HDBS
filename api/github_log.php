@@ -94,12 +94,10 @@ foreach ($commits as $i => $c) {
     $d     = $details[$i] ?? [];
     $files = isset($d['files']) ? count($d['files']) : null;
     $msg   = trim($c['commit']['message'] ?? '');
-    // First line only for display
-    $lines = explode("\n", $msg);
     $results[] = [
         'sha'     => substr($c['sha'], 0, 7),
         'date'    => $c['commit']['author']['date'] ?? '',
-        'message' => $lines[0],
+        'message' => $msg,
         'files'   => $files,
         'url'     => $c['html_url'] ?? '',
     ];

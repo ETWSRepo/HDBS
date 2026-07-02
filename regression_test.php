@@ -755,25 +755,6 @@ try{
     t('get_version returns version',isset($vd['version'])&&strpos($vd['version'],'.')!==false,$vd['version']??'');
 }catch(Exception $e){t('site version checks',false,$e->getMessage());}
 
-// ── PROMPT HISTORY ──
-try{
-    t('api/prompt_log.php exists',file_exists($root.'/api/prompt_log.php'));
-    $plphp=file_get_contents($root.'/api/prompt_log.php');
-    t('prompt_log creates table',strpos($plphp,'CREATE TABLE IF NOT EXISTS prompt_log')!==false);
-    t('prompt_log add action',strpos($plphp,"add_prompt")!==false);
-    t('prompt_log update action',strpos($plphp,"update_prompt")!==false);
-    t('prompt_log delete action',strpos($plphp,"delete_prompt")!==false);
-    t('prompt_log uses Eastern time (CONVERT_TZ)',strpos($plphp,"CONVERT_TZ(NOW(),'+00:00','-04:00')")!==false);
-    $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
-    t('rPromptLog function exists',strpos($amjs,'function rPromptLog(')!==false);
-    t('showAddPrompt exists',strpos($amjs,'function showAddPrompt(')!==false);
-    t('savePrompt exists',strpos($amjs,'function savePrompt(')!==false);
-    t('deletePrompt exists',strpos($amjs,'function deletePrompt(')!==false);
-    $navjs=file_get_contents($root.'/js/admin-nav.js');
-    t('promptlog in nav',strpos($navjs,"promptlog:'Prompt History'")!==false&&strpos($navjs,'rPromptLog(el)')!==false);
-    t('promptlog in developer folder',strpos($amjs,"'promptlog'")!==false&&strpos($amjs,"sec:'developer'")!==false);
-}catch(Exception $e){t('prompt history checks',false,$e->getMessage());}
-
 // ── NAV SUBMENUS ──
 try{
     $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
@@ -800,6 +781,13 @@ try{
     // Migration
     t('loadNavOrder migrates old flat format',strpos($amjs,'ADMIN_NAV_STRUCTURE_DEFAULT')!==false&&strpos($amjs,'migrate')!==false);
     t('loadNavOrder adds missing secs',strpos($amjs,'existing.indexOf(sec)<0')!==false);
+    // Pruning of stale/removed secs (e.g. manual order) from DB-saved nav_order
+    t('loadNavOrder prunes unknown secs',strpos($amjs,'Prune secs no longer known')!==false&&strpos($amjs,'ADMIN_NAV_LABELS[n.sec]')!==false);
+    t('manual order (manord) removed from nav labels',strpos($amjs,"manord:")===false);
+    t('manual order (manord) removed from shop folder',$shopMatch&&strpos($sm[1],"'manord'")===false);
+    $navjsMO=isset($navjs)?$navjs:file_get_contents($root.'/js/admin-nav.js');
+    $navjs=$navjsMO;
+    t('manual order (manord) removed from admin-nav titles/router',strpos($navjs,'manord')===false);
 }catch(Exception $e){t('nav submenu checks',false,$e->getMessage());}
 
 // ── PAYMENT CONFIGURATION (Online / InPerson / Test) ──
@@ -884,6 +872,8 @@ try{
     t('github_log uses curl_multi',strpos($ghphp,'curl_multi_init')!==false);
     t('github_log reads github_token setting',strpos($ghphp,"'github_token'")!==false);
     t('github_log caches results',strpos($ghphp,'cacheFile')!==false&&strpos($ghphp,'cacheTTL')!==false);
+    // Change History must show full commit message (body + summary), not just the first line
+    t('github_log returns full commit message (not truncated to first line)',strpos($ghphp,'$lines[0]')===false&&strpos($ghphp,"'message' => \$msg")!==false);
     $navjs=file_get_contents($root.'/js/admin-nav.js');
     t('gitlog in nav titles',strpos($navjs,"gitlog:'Change History'")!==false);
     t('rGitLog wired in nav',strpos($navjs,'rGitLog(el)')!==false);
@@ -1112,6 +1102,7 @@ try{
 // ── DEBUG/UTILITY FILES REMOVED ──
 foreach(['debug.php','debug.flag','drop_tn_tax.php','fix_tax.php','sq_test.php','run_tests.html','reset_nav.php','default.php','get_products.php'] as $df)
     tProd($df.' removed from server',!file_exists($root.'/'.$df));
+tProd('api/prompt_log.php removed from server',!file_exists($root.'/api/prompt_log.php'));
 
 // ── FAVICON ──
 try{
@@ -1325,8 +1316,6 @@ $fns=[
     'rSqPay',
     // Subscribers
     'delSub','exportSubs',
-    // Prompt log
-    'rPromptLog','showAddPrompt','editPrompt','savePrompt','deletePrompt',
     // DB Backup
     'rDbBackup','runDbBackup',
     // Logs
@@ -1465,11 +1454,6 @@ try{
     // Subscribers buttons
     t('btn:Delete Subscriber wired',strpos($anjs,'delSub(')!==false);
     t('btn:Export Subscribers wired',strpos($anjs,'exportSubs()')!==false);
-
-    // Prompt log buttons
-    t('btn:Add Prompt wired',strpos($amjs,'showAddPrompt()')!==false);
-    t('btn:Edit Prompt wired',strpos($amjs,'editPrompt(')!==false);
-    t('btn:Delete Prompt wired',strpos($amjs,'deletePrompt(')!==false);
 
     // Regression test buttons
     t('btn:Run Tests wired',strpos($amjs,'runRegTests()')!==false);
@@ -1624,7 +1608,6 @@ try{
     // Previously unprotected endpoints now have requireAdmin
     t('products_csv.php has requireAdmin()',strpos(file_get_contents($root.'/api/products_csv.php'),'requireAdmin()')!==false);
     t('deploy_log.php GET has requireAdmin()',strpos(file_get_contents($root.'/api/deploy_log.php'),'requireAdmin()')!==false);
-    t('prompt_log.php has requireAdmin()',strpos(file_get_contents($root.'/api/prompt_log.php'),'requireAdmin()')!==false);
     t('email_log.php GET has requireAdmin()',strpos(file_get_contents($root.'/api/email_log.php'),'requireAdmin()')!==false);
     t('tax_sweep.php has requireAdmin()',strpos(file_get_contents($root.'/api/tax_sweep.php'),'requireAdmin()')!==false);
     t('square_payments.php has requireAdmin()',strpos(file_get_contents($root.'/api/square_payments.php'),'requireAdmin()')!==false);
@@ -2128,6 +2111,18 @@ try {
         t('db_table_contents injection check (no admin session, skip)', true, 'skipped');
     }
 } catch (Exception $e) { t('db table list/contents checks', false, $e->getMessage()); }
+
+// ── WWW SUBDOMAIN ──
+try{
+    // www subdomain should be accessible and serve the storefront
+    t('www subdomain homepage accessible (200)',httpCode('https://www.handmadedesignsbysuzi.com/')===200);
+    // API on www subdomain must send Access-Control-Allow-Origin header (GET, since HEAD/OPTIONS may 405)
+    $ch=curl_init('https://www.handmadedesignsbysuzi.com/api/products.php');
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_HEADER=>true,CURLOPT_NOBODY=>false]);
+    $resp=curl_exec($ch);curl_close($ch);
+    $wwwHdrs=substr($resp,0,strpos($resp,"\r\n\r\n"));
+    t('www subdomain API sends Access-Control-Allow-Origin',stripos($wwwHdrs,'Access-Control-Allow-Origin')!==false,$wwwHdrs===false?'no response':'');
+}catch(Exception $e){t('www subdomain checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 
