@@ -104,11 +104,11 @@ nav.scrolled{background:rgba(43,43,43,.86);backdrop-filter:blur(14px);-webkit-ba
 .card:hover{box-shadow:0 6px 20px rgba(43,43,43,.12)}
 
 /* PRODUCT CARD IMAGE - shows first photo */
-.cimg{height:160px;background:#efeae1;border:1px solid #e8e0b8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:3rem;margin-bottom:.8rem;overflow:hidden;position:relative}
+.cimg{height:160px;background:#ffffff;border:1px solid #e8e0b8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:3rem;margin-bottom:.8rem;overflow:hidden;position:relative}
 .cimg img{width:100%;height:100%;object-fit:contain;object-position:center}
-.cimg-dots{position:absolute;bottom:6px;left:0;right:0;display:flex;justify-content:center;gap:4px}
-.cimg-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.6)}
-.cimg-dot.on{background:#fff}
+.cimg-dots{display:none}
+.cimg-dot{display:none}
+.cimg-dot.on{display:none}
 .card h3{font-size:.95rem;margin-bottom:.25rem;color:var(--charcoal)}
 .card p{font-size:.78rem;color:#6b6040;margin-bottom:.65rem;line-height:1.5}
 .cfoot{display:flex;justify-content:space-between;align-items:center}
@@ -126,14 +126,14 @@ footer{background:var(--charcoal);color:rgba(255,255,255,.65);text-align:center;
 .modal-close{position:absolute;top:.9rem;right:.9rem;background:rgba(0,0,0,.15);border:none;width:28px;height:28px;border-radius:50%;font-size:1.1rem;cursor:pointer;color:#fff;z-index:10;display:flex;align-items:center;justify-content:center;line-height:1}
 
 /* PHOTO GALLERY in detail modal */
-.gallery{position:relative;height:260px;background:#fdf3d0;overflow:hidden;border-radius:16px 16px 0 0}
+.gallery{position:relative;height:260px;background:#ffffff;overflow:hidden;border-radius:16px 16px 0 0}
 .gallery-img{position:absolute;inset:0;display:none}
 .gallery-img.on{display:block}
 .gallery-img img{width:100%;height:100%;object-fit:contain;object-position:center}
 .gallery-img .no-img{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:5rem;opacity:.25}
-.gallery-nav{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 .8rem;pointer-events:none}
-.gnav-btn{background:rgba(0,0,0,.28);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;pointer-events:all;transition:background .2s}
-.gnav-btn:hover{background:rgba(0,0,0,.5)}
+.gallery-nav{display:none}
+.gnav-btn{display:none}
+.gnav-btn:hover{display:none}
 .gallery-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px}
 .gdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer;border:none;padding:0}
 .gdot.on{background:#fff}
@@ -158,13 +158,13 @@ footer{background:var(--charcoal);color:rgba(255,255,255,.65);text-align:center;
 .cart-items{flex:1;overflow-y:auto;padding:.8rem 1.2rem}
 .cart-empty{text-align:center;padding:3rem 1rem;color:#6b6040;font-size:.88rem}
 .cart-item{display:flex;gap:.8rem;padding:.8rem 0;border-bottom:1px solid #f5f0d0}
-.cart-item-img{width:52px;height:52px;border-radius:7px;background:#fdf3d0;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.cart-item-img{width:52px;height:52px;border-radius:7px;background:#ffffff;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;border:1px solid #e8e0b8}
 .cart-item-img img{width:100%;height:100%;object-fit:cover}
 .cart-item-info{flex:1}
 .cart-item-name{font-size:.84rem;font-weight:600;margin-bottom:.12rem;color:#2d2220}
 .cart-item-price{font-size:.82rem;color:#a07810;font-weight:700}
 .cart-qty{display:flex;align-items:center;gap:.4rem;margin-top:.3rem}
-.qbtn{background:#fdf3d0;border:none;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:.85rem;font-weight:700;color:#a07810;display:flex;align-items:center;justify-content:center}
+.qbtn{background:#ffffff;border:1px solid #e8e0b8;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:.85rem;font-weight:700;color:#a07810;display:flex;align-items:center;justify-content:center}
 .qval{font-size:.8rem;font-weight:600;min-width:14px;text-align:center}
 .cart-rem{background:none;border:none;color:#ccc;cursor:pointer;font-size:1rem;align-self:flex-start;margin-left:auto}
 .cart-rem:hover{color:#e05555}
@@ -385,15 +385,15 @@ label.fl{display:block;font-size:.77rem;font-weight:600;margin-bottom:.26rem;col
 .skel-line.short{width:60%}
 .skel-line.shorter{width:40%}
 /* Gallery on full page */
-#pd-page .gallery{position:relative;background:#fdf3d0;overflow:hidden;border-radius:14px;aspect-ratio:1;height:auto}
+#pd-page .gallery{position:relative;background:#ffffff;overflow:hidden;border-radius:14px;aspect-ratio:1;height:auto}
 #pd-page .gallery-img{position:absolute;inset:0;display:none}
 #pd-page .gallery-img.on{display:block}
 #pd-page .gallery-img img{width:100%;height:100%;object-fit:contain;object-position:center}
 #pd-page .gallery-img .no-img{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:7rem;opacity:.2}
-#pd-page .gnav-btn{background:rgba(255,255,255,.88);border:none;color:#2d2220;width:40px;height:40px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;pointer-events:all;box-shadow:0 2px 10px rgba(0,0,0,.15)}
-#pd-page .gnav-btn:hover{background:#fff}
-#pd-page .gdot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer;border:2px solid rgba(255,255,255,.8);padding:0}
-#pd-page .gdot.on{background:#fff}
+#pd-page .gnav-btn{display:none}
+#pd-page .gnav-btn:hover{display:none}
+#pd-page .gdot{display:none}
+#pd-page .gdot.on{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* TableKit: hide ▼ button but keep it clickable across the full header cell */
 .tk-drop-btn{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:0;padding:0;cursor:pointer;border-radius:0}

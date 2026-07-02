@@ -113,7 +113,7 @@ try{
     t('send_confirm uses EDT',   $elHasConvertTz2);
 }catch(Exception $e){t('email_log checks',false,$e->getMessage());}
 try{$shopcss0=file_get_contents($root.'/css/shop.css');t('shop.css has /hero.jpg',strpos($shopcss0,'url("/hero.jpg')!==false);t('product card image (.cimg img) uses contain',strpos($shopcss0,'.cimg img{width:100%;height:100%;object-fit:contain')!==false);
-    t('product card image box (.cimg) has border',strpos($shopcss0,'.cimg{height:160px;background:#efeae1;border:1px solid')!==false);}catch(Exception $e){t('shop.css check',false,$e->getMessage());}
+    t('product card image box (.cimg) has border',strpos($shopcss0,'.cimg{height:160px;background:#ffffff;border:1px solid')!==false);}catch(Exception $e){t('shop.css check',false,$e->getMessage());}
 
 // ── 2b. NEW SESSION CHECKS ──
 // orders.square_payment_id column
