@@ -14,7 +14,7 @@ $bizEmail = !empty($bz['email']) ? $bz['email'] : 'handmadedesignsbysuzi@yahoo.c
 $bizEmailAttr = htmlspecialchars($bizEmail, ENT_QUOTES, 'UTF-8');
 // Logo: uploaded logo is stored as a full URL (see api/admin.php save_setting); falls back to
 // the original static file if no logo has been uploaded yet.
-$bizLogoAbs = !empty($bz['logo']) ? $bz['logo'] : 'https://handmadedesignsbysuzi.com/HDBSLogo.jpeg';
+$bizLogoAbs = !empty($bz['logo']) ? $bz['logo'] : 'https://handmadedesignsbysuzi.com/HDBSLogo.jpeg?v=2';
 $bizLogoAbsAttr = htmlspecialchars($bizLogoAbs, ENT_QUOTES, 'UTF-8');
 $bizLogoWidth = 748; $bizLogoHeight = 913; $bizLogoMime = 'image/jpeg';
 if (!empty($bz['logo'])) {
@@ -218,7 +218,7 @@ if (!empty($bz['logo'])) {
 
   <!-- ABOUT TEASER -->
   <div class="about-teaser">
-    <div class="at-photo"><img src="aboutsuzi.jpeg" alt="Suzi in her studio"></div>
+    <div class="at-photo"><img src="aboutsuzi.jpeg?v=2" alt="Suzi in her studio"></div>
     <div class="at-text">
       <div class="at-overline">About Suzi</div>
       <h2>Every bag carries a story</h2>
@@ -285,7 +285,7 @@ if (!empty($bz['logo'])) {
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
     <div class="site-version-line" style="color:rgba(255,255,255,.5);font-size:.6rem;margin-top:.5rem"></div>
     <div style="margin-top:1rem">
-      <img src="https://handmadedesignsbysuzi.com/QRCode.jpeg" alt="Scan to visit handmadedesignsbysuzi.com" style="width:90px;height:90px;border-radius:6px;opacity:.85">
+      <img src="https://handmadedesignsbysuzi.com/QRCode.png" alt="Scan to visit handmadedesignsbysuzi.com" style="width:90px;height:90px;border-radius:6px;opacity:.85">
       <div style="color:rgba(255,255,255,.35);font-size:.65rem;margin-top:.3rem">Scan to shop</div>
     </div>
   </footer>
@@ -654,7 +654,7 @@ if (!empty($bz['logo'])) {
         </p>
       </div>
       <div style="text-align:center">
-        <img src="aboutsuzi.jpeg" alt="Suzi — the maker behind every bag" style="width:100%;max-width:340px;border-radius:20px;border:3px solid #e8e0b8;box-shadow:0 8px 30px rgba(0,0,0,.12);object-fit:cover">
+        <img src="aboutsuzi.jpeg?v=2" alt="Suzi — the maker behind every bag" style="width:100%;max-width:340px;border-radius:20px;border:3px solid #e8e0b8;box-shadow:0 8px 30px rgba(0,0,0,.12);object-fit:cover">
       </div>
     </div>
 

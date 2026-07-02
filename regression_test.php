@@ -82,6 +82,23 @@ try{
   t('product descriptions updated',$ok,implode(' | ',$msgs));
 }catch(Exception $e){t('product descriptions updated',false,$e->getMessage());}
 t('hero.jpg exists', file_exists($root.'/hero.jpg'));
+// Image optimization bloat guards — catches an accidental re-upload of a huge
+// unoptimized original (this session's images were all resized to <=1600px / compressed)
+try{
+    t('hero.jpg under size guard',filesize($root.'/hero.jpg')<500*1024,round(filesize($root.'/hero.jpg')/1024).'KB');
+    t('QRCode.png exists',file_exists($root.'/QRCode.png'));
+    t('QRCode.png under size guard',file_exists($root.'/QRCode.png')&&filesize($root.'/QRCode.png')<50*1024);
+    t('HDBSLogo.jpeg under size guard',file_exists($root.'/HDBSLogo.jpeg')&&filesize($root.'/HDBSLogo.jpeg')<50*1024);
+    if(is_dir($root.'/product_images')){
+        $piOversized=[];
+        $piFiles=array_diff(scandir($root.'/product_images'),['.','..']);
+        foreach($piFiles as $pif){
+            $pipath=$root.'/product_images/'.$pif;
+            if(is_file($pipath)&&filesize($pipath)>900*1024)$piOversized[]=$pif;
+        }
+        t('product_images all under size guard',count($piOversized)===0,count($piOversized).' oversized: '.implode(', ',array_slice($piOversized,0,5)));
+    }
+}catch(Exception $e){t('image optimization guards',false,$e->getMessage());}
 // Email log checks
 try{
     $elCols=$pdo->query("SHOW COLUMNS FROM email_log")->fetchAll(PDO::FETCH_COLUMN);
@@ -95,7 +112,8 @@ try{
     $elHasConvertTz2=strpos(file_get_contents($root.'/send_confirm.php'),'CONVERT_TZ')!==false;
     t('send_confirm uses EDT',   $elHasConvertTz2);
 }catch(Exception $e){t('email_log checks',false,$e->getMessage());}
-try{$shopcss0=file_get_contents($root.'/css/shop.css');t('shop.css has /hero.jpg',strpos($shopcss0,'url("/hero.jpg')!==false);t('product card image (.cimg img) uses contain',strpos($shopcss0,'.cimg img{width:100%;height:100%;object-fit:contain')!==false);}catch(Exception $e){t('shop.css check',false,$e->getMessage());}
+try{$shopcss0=file_get_contents($root.'/css/shop.css');t('shop.css has /hero.jpg',strpos($shopcss0,'url("/hero.jpg')!==false);t('product card image (.cimg img) uses contain',strpos($shopcss0,'.cimg img{width:100%;height:100%;object-fit:contain')!==false);
+    t('product card image box (.cimg) has border',strpos($shopcss0,'.cimg{height:160px;background:#efeae1;border:1px solid')!==false);}catch(Exception $e){t('shop.css check',false,$e->getMessage());}
 
 // ── 2b. NEW SESSION CHECKS ──
 // orders.square_payment_id column
@@ -477,7 +495,7 @@ try{
     t('authpage hidden on load',strpos($ihtml,'id="authpage" style="display:none"')!==false);
     t('alog hidden on load',strpos($ihtml,'id="alog" style="display:none"')!==false);
     t('apanel hidden on load',strpos($ihtml,'id="apanel" style="display:none"')!==false);
-    t('QR code in footer',strpos($ihtml,'QRCode.jpeg')!==false);
+    t('QR code in footer',strpos($ihtml,'QRCode.png')!==false);
     t('contactpage exists',strpos($ihtml,'id="contactpage"')!==false);
     t('Back to Shop in contact nav',strpos($ihtml,'goContact')!==false);
 }catch(Exception $e){t('homepage visibility checks',false,$e->getMessage());}
@@ -1202,8 +1220,9 @@ try{
 try{
     $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('aboutsuzi.jpeg exists',file_exists($root.'/aboutsuzi.jpeg'));
+    t('aboutsuzi.jpeg under size guard',filesize($root.'/aboutsuzi.jpeg')<400*1024,round(filesize($root.'/aboutsuzi.jpeg')/1024).'KB');
     t('aboutsuzi.jpeg in About page',strpos($ihtml,'aboutsuzi.jpeg')!==false);
-    t('About page has photo img tag',strpos($ihtml,'src="aboutsuzi.jpeg"')!==false);
+    t('About page has photo img tag',strpos($ihtml,'src="aboutsuzi.jpeg?v=2"')!==false);
     t('emoji placeholder removed from About page',strpos($ihtml,'font-size:5rem;margin-bottom:1rem">👜')===false);
     t('About page grid has about-grid class',strpos($ihtml,'about-grid')!==false);
     $css=file_get_contents($root.'/css/shop.css');
