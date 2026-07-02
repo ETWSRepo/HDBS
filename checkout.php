@@ -1,6 +1,6 @@
 <?php
 // checkout.php — Creates a Square checkout session with pre-filled amount
-// Upload to public_html alongside index.html on Hostinger
+// Upload to public_html alongside index.php on Hostinger
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: https://handmadedesignsbysuzi.com');

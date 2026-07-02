@@ -88,7 +88,7 @@ var ORD_F={id:'',cust:'',dateFrom:'',dateTo:'',total:'',tax:'',pay:'',status:'',
 var RT_GROUPS={
   'DB Schema':['orders.tax_amount','orders.tax_swept_date','orders.payment_method','orders.customer_email','orders.total','orders.shipping_carrier','orders.tracking_number','orders.square_payment_id','products.sku','products.img1','products.price','products.name','products.stock','products.weight','orders table','products table','order_items table','settings table','tax_sweeps table','settings LONGTEXT','tax_swept removed'],
   'Data Integrity':['products exist','orders exist','settings exist','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs'],
-  'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.html'],
+  'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.php'],
   'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax']
 };
 var ADMIN_NAV_DEFAULT=[
@@ -138,11 +138,11 @@ function injectProductSchemas(){
     var imgs=(p.imgs||[]).filter(Boolean);
     var schema={"@context":"https://schema.org","@type":"Product","name":p.name,"description":p.desc||'',
       "image":imgs,"sku":p.sku||'',
-      "brand":{"@type":"Brand","name":"Handmade Designs By Suzi"},
+      "brand":{"@type":"Brand","name":(window.BIZ_NAME||'Handmade Designs By Suzi')},
       "offers":{"@type":"Offer","url":"https://handmadedesignsbysuzi.com","priceCurrency":"USD",
         "price":parseFloat(p.price).toFixed(2),
         "availability":p.stock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock",
-        "seller":{"@type":"Organization","name":"Handmade Designs By Suzi"}}};
+        "seller":{"@type":"Organization","name":(window.BIZ_NAME||'Handmade Designs By Suzi')}}};
     var s=document.createElement('script');
     s.type='application/ld+json';s.setAttribute('data-type','product-schema');
     s.textContent=JSON.stringify(schema);
@@ -222,7 +222,7 @@ function submitCustomRequest(){
       err.textContent=d.error||'Failed to send. Please email us directly.';
       err.style.display='block';
     }
-  }).catch(function(){err.textContent='Network error. Please email handmadedesignsbysuzi@yahoo.com directly.';err.style.display='block';});
+  }).catch(function(){err.textContent='Network error. Please email '+(window.BIZ_EMAIL||'handmadedesignsbysuzi@yahoo.com')+' directly.';err.style.display='block';});
 }
 function goContact(){
   if(typeof gtag==='function')gtag('event','page_view',{page_title:'Contact Us',page_path:'/#contact'});
@@ -254,7 +254,7 @@ function sendContact(){
   })
   .catch(function(){
     ok.style.background='#fde8e8';ok.style.color='#c0392b';
-    ok.textContent='Network error. Please email us directly at handmadedesignsbysuzi@yahoo.com';
+    ok.textContent='Network error. Please email us directly at '+(window.BIZ_EMAIL||'handmadedesignsbysuzi@yahoo.com');
   });
 }
 function goAuth(tab){

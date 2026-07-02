@@ -16,6 +16,13 @@ if (!$source_id || !$order_id) fail('Missing source_id or order_id');
 
 applog('PAY-START', "order=$order_id src_len=".strlen($source_id));
 $pdo = db();
+$biz_name_pp = bizName($pdo);
+$biz_email_pp = 'handmadedesignsbysuzi@yahoo.com';
+try {
+    $bzRaw_pp = getSetting($pdo, 'biz_profile');
+    $bz_pp = $bzRaw_pp ? json_decode($bzRaw_pp, true) : null;
+    if (!empty($bz_pp['email'])) $biz_email_pp = $bz_pp['email'];
+} catch (Exception $e) { /* keep fallback */ }
 
 // test_mode is admin-only bypass for regression tests
 if (!empty($d['test_mode'])) requireAdmin();
@@ -133,7 +140,7 @@ $firstName = explode(' ', $order['customer_name'])[0];
 $html = "<!DOCTYPE html><html><body>
 <div style='font-family:sans-serif;max-width:560px;margin:0 auto'>
 <div style='background:#2d2220;padding:20px 28px'>
-  <h1 style='color:#d4a017;margin:0;font-size:1.4rem'>Handmade Designs By Suzi</h1>
+  <h1 style='color:#d4a017;margin:0;font-size:1.4rem'>{$biz_name_pp}</h1>
 </div>
 <div style='padding:28px'>
   <h2 style='color:#a07810;margin-top:0'>Order Confirmed! 🎉</h2>
@@ -153,16 +160,16 @@ $html = "<!DOCTYPE html><html><body>
 </div>
 <div style='background:#2d2220;padding:16px 28px;text-align:center'>
   <div style='color:rgba(255,255,255,.6);font-size:.8rem'>
-    Handmade Designs By Suzi &bull; Knoxville, TN<br>
+    {$biz_name_pp} &bull; Knoxville, TN<br>
     <a href='https://handmadedesignsbysuzi.com' style='color:#d4a017'>handmadedesignsbysuzi.com</a><br>
-    Questions? <a href='mailto:handmadedesignsbysuzi@yahoo.com' style='color:#d4a017'>handmadedesignsbysuzi@yahoo.com</a>
+    Questions? <a href='mailto:{$biz_email_pp}' style='color:#d4a017'>{$biz_email_pp}</a>
   </div>
 </div>
 </div></body></html>";
 
 require_once dirname(__DIR__) . '/mailer.php';
 $recipients = [$order['customer_email'], 'handmadedesignsbysuzi@yahoo.com'];
-$mailResult = sendEmail($recipients, 'Order Confirmed — ' . $order_id, $html, 'handmadedesignsbysuzi@yahoo.com', 'Handmade Designs By Suzi');
+$mailResult = sendEmail($recipients, 'Order Confirmed — ' . $order_id, $html, 'handmadedesignsbysuzi@yahoo.com', $biz_name_pp);
 // Log to email_log so card-order confirmations appear in the Email Log (consistent with send_confirm/send_shipping)
 try {
     $pdo->prepare("INSERT INTO email_log (sent_at,email_type,sent_to,order_id,subject,status,email_body) VALUES (CONVERT_TZ(NOW(),'+00:00','-04:00'),?,?,?,?,?,?)")

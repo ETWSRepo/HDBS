@@ -49,12 +49,13 @@ if (!filter_var(trim($d['email'] ?? ''), FILTER_VALIDATE_EMAIL)) {
 
 $to       = 'handmadedesignsbysuzi@yahoo.com';
 $fullsubj = 'Website Contact: ' . ($subject ?: 'New Message') . ' — ' . $name;
+$biz_name_ct = bizName($pdo);
 
 $html_body = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 <body style='margin:0;padding:0;background:#fffdf0;font-family:sans-serif'>
 <div style='max-width:560px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e8e0b8'>
   <div style='background:linear-gradient(135deg,#a07810,#d4a017);padding:24px 28px;text-align:center'>
-    <div style='color:#fff;font-size:20px;font-style:italic;font-weight:600'>Handmade Designs By Suzi</div>
+    <div style='color:#fff;font-size:20px;font-style:italic;font-weight:600'>{$biz_name_ct}</div>
     <div style='color:rgba(255,255,255,.85);font-size:13px;margin-top:4px'>New Contact Form Message</div>
   </div>
   <div style='padding:24px 28px'>
@@ -69,7 +70,7 @@ $html_body = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
     </div>
   </div>
   <div style='background:#2d2220;padding:14px 28px;text-align:center'>
-    <div style='color:rgba(255,255,255,.5);font-size:12px'>Handmade Designs By Suzi &nbsp;&middot;&nbsp; Knoxville, TN</div>
+    <div style='color:rgba(255,255,255,.5);font-size:12px'>{$biz_name_ct} &nbsp;&middot;&nbsp; Knoxville, TN</div>
   </div>
 </div>
 </body></html>";

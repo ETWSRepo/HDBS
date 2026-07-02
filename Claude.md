@@ -9,7 +9,7 @@
 - FTP deploy via `deploy.ps1` using curl.exe + Invoke-RestMethod
 
 ## Key Files
-- `index.html` — storefront SPA (4 footers with `.site-version-line`)
+- `index.php` — storefront SPA (server-rendered for the business name/SEO tags; 4 footers with `.site-version-line`)
 - `api/admin.php` — central admin API (login, settings, version, logs)
 - `api/config.php` — DB connection, cors(), ok(), fail(), body() helpers
 - `api/products.php` — product CRUD, CSV import/export
@@ -62,7 +62,7 @@
 - All PHP API responses use `ok([...])` or `fail('message')` from config.php helpers
 - CORS is handled by `cors()` call at the top of each API endpoint
 
-## Customer-Facing Pages (SPA routes in index.html)
+## Customer-Facing Pages (SPA routes in index.php)
 - **Store** — product grid with search, category filter, sort. Clicking a product opens product detail modal with lightbox.
 - **Cart / Checkout** — cart drawer slides in from right. Checkout modal handles shipping info and Square payment.
 - **Contact** — contact form POSTing to `api/contact.php`
@@ -105,7 +105,7 @@
 - Drag-and-drop reordering across folders and root
 
 ## Payment Integration
-- Square Payments SDK integrated via CDN in index.html
+- Square Payments SDK integrated via CDN in index.php
 - Payment flow: Square Card component → tokenize → POST to `api/checkout.php` → POST to `api/verify_payment.php`
 - Square API keys stored in `square_app_id`, `square_location_id`, `square_access_token` settings
 - `api/square-webhook.php` handles async payment status callbacks from Square

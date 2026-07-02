@@ -27,7 +27,13 @@ if (!$stored_token || !$given_token || !hash_equals($stored_token, $given_token)
 
 // ── Config ──
 $from_email = 'handmadedesignsbysuzi@yahoo.com';
-$from_name  = 'Handmade Designs By Suzi';
+$from_name  = bizName(db());
+$biz_email_oc = 'handmadedesignsbysuzi@yahoo.com';
+try {
+    $bzRaw_oc = getSetting($pdo_chk, 'biz_profile');
+    $bz_oc = $bzRaw_oc ? json_decode($bzRaw_oc, true) : null;
+    if (!empty($bz_oc['email'])) $biz_email_oc = $bz_oc['email'];
+} catch (Exception $e) { /* keep fallback */ }
 
 // ── Data ──
 $order_id       = $data['order_id']       ?? '';
@@ -81,7 +87,7 @@ foreach ($items as $item) {
 }
 
 $first_name  = explode(' ', $customer_name)[0];
-$subject     = "Your Order from Handmade Designs By Suzi — #{$order_id}";
+$subject     = "Your Order from {$from_name} — #{$order_id}";
 $check_td    = $check_number ? "<td style='text-align:center'><div style='font-size:11px;color:#a07810;font-weight:bold;text-transform:uppercase'>Check #</div><div style='font-size:13px;font-weight:600;color:#2d2220'>{$check_number}</div></td>" : "";
 
 $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
@@ -90,7 +96,7 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 
   <!-- Header -->
   <div style='background:#a07810;padding:28px;text-align:center'>
-    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>Handmade Designs By Suzi</div>
+    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>{$from_name}</div>
     <div style='color:#ffe8a0;font-size:14px;margin-top:6px'>Order Confirmation</div>
   </div>
 
@@ -165,9 +171,9 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
   <!-- Footer -->
   <div style='background:#2d2220;padding:16px 28px;text-align:center'>
     <div style='color:rgba(255,255,255,.6);font-size:12px;line-height:1.8'>
-      Handmade Designs By Suzi &middot; Knoxville, TN<br>
+      {$from_name} &middot; Knoxville, TN<br>
       Questions? Reply to this email or contact us at
-      <a href='mailto:handmadedesignsbysuzi@yahoo.com' style='color:#d4a017'>handmadedesignsbysuzi@yahoo.com</a>
+      <a href='mailto:{$biz_email_oc}' style='color:#d4a017'>{$biz_email_oc}</a>
     </div>
   </div>
 

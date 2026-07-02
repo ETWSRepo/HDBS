@@ -44,8 +44,9 @@ dbg('send_confirm', "START order_id=$order_id");
     applog('send_confirm','biz_profile raw: '.($bval?substr($bval,0,200):'EMPTY'));
     $biz_url   = !empty($biz['website_url'])   ? $biz['website_url']   : 'https://handmadedesignsbysuzi.com';
     applog('send_confirm','biz_url='.$biz_url.' biz_email='.(!empty($biz['website_email'])?$biz['website_email']:'FALLBACK'));
-    $biz_email = !empty($biz['website_email']) ? $biz['website_email'] : 'handmadedesignsbysuzi@yahoo.com';
+    $biz_email = !empty($biz['email']) ? $biz['email'] : 'handmadedesignsbysuzi@yahoo.com';
     $biz_url_display = preg_replace('#^https?://#', '', rtrim($biz_url, '/'));
+    $biz_name  = !empty($biz['name']) ? $biz['name'] : 'Handmade Designs By Suzi';
 
     // Fetch items
     $iStmt = $pdo->prepare("SELECT oi.*, p.img1 as img, p.sku FROM order_items oi LEFT JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?");
@@ -91,15 +92,15 @@ dbg('send_confirm', "START order_id=$order_id");
     $fee      = (float)($order['transaction_fee'] ?? 0);
     $fee_str  = $fee > 0 ? '$'.number_format($fee,2) : null;
 
-    $subject = "Your Order from Handmade Designs By Suzi - #{$order_id}";
+    $subject = "Your Order from {$biz_name} - #{$order_id}";
     $from_email = 'handmadedesignsbysuzi@yahoo.com';
-    $from_name  = 'Handmade Designs By Suzi';
+    $from_name  = $biz_name;
 
     $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 <body style='margin:0;padding:20px;background:#fffdf0;font-family:Arial,sans-serif'>
 <div style='max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e8e0b8'>
   <div style='background:#a07810;padding:28px;text-align:center'>
-    <h1 style='color:#fff;margin:0;font-size:1.4rem'>Handmade Designs By Suzi</h1>
+    <h1 style='color:#fff;margin:0;font-size:1.4rem'>{$biz_name}</h1>
     <p style='color:#fdf3d0;margin:.4rem 0 0;font-size:.9rem'>Order Confirmation</p>
   </div>
   <div style='padding:28px'>

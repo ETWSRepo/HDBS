@@ -217,16 +217,17 @@ function openPD(id){
   }
   window.scrollTo(0,0);
   // Update title, meta description, and URL for SEO
-  document.title=p.name+' | Handmade Designs By Suzi';
+  document.title=p.name+' | '+(window.BIZ_NAME||'Handmade Designs By Suzi');
   var _md=document.querySelector('meta[name="description"]');
   if(_md)_md.setAttribute('content',(p.desc||'').replace(/<[^>]+>/g,'').substring(0,155));
   history.pushState({p:p.id},'','?p='+p.id);
 }
 function closePD(){
   // Restore original title, meta description, and URL
-  document.title='Handmade Designs By Suzi — Handcrafted Bags & Purses | Knoxville, TN';
+  var _bizName=window.BIZ_NAME||'Handmade Designs By Suzi';
+  document.title=_bizName+' — Handcrafted Bags & Purses | Knoxville, TN';
   var _md=document.querySelector('meta[name="description"]');
-  if(_md)_md.setAttribute('content','Handmade Designs By Suzi — one-of-a-kind handmade tote bags and purses crafted with love in Knoxville, TN. Unique Corvette and car show themed bags, embroidered designs, and custom gifts for car enthusiasts.');
+  if(_md)_md.setAttribute('content',_bizName+' — one-of-a-kind handmade tote bags and purses crafted with love in Knoxville, TN. Unique Corvette and car show themed bags, embroidered designs, and custom gifts for car enthusiasts.');
   history.pushState({},'',window.location.pathname);
   var pages=['store','authpage','alog','apanel','pd-page'];
   for(var pi=0;pi<pages.length;pi++){

@@ -1,31 +1,56 @@
+<?php
+require_once __DIR__ . '/api/config.php';
+$pdo = db();
+$bizName = bizName($pdo);
+$bizShortName = 'By Suzi';
+try {
+    $bzRaw = getSetting($pdo, 'biz_profile');
+    $bz = $bzRaw ? json_decode($bzRaw, true) : null;
+    if (!empty($bz['short_name'])) $bizShortName = $bz['short_name'];
+} catch (Exception $e) { /* keep fallback */ }
+$bizNameAttr = htmlspecialchars($bizName, ENT_QUOTES, 'UTF-8');
+$bizShortNameAttr = htmlspecialchars($bizShortName, ENT_QUOTES, 'UTF-8');
+$bizEmail = !empty($bz['email']) ? $bz['email'] : 'handmadedesignsbysuzi@yahoo.com';
+$bizEmailAttr = htmlspecialchars($bizEmail, ENT_QUOTES, 'UTF-8');
+// Logo: uploaded logo is stored as a full URL (see api/admin.php save_setting); falls back to
+// the original static file if no logo has been uploaded yet.
+$bizLogoAbs = !empty($bz['logo']) ? $bz['logo'] : 'https://handmadedesignsbysuzi.com/HDBSLogo.jpeg';
+$bizLogoAbsAttr = htmlspecialchars($bizLogoAbs, ENT_QUOTES, 'UTF-8');
+$bizLogoWidth = 748; $bizLogoHeight = 913; $bizLogoMime = 'image/jpeg';
+if (!empty($bz['logo'])) {
+    $logoLocalPath = __DIR__ . '/business_logo/' . basename($bz['logo']);
+    $dims = @getimagesize($logoLocalPath);
+    if ($dims) { $bizLogoWidth = $dims[0]; $bizLogoHeight = $dims[1]; $bizLogoMime = $dims['mime']; }
+}
+?>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Handmade Designs By Suzi — Handcrafted Bags &amp; Purses | Knoxville, TN</title>
-<meta name="description" content="Handmade Designs By Suzi — one-of-a-kind handmade tote bags and purses crafted with love in Knoxville, TN. Unique Corvette and car show themed bags, embroidered designs, and custom gifts for car enthusiasts.">
+<title><?php echo $bizNameAttr; ?> — Handcrafted Bags &amp; Purses | Knoxville, TN</title>
+<meta name="description" content="<?php echo $bizNameAttr; ?> — one-of-a-kind handmade tote bags and purses crafted with love in Knoxville, TN. Unique Corvette and car show themed bags, embroidered designs, and custom gifts for car enthusiasts.">
 <meta name="keywords" content="handmade bags, handmade purses, tote bags, Corvette tote bag, car show gifts, ETCC tote bag, Knoxville Tennessee, embroidered bags, handcrafted purses, one of a kind bags, Corvette show merchandise, car enthusiast gifts">
-<meta name="author" content="Handmade Designs By Suzi">
+<meta name="author" content="<?php echo $bizNameAttr; ?>">
 <meta name="robots" content="index, follow">
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://handmadedesignsbysuzi.com">
-<meta property="og:title" content="Handmade Designs By Suzi — One-of-a-Kind Bags &amp; Purses">
-<meta property="og:description" content="Handmade Designs By Suzi — every bag one of a kind, handcrafted with love in Knoxville, TN. Shop tote bags, purses &amp; clutches.">
-<meta property="og:image" content="https://handmadedesignsbysuzi.com/HDBSLogo.jpeg">
-<meta property="og:image:width" content="748">
-<meta property="og:image:height" content="913">
-<meta property="og:image:type" content="image/jpeg">
-<meta property="og:site_name" content="Handmade Designs By Suzi">
+<meta property="og:title" content="<?php echo $bizNameAttr; ?> — One-of-a-Kind Bags &amp; Purses">
+<meta property="og:description" content="<?php echo $bizNameAttr; ?> — every bag one of a kind, handcrafted with love in Knoxville, TN. Shop tote bags, purses &amp; clutches.">
+<meta property="og:image" content="<?php echo $bizLogoAbsAttr; ?>">
+<meta property="og:image:width" content="<?php echo (int)$bizLogoWidth; ?>">
+<meta property="og:image:height" content="<?php echo (int)$bizLogoHeight; ?>">
+<meta property="og:image:type" content="<?php echo htmlspecialchars($bizLogoMime, ENT_QUOTES, 'UTF-8'); ?>">
+<meta property="og:site_name" content="<?php echo $bizNameAttr; ?>">
 <meta property="og:locale" content="en_US">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Handmade Designs By Suzi — One-of-a-Kind Bags &amp; Purses">
-<meta name="twitter:description" content="Handmade Designs By Suzi — every bag one of a kind, handcrafted with love in Knoxville, TN. Shop tote bags, purses &amp; clutches.">
-<meta name="twitter:image" content="https://handmadedesignsbysuzi.com/HDBSLogo.jpeg">
+<meta name="twitter:title" content="<?php echo $bizNameAttr; ?> — One-of-a-Kind Bags &amp; Purses">
+<meta name="twitter:description" content="<?php echo $bizNameAttr; ?> — every bag one of a kind, handcrafted with love in Knoxville, TN. Shop tote bags, purses &amp; clutches.">
+<meta name="twitter:image" content="<?php echo $bizLogoAbsAttr; ?>">
 
 <!-- Canonical URL -->
 <link rel="canonical" href="https://handmadedesignsbysuzi.com">
@@ -33,7 +58,7 @@
 <!-- Favicon -->
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="shortcut icon" type="image/png" href="/favicon.png">
-<link rel="apple-touch-icon" href="https://handmadedesignsbysuzi.com/HDBSLogo.jpeg">
+<link rel="apple-touch-icon" href="<?php echo $bizLogoAbsAttr; ?>">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0ELY03XGRE"></script>
 <script>
@@ -54,10 +79,10 @@
 {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  "name": "Handmade Designs By Suzi",
+  "name": <?php echo json_encode($bizName); ?>,
   "description": "One-of-a-kind handmade tote bags and purses, including Corvette and car show themed designs, crafted with love in Knoxville, TN.",
   "url": "https://handmadedesignsbysuzi.com",
-  "email": "handmadedesignsbysuzi@yahoo.com",
+  "email": <?php echo json_encode($bizEmail); ?>,
   "address": {
     "@type": "PostalAddress",
     "addressLocality": "Knoxville",
@@ -69,8 +94,8 @@
     "latitude": 35.9606,
     "longitude": -83.9207
   },
-  "logo": "https://handmadedesignsbysuzi.com/HDBSLogo.jpeg",
-  "image": "https://handmadedesignsbysuzi.com/HDBSLogo.jpeg",
+  "logo": <?php echo json_encode($bizLogoAbs); ?>,
+  "image": <?php echo json_encode($bizLogoAbs); ?>,
   "priceRange": "$35–$200",
   "openingHours": "Mo-Su 00:00-23:59",
   "sameAs": [
@@ -78,6 +103,7 @@
   ]
 }
 </script>
+<script>window.BIZ_NAME=<?php echo json_encode($bizName); ?>;window.BIZ_SHORT_NAME=<?php echo json_encode($bizShortName); ?>;window.BIZ_EMAIL=<?php echo json_encode($bizEmail); ?>;</script>
 </head>
 <body>
 
@@ -93,7 +119,7 @@
   <!-- SIDE MENU PANEL -->
   <div class="side-menu" id="side-menu">
     <div class="side-menu-header">
-      <div class="side-menu-logo"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></div>
+      <div class="side-menu-logo"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></div>
       <button class="side-menu-close" onclick="closeMenu()">×</button>
     </div>
     <div class="side-menu-nav">
@@ -143,7 +169,7 @@
       <button class="menu-btn" id="menu-toggle" onclick="openMenu()" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r">
       <span id="greeting" style="color:rgba(255,255,255,.78);font-size:.81rem"></span>
@@ -255,7 +281,7 @@
   </div>
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
-    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN · <a href="mailto:handmadedesignsbysuzi@yahoo.com" style="color:rgba(255,255,255,.5)">handmadedesignsbysuzi@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN · <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:rgba(255,255,255,.5)"><?php echo $bizEmailAttr; ?></a></div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
     <div class="site-version-line" style="color:rgba(255,255,255,.5);font-size:.6rem;margin-top:.5rem"></div>
     <div style="margin-top:1rem">
@@ -293,7 +319,7 @@
       </p>
       <p style="font-size:.82rem;color:#6b6040;margin-bottom:1.5rem;line-height:1.6">
         A confirmation has been sent to your email.<br>
-        Questions? Contact us at <strong>handmadedesignsbysuzi@yahoo.com</strong>
+        Questions? Contact us at <strong><?php echo $bizEmailAttr; ?></strong>
       </p>
       <button class="mbtn" style="max-width:260px;margin:0 auto" onclick="closeModal('ty-modal')">Continue Shopping</button>
     </div>
@@ -394,7 +420,7 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
@@ -421,7 +447,7 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
@@ -553,12 +579,12 @@
 
     <p style="text-align:center;font-size:.82rem;color:#6b6040;line-height:1.7">
       Suzi reads every message personally and will reply within 1–2 business days.<br>
-      You can also reach her at <a href="mailto:handmadedesignsbysuzi@yahoo.com" style="color:#a07810">handmadedesignsbysuzi@yahoo.com</a>
+      You can also reach her at <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:#a07810"><?php echo $bizEmailAttr; ?></a>
     </p>
   </div>
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
-    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN</div>
+    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
   </footer>
 </div>
@@ -568,7 +594,7 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
@@ -586,7 +612,7 @@
     </div>
   </div>
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
-    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN</div>
+    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
   </footer>
 </div>
@@ -596,7 +622,7 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
@@ -660,7 +686,7 @@
   </div>
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
-    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 Handmade Designs By Suzi · Knoxville, TN · <a href="mailto:handmadedesignsbysuzi@yahoo.com" style="color:rgba(255,255,255,.5)">handmadedesignsbysuzi@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN · <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:rgba(255,255,255,.5)"><?php echo $bizEmailAttr; ?></a></div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
     <div class="site-version-line" style="color:rgba(255,255,255,.5);font-size:.6rem;margin-top:.5rem"></div>
   </footer>
@@ -670,14 +696,14 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem">
     <div class="abox">
     <div style="font-size:1.5rem;text-align:center;margin-bottom:.4rem">🌸</div>
-    <h2>Handmade Designs By Suzi</h2><p class="sub">Your account</p>
+    <h2><?php echo $bizNameAttr; ?></h2><p class="sub">Your account</p>
     <div class="tabs" id="auth-tabs">
       <div class="tab on" id="tab-si" onclick="switchTab('si')">Sign In</div>
       <div class="tab" id="tab-su" onclick="switchTab('su')">Create Account</div>
@@ -760,14 +786,14 @@
   <nav>
     <div style="display:flex;align-items:center;gap:.3rem">
       <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="HDBSLogo.jpeg" alt="Handmade Designs By Suzi" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
     </div>
     <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
   </nav>
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem">
   <div class="lbox">
     <div style="font-size:1.6rem;margin-bottom:.3rem">🌸</div>
-    <h2>Handmade Designs By Suzi</h2>
+    <h2><?php echo $bizNameAttr; ?></h2>
     <div class="lsub">Back Office</div>
     <div class="lerr" id="lerr">Incorrect password. Please try again.</div>
     <input type="password" id="lpw" placeholder="Enter password" autocomplete="off">
@@ -801,7 +827,7 @@
 <!-- ADMIN PANEL -->
 <div id="apanel" style="display:none">
   <div class="aside">
-    <div class="alogo">Handmade Designs By Suzi<br>By Suzi<span class="asub">Back Office</span></div>
+    <div class="alogo"><?php echo $bizNameAttr; ?><br><?php echo $bizShortNameAttr; ?><span class="asub">Back Office</span></div>
     <button class="sbk" onclick="goStore()">← Back to Store</button>
         <div id="admin-nav"></div>
   </div>
@@ -815,17 +841,18 @@
 <input type="file" id="slot-file-input" accept="image/*" style="display:none">
 <video id="cam-video" style="display:none" autoplay playsinline></video>
 
-<script src="js/api.js?v=7"></script>
+<script src="js/api.js?v=8"></script>
 <script src="js/config.js?v=10"></script>
 <script src="js/data.js?v=5"></script>
 <script src="js/store.js?v=15"></script>
 <script src="js/auth.js?v=5"></script>
 <script src="js/ui.js?v=7"></script>
-<script src="js/admin-nav.js?v=7"></script>
+<script src="js/admin-nav.js?v=8"></script>
 <script src="js/admin-general.js?v=5"></script>
 <script src="js/admin-products.js?v=9"></script>
 <script src="js/admin-orders.js?v=9"></script>
-<script src="js/admin-misc.js?v=13"></script>
+<script src="js/admin-misc.js?v=15"></script>
+<script src="js/admin-business.js?v=1"></script>
 <script src="js/table.js"></script>
 <script src="js/toolbar.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function(){ TableKit.initAll(); });</script>

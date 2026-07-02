@@ -211,6 +211,38 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
     if (!$key) fail('Missing key');
     $sensitive = ['github_token','admin_password','admin_sec_answer','square_access_token','square_app_secret','smtp_pass'];
     if (in_array($key, $sensitive)) fail('Forbidden');
+    // biz_profile.logo arrives as a base64 data URI from the admin form — save it to disk as a
+    // real file (like product images) so it's usable in <img src>, og:image, and JSON-LD, which
+    // all require a fetchable URL rather than a data: URI.
+    if ($key === 'biz_profile') {
+        $biz = json_decode($val, true);
+        if (is_array($biz) && !empty($biz['logo']) && preg_match('/^data:image\/(\w+);base64,(.+)$/s', $biz['logo'], $m)) {
+            if (strlen($m[2]) > 4 * 1024 * 1024 * 4 / 3) fail('Logo image too large (max 4MB)', 400);
+            $bytes = base64_decode($m[2], true);
+            if (!$bytes) fail('Could not decode logo image', 400);
+            $magic  = substr($bytes, 0, 4);
+            $isJpeg = (substr($magic, 0, 2) === "\xFF\xD8");
+            $isPng  = ($magic === "\x89PNG");
+            if (!$isJpeg && !$isPng) fail('Invalid logo image format — only JPEG and PNG are accepted', 400);
+            $logoDir = dirname(__DIR__) . '/business_logo/';
+            $logoUrl = ALLOWED_ORIGIN . '/business_logo/';
+            if (!is_dir($logoDir)) mkdir($logoDir, 0755, true);
+            $ext      = $isPng ? 'png' : 'jpg';
+            $filename = 'logo_' . time() . '.' . $ext;
+            file_put_contents($logoDir . $filename, $bytes);
+            // Remove the previous logo file, if any, to avoid orphaning uploads
+            $oldLogo = getSetting($pdo, 'biz_profile');
+            if ($oldLogo) {
+                $oldBiz = json_decode($oldLogo, true);
+                if (!empty($oldBiz['logo']) && strpos($oldBiz['logo'], $logoUrl) === 0) {
+                    $oldFile = $logoDir . basename($oldBiz['logo']);
+                    if (is_file($oldFile)) @unlink($oldFile);
+                }
+            }
+            $biz['logo'] = $logoUrl . $filename;
+            $val = json_encode($biz);
+        }
+    }
     setSetting($pdo, $key, $val);
     ok(['message' => 'Setting saved']);
 }

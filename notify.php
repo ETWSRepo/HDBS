@@ -28,7 +28,7 @@ file_put_contents(__DIR__ . '/notify_log.txt',
 // ── Config ──
 $to         = 'handmadedesignsbysuzi@yahoo.com';
 $from_email = 'handmadedesignsbysuzi@yahoo.com';
-$from_name  = 'Handmade Designs By Suzi';
+$from_name  = bizName(db());
 
 // ── Data ──
 $order_id       = $data['order_id']       ?? '';
@@ -104,7 +104,7 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 <body style='margin:0;padding:20px;background:#fffdf0;font-family:Arial,sans-serif'>
 <div style='max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e8e0b8'>
   <div style='background:#a07810;padding:24px 28px;text-align:center'>
-    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>Handmade Designs By Suzi</div>
+    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>{$from_name}</div>
     <div style='color:#ffe8a0;font-size:14px;margin-top:6px'>New Order Received</div>
   </div>
   <div style='background:#fffdf0;border-bottom:1px solid #e8e0b8;padding:14px 28px'>
@@ -157,7 +157,7 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
     </div>
   </div>
   <div style='background:#2d2220;padding:14px 28px;text-align:center'>
-    <div style='color:rgba(255,255,255,0.5);font-size:12px'>Handmade Designs By Suzi &middot; Knoxville, TN</div>
+    <div style='color:rgba(255,255,255,0.5);font-size:12px'>{$from_name} &middot; Knoxville, TN</div>
   </div>
 </div></body></html>";
 

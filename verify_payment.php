@@ -200,8 +200,9 @@ try {
     if($bval_vp) $biz_vp = json_decode($bval_vp, true) ?: [];
 } catch(Exception $e) {}
 $biz_url_vp   = !empty($biz_vp['website_url'])   ? $biz_vp['website_url']   : 'https://handmadedesignsbysuzi.com';
-$biz_email_vp = !empty($biz_vp['website_email']) ? $biz_vp['website_email'] : 'handmadedesignsbysuzi@yahoo.com';
+$biz_email_vp = !empty($biz_vp['email']) ? $biz_vp['email'] : 'handmadedesignsbysuzi@yahoo.com';
 $biz_url_display_vp = preg_replace('#^https?://#', '', rtrim($biz_url_vp, '/'));
+$biz_name_vp = !empty($biz_vp['name']) ? $biz_vp['name'] : 'Handmade Designs By Suzi';
 
 $customer_email = isset($order['customer_email']) ? $order['customer_email'] : '';
 // If no customer email, send only to Suzi (admin notification)
@@ -215,8 +216,8 @@ $first_name     = explode(' ', $customer_name)[0];
 $address        = htmlspecialchars(isset($order['shipping_address']) ? $order['shipping_address'] : '');
 $order_date     = htmlspecialchars(isset($order['order_date']) ? $order['order_date'] : '');
 $from_email     = 'handmadedesignsbysuzi@yahoo.com';
-$from_name      = 'Handmade Designs By Suzi';
-$subject        = "Your Order from Handmade Designs By Suzi - #{$order_id}";
+$from_name      = $biz_name_vp;
+$subject        = "Your Order from {$biz_name_vp} - #{$order_id}";
 
 // Get order items
 $iStmt = $pdo->prepare("SELECT oi.*, p.img1 as img, p.sku as sku FROM order_items oi LEFT JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?");
@@ -270,7 +271,7 @@ $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 <body style='margin:0;padding:20px;background:#fffdf0;font-family:Arial,sans-serif'>
 <div style='max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e8e0b8'>
   <div style='background:#a07810;padding:28px;text-align:center'>
-    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>Handmade Designs By Suzi</div>
+    <div style='color:#fff;font-size:22px;font-weight:bold;font-style:italic'>{$biz_name_vp}</div>
     <div style='color:#ffe8a0;font-size:14px;margin-top:6px'>Order Confirmation</div>
   </div>
   <div style='padding:28px 28px 0'>

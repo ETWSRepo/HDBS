@@ -43,7 +43,7 @@ dbg('send_shipping', "START order_id=$order_id");
     $tracking       = htmlspecialchars(isset($order['tracking_number']) ? $order['tracking_number'] : '');
     $address        = htmlspecialchars(isset($order['shipping_address']) ? $order['shipping_address'] : '');
     $from_email     = 'handmadedesignsbysuzi@yahoo.com';
-    $from_name      = 'Handmade Designs By Suzi';
+    $from_name      = bizName($pdo);
     $subject        = "Your Order Has Shipped! - #{$order_id}";
 
     // Tracking URL
@@ -103,14 +103,14 @@ dbg('send_shipping', "START order_id=$order_id");
         if($bval2) $biz2 = json_decode($bval2, true) ?: [];
     } catch(Exception $e) {}
     $biz_url2   = !empty($biz2['website_url'])   ? $biz2['website_url']   : 'https://handmadedesignsbysuzi.com';
-    $biz_email2 = !empty($biz2['website_email']) ? $biz2['website_email'] : 'handmadedesignsbysuzi@yahoo.com';
+    $biz_email2 = !empty($biz2['email']) ? $biz2['email'] : 'handmadedesignsbysuzi@yahoo.com';
     $biz_url_display2 = preg_replace('#^https?://#', '', rtrim($biz_url2, '/'));
 
     $html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
 <body style='margin:0;padding:20px;background:#fffdf0;font-family:Arial,sans-serif'>
 <div style='max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e8e0b8'>
   <div style='background:#a07810;padding:28px;text-align:center'>
-    <h1 style='color:#fff;margin:0;font-size:1.4rem'>Handmade Designs By Suzi</h1>
+    <h1 style='color:#fff;margin:0;font-size:1.4rem'>{$from_name}</h1>
     <p style='color:#fdf3d0;margin:.4rem 0 0;font-size:.9rem'>&#x1F4E6; Your Order Has Shipped!</p>
   </div>
   <div style='padding:28px'>
@@ -139,7 +139,7 @@ dbg('send_shipping', "START order_id=$order_id");
   </div>
   <div style='background:#2d2220;padding:16px 28px;text-align:center'>
     <div style='color:rgba(255,255,255,.6);font-size:.8rem'>
-      Handmade Designs By Suzi &bull; Knoxville, TN<br>
+      {$from_name} &bull; Knoxville, TN<br>
       <a href='https://handmadedesignsbysuzi.com' style='color:#d4a017'>handmadedesignsbysuzi.com</a><br>
       Questions? <a href='mailto:{$biz_email2}' style='color:#d4a017'>{$biz_email2}</a>
     </div>

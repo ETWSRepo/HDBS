@@ -69,7 +69,7 @@ try{t('settings exist',(int)$pdo->query("SELECT COUNT(*) FROM settings")->fetchC
 try{$rtt=$pdo->query("SELECT value FROM settings WHERE key_name='rt_token' LIMIT 1")->fetchColumn();t('rt_token set',$rtt!==false&&strlen($rtt)>=16);}catch(Exception $e){t('rt_token set',false,$e->getMessage());}
 try{$pc=$pdo->query("SELECT value FROM settings WHERE key_name='payment_configuration' LIMIT 1")->fetchColumn();t('payment_configuration valid',$pc===false||in_array($pc,['Online','InPerson','Test']),$pc===false?'(unset — defaults to Online)':$pc);}catch(Exception $e){t('payment_configuration valid',false,$e->getMessage());}
 try{$sh=json_decode($pdo->query("SELECT value FROM settings WHERE key_name='shipping_config' LIMIT 1")->fetchColumn(),true);t('shipping_config',$sh!==null&&isset($sh['zone_rates']));}catch(Exception $e){t('shipping_config',false,$e->getMessage());}
-try{$bz=json_decode($pdo->query("SELECT value FROM settings WHERE key_name='biz_profile' LIMIT 1")->fetchColumn(),true);t('biz_profile',$bz!==null&&isset($bz['legal_name']));}catch(Exception $e){t('biz_profile',false,$e->getMessage());}
+try{$bzRaw=$pdo->query("SELECT value FROM settings WHERE key_name='biz_profile' LIMIT 1")->fetchColumn();$bz=$bzRaw?json_decode($bzRaw,true):null;t('biz_profile valid JSON',$bzRaw===false||$bz!==null,$bzRaw===false?'(unset — Business > Profile not yet saved)':'invalid JSON');}catch(Exception $e){t('biz_profile valid JSON',false,$e->getMessage());}
 try{$n=(int)$pdo->query("SELECT COUNT(*) FROM products WHERE sku IS NOT NULL AND sku!=''")->fetchColumn();t('products have SKUs',$n>0,$n.' with SKU');}catch(Exception $e){t('products have SKUs',false,$e->getMessage());}
 try{$d=$pdo->query("SELECT sku,COUNT(*) c FROM products WHERE sku!='' GROUP BY sku HAVING c>1")->fetchAll();t('no duplicate SKUs',count($d)===0,count($d).' dupes');}catch(Exception $e){t('no duplicate SKUs',false,$e->getMessage());}
 try{
@@ -214,10 +214,10 @@ try{
     t('store.js renderComingSoon + notifyMe',strpos($csj,'function renderComingSoon(')!==false&&strpos($csj,'function notifyMe(')!==false);
     t('store.js excludes coming_soon from buy grid',strpos($csj,'p.sell!==0&&!p.coming_soon')!==false);
     t('notifyMe writes tagged subscriber',strpos($csj,"source:'Coming Soon: '")!==false);
-    $chtml=file_get_contents($root.'/index.html');
-    t('index.html has Coming Soon section',strpos($chtml,'id="coming-soon"')!==false&&strpos($chtml,'id="cs-grid"')!==false);
+    $chtml=file_get_contents($root.'/index.php');
+    t('index.php has Coming Soon section',strpos($chtml,'id="coming-soon"')!==false&&strpos($chtml,'id="cs-grid"')!==false);
     t('Coming Soon has First look eyebrow',strpos($chtml,'First look')!==false);
-    t('index.html loads Playfair + Inter',strpos($chtml,'Playfair+Display')!==false&&strpos($chtml,'family=Inter')!==false);
+    t('index.php loads Playfair + Inter',strpos($chtml,'Playfair+Display')!==false&&strpos($chtml,'family=Inter')!==false);
     t('hero redesigned (overline + buttons)',strpos($chtml,'hero-overline')!==false&&strpos($chtml,'hbtn-primary')!==false&&strpos($chtml,'Request a custom bag')!==false);
     t('homepage has featured collections',strpos($chtml,'id="featured-cards"')!==false);
     t('homepage has about + process',strpos($chtml,'class="about-teaser"')!==false&&strpos($chtml,'class="proc-steps"')!==false);
@@ -231,7 +231,7 @@ try{
 
 // ── REDESIGN PHASE 4-5 (gallery, nav, palette cohesion) ──
 try{
-    $rhtml=file_get_contents($root.'/index.html');
+    $rhtml=file_get_contents($root.'/index.php');
     t('homepage has masonry gallery',strpos($rhtml,'id="gallery-grid"')!==false&&strpos($rhtml,'class="masonry"')!==false);
     t('nav has Gallery + Custom Bags',strpos($rhtml,'goGallery()')!==false&&strpos($rhtml,'Custom Bags')!==false);
     $rsj=file_get_contents($root.'/js/store.js');
@@ -336,6 +336,90 @@ try{
     t('Shipping reads from order.shipping',strpos($apjs,'order.shipping>0?order.shipping')!==false);
     t('Transaction fee shows for Credit Card',strpos($apjs,"pay==='Credit Card'||order.pay==='Square'")!==false);
 }catch(Exception $e){t('products screen checks',false,$e->getMessage());}
+// Business: Profile / Documents / Inventory / Reports nav folder
+try{
+    $amjsBiz=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
+    $amjs=$amjsBiz;
+    $anjsBiz=isset($anjs)?$anjs:file_get_contents($root.'/js/admin-nav.js');
+    $anjs=$anjsBiz;
+    $abjs=file_get_contents($root.'/js/admin-business.js');
+    t('Business folder in ADMIN_NAV_STRUCTURE_DEFAULT',strpos($amjs,"type:'folder',sec:'business'")!==false);
+    t('Business folder children are Profile/Documents/Inventory/Reports',strpos($amjs,"children:['bizprofile','bizdocs','bizinv','bizreports']")!==false);
+    t('Nav migration consolidates legacy bizprofile into Business folder',strpos($amjs,'hasBusinessFolder')!==false);
+    t('bizdocs/bizinv/bizreports routed in admin-nav.js',strpos($anjs,"rBizDocs(el)")!==false&&strpos($anjs,"rBizInv(el)")!==false&&strpos($anjs,"rBizReports(el)")!==false);
+    t('admin-business.js defines rBizProfile',strpos($abjs,'function rBizProfile(')!==false);
+    t('admin-business.js defines rBizDocs',strpos($abjs,'function rBizDocs(')!==false);
+    t('admin-business.js defines rBizInv',strpos($abjs,'function rBizInv(')!==false);
+    t('admin-business.js defines rBizReports',strpos($abjs,'function rBizReports(')!==false);
+    t('Profile form has business name field',strpos($abjs,'bp-name')!==false);
+    t('Profile form has short name field',strpos($abjs,'bp-short-name')!==false);
+    t('Profile form has address field',strpos($abjs,'bp-address')!==false);
+    t('Profile form has phone field',strpos($abjs,'bp-phone')!==false);
+    t('Profile form has email field',strpos($abjs,'bp-email')!==false);
+    t('Profile form has logo upload',strpos($abjs,'bp-logo-file')!==false);
+    t('index.php cache-busts admin-business.js',strpos(file_get_contents($root.'/index.php'),'js/admin-business.js?v=')!==false);
+}catch(Exception $e){t('business nav checks',false,$e->getMessage());}
+// Business Documents API (resale certificate, business license)
+try{
+    $bdphp=file_get_contents($root.'/api/business_docs.php');
+    t('business_docs.php requires admin',strpos($bdphp,'requireAdmin()')!==false);
+    t('business_docs.php supports resale_cert type',strpos($bdphp,'resale_cert')!==false);
+    t('business_docs.php supports business_license type',strpos($bdphp,'business_license')!==false);
+    t('business_docs.php list action',strpos($bdphp,"'list'")!==false);
+    t('business_docs.php upload action',strpos($bdphp,"'upload'")!==false);
+    t('business_docs.php download action',strpos($bdphp,"'download'")!==false);
+    t('business_docs.php delete action',strpos($bdphp,"'delete'")!==false);
+    t('business_docs.php validates file magic bytes',strpos($bdphp,"'%PDF'")!==false&&strpos($bdphp,'\xFF\xD8')!==false);
+    t('business_docs.php enforces 5MB size cap',strpos($bdphp,'5 * 1024 * 1024')!==false);
+    t('business_docs.php stores files outside webroot',strpos($bdphp,"dirname(dirname(__DIR__)) . '/business_documents/'")!==false);
+    t('business_docs.php persists metadata to biz_documents setting',strpos($bdphp,"'biz_documents'")!==false);
+}catch(Exception $e){t('business_docs.php checks',false,$e->getMessage());}
+// Dynamic business name/logo/email — index.php is server-rendered from Business > Profile
+try{
+    $cfgphp=file_get_contents($root.'/api/config.php');
+    t('bizName() helper exists in config.php',strpos($cfgphp,'function bizName(')!==false);
+    $ixphp=file_get_contents($root.'/index.php');
+    t('index.php requires api/config.php',strpos($ixphp,"require_once __DIR__ . '/api/config.php'")!==false);
+    t('index.php computes bizName from settings',strpos($ixphp,'bizName($pdo)')!==false);
+    t('index.php title uses bizNameAttr',strpos($ixphp,'<title><?php echo $bizNameAttr; ?>')!==false);
+    t('index.php JSON-LD name is dynamic',strpos($ixphp,'"name": <?php echo json_encode($bizName); ?>')!==false);
+    t('index.php JSON-LD email is dynamic',strpos($ixphp,'"email": <?php echo json_encode($bizEmail); ?>')!==false);
+    t('index.php JSON-LD logo/image is dynamic',strpos($ixphp,'"logo": <?php echo json_encode($bizLogoAbs); ?>')!==false&&strpos($ixphp,'"image": <?php echo json_encode($bizLogoAbs); ?>')!==false);
+    t('index.php injects window.BIZ_NAME/BIZ_SHORT_NAME/BIZ_EMAIL',strpos($ixphp,'window.BIZ_NAME=')!==false&&strpos($ixphp,'window.BIZ_SHORT_NAME=')!==false&&strpos($ixphp,'window.BIZ_EMAIL=')!==false);
+    t('index.php og:image is dynamic',strpos($ixphp,'og:image" content="<?php echo $bizLogoAbsAttr; ?>"')!==false);
+    t('index.php twitter:image is dynamic',strpos($ixphp,'twitter:image" content="<?php echo $bizLogoAbsAttr; ?>"')!==false);
+    t('index.php apple-touch-icon is dynamic',strpos($ixphp,'apple-touch-icon" href="<?php echo $bizLogoAbsAttr; ?>"')!==false);
+    t('index.php og:image dimensions read from real file',strpos($ixphp,'getimagesize($logoLocalPath)')!==false);
+    t('index.php has no leftover hardcoded HDBSLogo.jpeg src',substr_count($ixphp,'src="HDBSLogo.jpeg"')===0);
+    t('index.php logo alt text is dynamic',substr_count($ixphp,'alt="<?php echo $bizNameAttr; ?>"')>=8);
+    t('index.php footer mailto is dynamic',strpos($ixphp,'mailto:<?php echo $bizEmailAttr; ?>')!==false);
+    t('index.php admin sidebar shows name + short name',strpos($ixphp,'class="alogo"><?php echo $bizNameAttr; ?><br><?php echo $bizShortNameAttr; ?>')!==false);
+    // api/admin.php converts an uploaded base64 logo to a real file on disk
+    $adminphpBiz=isset($adphp)?$adphp:file_get_contents($root.'/api/admin.php');
+    t('admin.php converts biz_profile logo data URI to a file',strpos($adminphpBiz,"key === 'biz_profile'")!==false&&strpos($adminphpBiz,"dirname(__DIR__) . '/business_logo/'")!==false);
+    t('admin.php validates logo magic bytes',strpos($adminphpBiz,'\x89PNG')!==false);
+    t('admin.php cleans up previous logo file on re-upload',strpos($adminphpBiz,'@unlink($oldFile)')!==false);
+    // Email templates: dynamic name/email, no stale hardcoded strings in From/subject/footer
+    foreach(['send_confirm.php'=>'biz_name','send_shipping.php'=>'from_name','verify_payment.php'=>'biz_name_vp','order_confirm.php'=>'from_name','notify.php'=>'from_name'] as $ef=>$var){
+        $efc=file_get_contents($root.'/'.$ef);
+        t($ef.' uses dynamic '.$var.' for from-name',strpos($efc,'$'.$var)!==false);
+    }
+    t('send_confirm.php reads email field (not stale website_email)',strpos(file_get_contents($root.'/send_confirm.php'),"\$biz['email']")!==false);
+    t('send_shipping.php reads email field (not stale website_email)',strpos(file_get_contents($root.'/send_shipping.php'),"\$biz2['email']")!==false);
+    t('verify_payment.php reads email field (not stale website_email)',strpos(file_get_contents($root.'/verify_payment.php'),"\$biz_vp['email']")!==false);
+    t('order_confirm.php fetches biz_profile email',strpos(file_get_contents($root.'/order_confirm.php'),'$biz_email_oc')!==false);
+    $ppphp=file_get_contents($root.'/api/process_payment.php');
+    t('process_payment.php fetches biz name and email',strpos($ppphp,'$biz_name_pp')!==false&&strpos($ppphp,'$biz_email_pp')!==false);
+    t('api/contact.php uses dynamic biz name in email header',strpos(file_get_contents($root.'/api/contact.php'),'$biz_name_ct')!==false);
+    // JS: window.BIZ_NAME / window.BIZ_EMAIL wired with hardcoded fallback (never a hard failure if unset)
+    $storejs=file_get_contents($root.'/js/store.js');
+    t('store.js product title uses window.BIZ_NAME',strpos($storejs,'window.BIZ_NAME')!==false);
+    $cfgjs=file_get_contents($root.'/js/config.js');
+    t('config.js product JSON-LD brand/seller uses window.BIZ_NAME',substr_count($cfgjs,'window.BIZ_NAME')>=2);
+    t('config.js contact-form errors use window.BIZ_EMAIL',substr_count($cfgjs,'window.BIZ_EMAIL')>=2);
+    $aojsBiz=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
+    t('admin-orders.js toolbar logos use window.BIZ_NAME',substr_count($aojsBiz,'window.BIZ_NAME')>=5);
+}catch(Exception $e){t('dynamic business name/logo/email checks',false,$e->getMessage());}
 // Nav
 try{
     $cfjs=isset($cfjs)?$cfjs:file_get_contents($root.'/js/config.js');
@@ -377,7 +461,7 @@ try{
 }catch(Exception $e){t('square payments checks',false,$e->getMessage());}
 // SEO tags
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('Meta description contains Corvette',strpos($ihtml,'Corvette')!==false);
     t('Meta keywords contains car show',strpos($ihtml,'car show')!==false);
     t('LocalBusiness JSON-LD present',strpos($ihtml,'application/ld+json')!==false);
@@ -389,7 +473,7 @@ try{
 }catch(Exception $e){t('SEO tag checks',false,$e->getMessage());}
 // Homepage page visibility
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('authpage hidden on load',strpos($ihtml,'id="authpage" style="display:none"')!==false);
     t('alog hidden on load',strpos($ihtml,'id="alog" style="display:none"')!==false);
     t('apanel hidden on load',strpos($ihtml,'id="apanel" style="display:none"')!==false);
@@ -421,7 +505,7 @@ try{
 }catch(Exception $e){t('tax sweep button checks',false,$e->getMessage());}
 // Contact page and navigation
 try{
-    $ihtml=file_get_contents($root.'/index.html');
+    $ihtml=file_get_contents($root.'/index.php');
     $hamCount=substr_count($ihtml,'onclick="openMenu()"');
     t('contactpage div exists',strpos($ihtml,'id="contactpage"')!==false);
     t('contactpage hidden on load',strpos($ihtml,'id="contactpage" style="display:none')!==false);
@@ -435,14 +519,14 @@ try{
     t('goContact scrolls to top',strpos($cfjs,'scrollTo(0,0)')!==false);
     t('hamburger on all pages',$hamCount>=7,'found '.$hamCount.' (expected 7+)');
 }catch(Exception $e){t('contact page checks',false,$e->getMessage());}
-// Business profile and confirmation email
+// Business profile (moved to js/admin-business.js) and confirmation email
 try{
-    $amjs3=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
-    $amjs=$amjs3;
-    t('biz profile website_url field',strpos($amjs,'bp-website-url')!==false);
-    t('biz profile website_email field',strpos($amjs,'bp-website-email')!==false);
-    t('biz profile saves website fields',strpos($amjs,'website_url:website_url')!==false);
-    t('biz profile website section',strpos($amjs,'Website & Contact')!==false);
+    $abjs2=isset($abjs)?$abjs:file_get_contents($root.'/js/admin-business.js');
+    $abjs=$abjs2;
+    t('biz profile name field',strpos($abjs,'bp-name')!==false);
+    t('biz profile short name field',strpos($abjs,'bp-short-name')!==false);
+    t('biz profile saves identity fields',strpos($abjs,'name:name,short_name:short_name')!==false);
+    t('biz profile identity section',strpos($abjs,'Business Identity')!==false);
 }catch(Exception $e){t('biz profile checks',false,$e->getMessage());}
 try{
     $scphp=file_get_contents($root.'/send_confirm.php');
@@ -505,10 +589,10 @@ try{
     $apj2=file_get_contents($root.'/js/admin-products.js');
     t('order detail removed Status/Paid By quick-edit',strpos($apj2,'vo-status-')===false&&strpos($apj2,'vo-pay-')===false);
     t('order detail removed Update Order field block',strpos($apj2,'>Update Order<')===false);
-    // index.html: cache-busting on app scripts
-    $idx2=file_get_contents($root.'/index.html');
-    t('index.html cache-busts store.js',strpos($idx2,'js/store.js?v=')!==false);
-    t('index.html cache-busts admin-products.js',strpos($idx2,'js/admin-products.js?v=')!==false);
+    // index.php: cache-busting on app scripts
+    $idx2=file_get_contents($root.'/index.php');
+    t('index.php cache-busts store.js',strpos($idx2,'js/store.js?v=')!==false);
+    t('index.php cache-busts admin-products.js',strpos($idx2,'js/admin-products.js?v=')!==false);
 }catch(Exception $e){t('email/order 2026-06-26 checks',false,$e->getMessage());}
 // Email log clear button
 try{$amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
@@ -519,7 +603,7 @@ try{$elphp=file_get_contents($root.'/api/email_log.php');
     t('email_log.php supports DELETE',strpos($elphp,'DELETE')!==false&&strpos($elphp,'DELETE FROM email_log')!==false);
 }catch(Exception $e){t('email_log DELETE',false,$e->getMessage());}
 // Logo and hamburger on all pages
-try{$ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+try{$ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('hamburger on all pages',$hamCount>=7,'found '.$hamCount.' (expected 7+)');
     t('logo image in nav',strpos($ihtml,'HDBSLogo.jpeg')!==false);
     t('apple-touch-icon set',strpos($ihtml,'apple-touch-icon')!==false);
@@ -696,9 +780,9 @@ try{
 
 // ── PAGE TOOLBAR ──
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
-    t('toolbar.css linked in index.html',strpos($ihtml,'css/toolbar.css')!==false);
-    t('toolbar.js included in index.html',strpos($ihtml,'js/toolbar.js')!==false);
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
+    t('toolbar.css linked in index.php',strpos($ihtml,'css/toolbar.css')!==false);
+    t('toolbar.js included in index.php',strpos($ihtml,'js/toolbar.js')!==false);
     t('toolbar.js exists',file_exists($root.'/js/toolbar.js'));
     t('toolbar.css exists',file_exists($root.'/css/toolbar.css'));
     $anjs=isset($anjs)?$anjs:file_get_contents($root.'/js/admin-nav.js');
@@ -739,10 +823,10 @@ try{
     t('minor_version in settings',strpos($adphp,"'minor_version'")!==false);
     t('get_version action',strpos($adphp,"action === 'get_version'")!==false||strpos($adphp,"=== 'get_version'")!==false);
     t('increment_minor_version action',strpos($adphp,"increment_minor_version")!==false);
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('version line in footer',strpos($ihtml,'site-version-line')!==false);
     t('version line brightness matches footer (.5 opacity)',strpos($ihtml,'site-version-line')!==false&&strpos($ihtml,'rgba(255,255,255,.25)')===false,'should use .5 not .25');
-    t('version fetch script in index.html',strpos($ihtml,'get_version')!==false);
+    t('version fetch script in index.php',strpos($ihtml,'get_version')!==false);
     $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
     t('saveVersion function exists',strpos($amjs,'function saveVersion(')!==false);
     t('version card in settings',strpos($amjs,'version-card')!==false&&strpos($amjs,'ver-major')!==false);
@@ -830,7 +914,7 @@ try{$sjsPC=file_get_contents($root.'/js/store.js');
     t('updateInPersonUI function exists',strpos($sjsPC,'function updateInPersonUI(')!==false);
     t('updateShippingDisplay honors optional shipping',strpos($sjsPC,'co-ship-req')!==false);
 }catch(Exception $e){t('store.js payment config',false,$e->getMessage());}
-try{$htmlPC=file_get_contents($root.'/index.html');
+try{$htmlPC=file_get_contents($root.'/index.php');
     t('checkout InPerson section present',strpos($htmlPC,'id="co-inperson"')!==false);
     t('checkout payment method select',strpos($htmlPC,'id="co-paymethod"')!==false);
     t('checkout check number field',strpos($htmlPC,'id="co-checknum"')!==false);
@@ -838,7 +922,7 @@ try{$htmlPC=file_get_contents($root.'/index.html');
     t('shop.css cache-busted',strpos($htmlPC,'shop.css?v=')!==false);
     $sbkPos=strpos($htmlPC,'class="sbk"');$navPos=strpos($htmlPC,'id="admin-nav"');
     t('Back to Store sits above admin nav',$sbkPos!==false&&$navPos!==false&&$sbkPos<$navPos);
-}catch(Exception $e){t('index.html payment config',false,$e->getMessage());}
+}catch(Exception $e){t('index.php payment config',false,$e->getMessage());}
 
 // ── DEPLOY HISTORY ──
 try{
@@ -903,8 +987,8 @@ try{
     t('Change History header shows current version',strpos($amjs,'gitlog-ver')!==false);
     // Version column header appears in both deploy + change history renderers
     t('Version column header present',substr_count($amjs,'<th>Version</th>')>=2);
-    // Staging cache-busting of admin JS in index.html
-    $htmlV=file_get_contents($root.'/index.html');
+    // Staging cache-busting of admin JS in index.php
+    $htmlV=file_get_contents($root.'/index.php');
     t('admin-orders.js cache-busted',strpos($htmlV,'admin-orders.js?v=')!==false);
     t('admin-misc.js cache-busted',strpos($htmlV,'admin-misc.js?v=')!==false);
 }catch(Exception $e){t('change history checks',false,$e->getMessage());}
@@ -932,10 +1016,10 @@ try{
     $tbljs=file_get_contents($root.'/js/table.js');
     t('css/table.css exists',strlen($tblcss)>100);
     t('js/table.js exists',strlen($tbljs)>100);
-    $html=isset($html)?$html:file_get_contents($root.'/index.html');
-    t('index.html loads table.css',strpos($html,'css/table.css')!==false);
-    t('index.html loads table.js',strpos($html,'js/table.js')!==false);
-    t('TableKit.initAll() in index.html',strpos($html,'TableKit.initAll()')!==false);
+    $html=isset($html)?$html:file_get_contents($root.'/index.php');
+    t('index.php loads table.css',strpos($html,'css/table.css')!==false);
+    t('index.php loads table.js',strpos($html,'js/table.js')!==false);
+    t('TableKit.initAll() in index.php',strpos($html,'TableKit.initAll()')!==false);
     $aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
     t('buildCustThead exists with colgroup',strpos($aojs,'buildCustThead')!==false&&strpos($aojs,'colgroup')!==false);
     t('buildOrdThead plain th',strpos($aojs,"cols.map(function(l){return'<th>'+l+'</th>';}")!==false);
@@ -1106,9 +1190,9 @@ tProd('api/prompt_log.php removed from server',!file_exists($root.'/api/prompt_l
 
 // ── FAVICON ──
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('favicon.png exists',file_exists($root.'/favicon.png'));
-    t('favicon.png linked in index.html',strpos($ihtml,'favicon.png')!==false);
+    t('favicon.png linked in index.php',strpos($ihtml,'favicon.png')!==false);
     t('favicon link is PNG type',strpos($ihtml,'type="image/png"')!==false);
     t('SVG emoji favicon removed',strpos($ihtml,"data:image/svg+xml")===false);
     t('favicon.png accessible (200)',httpCode('https://handmadedesignsbysuzi.com/favicon.png')===200);
@@ -1116,7 +1200,7 @@ try{
 
 // ── ABOUT PAGE ──
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('aboutsuzi.jpeg exists',file_exists($root.'/aboutsuzi.jpeg'));
     t('aboutsuzi.jpeg in About page',strpos($ihtml,'aboutsuzi.jpeg')!==false);
     t('About page has photo img tag',strpos($ihtml,'src="aboutsuzi.jpeg"')!==false);
@@ -1158,8 +1242,8 @@ try{
 
 // ── GOOGLE ANALYTICS ──
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
-    t('GA4 measurement ID in index.html',strpos($ihtml,'G-0ELY03XGRE')!==false);
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
+    t('GA4 measurement ID in index.php',strpos($ihtml,'G-0ELY03XGRE')!==false);
     t('GA4 gtag.js script tag present',strpos($ihtml,'googletagmanager.com/gtag/js')!==false);
     t('GA4 gtag config call present',strpos($ihtml,"gtag('config', 'G-0ELY03XGRE')")!==false);
     $cfgGA=file_get_contents($root.'/js/config.js');
@@ -1179,11 +1263,11 @@ try{
 
 // ── STRUCTURED DATA (JSON-LD) ──
 try{
-    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.html');
-    t('LocalBusiness JSON-LD in index.html',strpos($ihtml,'application/ld+json')!==false&&strpos($ihtml,'"LocalBusiness"')!==false);
-    t('LocalBusiness has name',strpos($ihtml,'"Handmade Designs By Suzi"')!==false);
+    $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
+    t('LocalBusiness JSON-LD in index.php',strpos($ihtml,'application/ld+json')!==false&&strpos($ihtml,'"LocalBusiness"')!==false);
+    t('LocalBusiness has name',strpos($ihtml,'"name": <?php echo json_encode($bizName); ?>')!==false);
     t('LocalBusiness has address (Knoxville TN)',strpos($ihtml,'"Knoxville"')!==false&&strpos($ihtml,'"TN"')!==false);
-    t('LocalBusiness has email',strpos($ihtml,'"handmadedesignsbysuzi@yahoo.com"')!==false);
+    t('LocalBusiness has email',strpos($ihtml,'"email": <?php echo json_encode($bizEmail); ?>')!==false);
     $cfgLD=file_get_contents($root.'/js/config.js');
     t('injectProductSchemas function exists',strpos($cfgLD,'function injectProductSchemas(')!==false);
     t('injectProductSchemas uses p.desc (not p.description)',strpos($cfgLD,'p.desc||')!==false&&strpos($cfgLD,'p.description')===false);
@@ -1192,9 +1276,9 @@ try{
     t('injectProductSchemas reads p.imgs array (not p.img1/2/3)',strpos($cfgLD,'p.imgs||[]')!==false&&strpos($cfgLD,'p.img1')===false);
     t('product schema includes image field',strpos($cfgLD,'"image":imgs')!==false);
     t('product schema includes offers with price',strpos($cfgLD,'"offers":')!==false&&strpos($cfgLD,'"price":parseFloat(p.price)')!==false);
-    t('product schema includes brand',strpos($cfgLD,'"brand":')!==false&&strpos($cfgLD,'"@type":"Brand","name":"Handmade Designs By Suzi"')!==false);
+    t('product schema includes brand',strpos($cfgLD,'"brand":')!==false&&strpos($cfgLD,'"@type":"Brand","name":(window.BIZ_NAME')!==false);
     // hasOfferCatalog removed — bare Product entries with no offers triggered Google critical errors
-    t('hasOfferCatalog removed from index.html',strpos($ihtml,'hasOfferCatalog')===false);
+    t('hasOfferCatalog removed from index.php',strpos($ihtml,'hasOfferCatalog')===false);
     t('no bare category Product entries',strpos($ihtml,'"name": "Corvette Tote Bags"')===false&&strpos($ihtml,'"name": "Handmade Purses"')===false);
     t('single LocalBusiness block (no duplicate)',substr_count($ihtml,'"@type": "LocalBusiness"')+substr_count($ihtml,'"@type":"LocalBusiness"')===1);
     t('LocalBusiness has logo',strpos($ihtml,'"logo":')!==false&&strpos($ihtml,'HDBSLogo.jpeg')!==false);
@@ -1209,7 +1293,7 @@ try{
 // ── PER-PRODUCT SEO (title, meta, URL) ──
 try{
     $sjsSEO=file_get_contents($root.'/js/store.js');
-    t('openPD updates document.title',strpos($sjsSEO,"document.title=p.name+' | Handmade Designs By Suzi'")!==false);
+    t('openPD updates document.title',strpos($sjsSEO,"document.title=p.name+' | '+(window.BIZ_NAME")!==false);
     t('openPD updates meta description',strpos($sjsSEO,'meta[name="description"]')!==false&&strpos($sjsSEO,'setAttribute(')!==false);
     t('openPD pushes ?p= URL state',strpos($sjsSEO,"history.pushState({p:p.id}")!==false);
     t('closePD restores original title',strpos($sjsSEO,'Handcrafted Bags & Purses | Knoxville, TN')!==false);
@@ -1272,11 +1356,12 @@ try{
 foreach(['api/config.php','api/admin.php','api/orders.php','api/products.php',
          'api/tax_sweep.php','api/square_payments.php','api/fetch_tax.php',
          'api/email_log.php','api/tn_city_tax.php','api/applog.php',
+         'api/business_docs.php',
          'mailer.php','checkout.php','send_confirm.php','send_shipping.php',
-         'verify_payment.php','notify.php','index.html',
+         'verify_payment.php','notify.php','index.php',
          'css/shop.css','css/table.css','js/table.js','js/api.js','js/config.js','js/store.js','js/auth.js',
          'js/ui.js','js/admin-nav.js','js/admin-general.js','js/admin-products.js',
-         'js/admin-orders.js','js/admin-misc.js'] as $f)
+         'js/admin-orders.js','js/admin-misc.js','js/admin-business.js'] as $f)
     t($f, file_exists($root.'/'.$f));
 
 // ── 4. JS FUNCTION CHECKS ──
@@ -1326,6 +1411,9 @@ $fns=[
     'buildAdminNav','saveNavOrder','toggleNavFolder',
     // Biz profile
     'rBizProfile',
+    // Business: documents, inventory, reports
+    'rBizDocs','bizDocUpload','bizDocDownload','bizDocDelete',
+    'rBizInv','rBizReports',
     // Regression test
     'rRegTest','runRegTests','cancelRegTests',
     // TN City
@@ -1340,7 +1428,7 @@ try{
     $js='';
     foreach(['js/api.js','js/config.js','js/data.js','js/store.js','js/auth.js',
              'js/ui.js','js/admin-nav.js','js/admin-general.js','js/admin-products.js',
-             'js/admin-orders.js','js/admin-misc.js'] as $jsf){
+             'js/admin-orders.js','js/admin-misc.js','js/admin-business.js'] as $jsf){
         if(file_exists($root.'/'.$jsf)) $js.=file_get_contents($root.'/'.$jsf);
     }
     t('JS files readable', strlen($js)>10000, strlen($js).' bytes');
@@ -1352,8 +1440,8 @@ try{$oapi=file_get_contents($root.'/api/orders.php');t('orders.php decrements st
         $found=(bool)preg_match('/function\s+'.preg_quote($fn,'/').'[\s(]|var\s+'.preg_quote($fn,'/').'[\s=;,]/', $js);
         t('JS:'.$fn, $found);
     }
-    // Check admin-nav id in index.html
-    $html=file_get_contents($root.'/index.html');
+    // Check admin-nav id in index.php
+    $html=file_get_contents($root.'/index.php');
     t('JS:admin-nav', strpos($html,'id="admin-nav"')!==false);
     // Debug functions (underscore prefix — checked via file content)
     t('JS:_dbgEnabled', strpos($js,'_dbgEnabled')!==false);
@@ -1370,7 +1458,7 @@ try{
     $amjs=file_get_contents($root.'/js/admin-misc.js');
     $apjs=file_get_contents($root.'/js/admin-products.js');
     $anjs=file_get_contents($root.'/js/admin-nav.js');
-    $ihtml=file_get_contents($root.'/index.html');
+    $ihtml=file_get_contents($root.'/index.php');
     $sjs=file_get_contents($root.'/js/store.js');
 
     // Storefront buttons
@@ -1440,7 +1528,8 @@ try{
     t('btn:Reset Default Tax Rates wired',strpos($aojs,'resetDefaultTaxRates()')!==false);
     t('btn:Save Version wired',strpos($amjs,'saveVersion()')!==false);
     t('btn:Save GitHub Token wired',strpos($amjs,'saveGitHubToken()')!==false);
-    t('btn:Save Biz Profile wired',strpos($amjs,'saveBizProfile()')!==false);
+    $abjsBtn=isset($abjs)?$abjs:file_get_contents($root.'/js/admin-business.js');
+    t('btn:Save Biz Profile wired',strpos($abjsBtn,'saveBizProfile()')!==false);
 
     // Log buttons
     t('btn:Clear Log wired',strpos($aojs,'clearLog(')!==false);
@@ -1558,7 +1647,7 @@ try{
     t('admin-orders send_* use SITE_ORIGIN',strpos($aoEnv,'SITE_ORIGIN+endpoint')!==false&&strpos($aoEnv,"emailPreviewThenSend('/send_confirm.php'")!==false&&strpos($aoEnv,"emailPreviewThenSend('/send_shipping.php'")!==false);
     t('admin-misc db_backup uses SITE_ORIGIN',strpos(file_get_contents($root.'/js/admin-misc.js'),"SITE_ORIGIN+'/api/db_backup.php")!==false);
     // Dev banner (staging-only) must never be able to render in production: hidden by default + hostname-gated
-    $ihDev=file_get_contents($root.'/index.html');
+    $ihDev=file_get_contents($root.'/index.php');
     if(strpos($ihDev,'dev-banner')!==false){
         t('dev banner hidden by default (prod-safe)',strpos($ihDev,'id="dev-banner"')!==false&&strpos($ihDev,'display:none')!==false);
         t('dev banner gated on staging hostname',strpos($ihDev,"indexOf('staging')")!==false);
@@ -1799,7 +1888,7 @@ try{
     t('ui:homepage loads store.js',$r['code']===200&&strpos($r['body'],'js/store.js')!==false);
     t('ui:homepage loads admin-orders.js',$r['code']===200&&strpos($r['body'],'js/admin-orders.js')!==false);
     t('ui:homepage has cart',$r['code']===200&&stripos($r['body'],'cart')!==false);
-    t('ui:homepage loads Square via JS',strpos(file_get_contents($root.'/js/admin-orders.js'),'squareup')!==false||strpos(file_get_contents($root.'/js/ui.js'),'squareup')!==false||strpos(file_get_contents($root.'/index.html'),'Square')!==false);
+    t('ui:homepage loads Square via JS',strpos(file_get_contents($root.'/js/admin-orders.js'),'squareup')!==false||strpos(file_get_contents($root.'/js/ui.js'),'squareup')!==false||strpos(file_get_contents($root.'/index.php'),'Square')!==false);
 
     // Key JS/CSS assets load
     foreach(['js/store.js','js/api.js','js/config.js','js/ui.js','js/auth.js',
@@ -1985,13 +2074,13 @@ try{
     t('process_payment:test_mode requireAdmin before order lookup',
         strpos($ppPhp,'test_mode')!==false&&strpos($ppPhp,'requireAdmin')!==false);
 
-    // index.html has new embedded SDK panels
-    $idx=file_get_contents($root.'/index.html');
-    t('index.html:co-payment panel exists',strpos($idx,'id="co-payment"')!==false);
-    t('index.html:co-processing panel exists',strpos($idx,'id="co-processing"')!==false);
-    t('index.html:co-result panel exists',strpos($idx,'id="co-result"')!==false);
-    t('index.html:card-container exists',strpos($idx,'id="card-container"')!==false);
-    t('index.html:no redirect to Square (co-pay-waiting removed)',strpos($idx,'co-pay-waiting')===false);
+    // index.php has new embedded SDK panels
+    $idx=file_get_contents($root.'/index.php');
+    t('index.php:co-payment panel exists',strpos($idx,'id="co-payment"')!==false);
+    t('index.php:co-processing panel exists',strpos($idx,'id="co-processing"')!==false);
+    t('index.php:co-result panel exists',strpos($idx,'id="co-result"')!==false);
+    t('index.php:card-container exists',strpos($idx,'id="card-container"')!==false);
+    t('index.php:no redirect to Square (co-pay-waiting removed)',strpos($idx,'co-pay-waiting')===false);
 
     // store.js has new embedded SDK functions
     $stjs=file_get_contents($root.'/js/store.js');

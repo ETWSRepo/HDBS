@@ -109,7 +109,7 @@ function rProds(el){
   if(typeof TableKit!=='undefined')TableKit.initAll();
   // onExport overrides the toolbar's generic table export (which would include the Actions
   // column and no image URLs) with the clean products_csv.php export.
-  showPageToolbar({title:'Product Management',logoText:'Handmade Designs By Suzi',onExport:exportProductsCsv,onImport:showImportCsv});
+  showPageToolbar({title:'Product Management',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi'),onExport:exportProductsCsv,onImport:showImportCsv});
 }
 
 function exportProductsCsv(){

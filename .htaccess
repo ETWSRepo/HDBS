@@ -1,6 +1,14 @@
 # Disable directory listing
 Options -Indexes
 
+# index.php is now the SPA entry point (formerly a static index.html)
+DirectoryIndex index.php index.html
+
+# Legacy bookmarks/cached links to index.html now redirect to the SPA root
+RewriteEngine On
+RewriteCond %{THE_REQUEST} /index\.html[\s?] [NC]
+RewriteRule ^index\.html$ / [R=301,L]
+
 # Block direct access to internal PHP helpers
 <Files "config.php">
     Order Allow,Deny

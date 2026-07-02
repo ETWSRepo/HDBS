@@ -2,9 +2,9 @@
 var RT_GROUPS={
   'DB Schema':['orders.tax_amount','orders.tax_swept_date','orders.payment_method','orders.customer_email','orders.total','orders.shipping_carrier','orders.tracking_number','orders.square_payment_id','products.sku','products.img1','products.price','products.name','products.stock','products.weight','orders table','products table','order_items table','settings table','tax_sweeps table','settings LONGTEXT','tax_swept removed'],
   'Data Integrity':['products exist','orders exist','settings exist','rt_token set','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs','product descriptions updated','hero.jpg exists','shop.css has /hero.jpg','store.js has sold-out diagonal','orders.php decrements stock','send_shipping uses EDT','send_confirm uses EDT','sitemap.xml exists','robots.txt exists','robots.txt references sitemap'],
-  'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','api/email_log.php','api/fetch_tax.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.html','css/shop.css','css/table.css','js/api.js','js/config.js','js/store.js','js/table.js','js/admin-orders.js','js/admin-misc.js'],
+  'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','api/email_log.php','api/fetch_tax.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.php','css/shop.css','css/table.css','js/api.js','js/config.js','js/store.js','js/table.js','js/admin-orders.js','js/admin-misc.js'],
   'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:showManualOrderForm','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax','JS:setPageLogMode','JS:rGitLog','JS:toggleNavFolder'],
-  'Site Version':['major_version in settings','minor_version in settings','get_version action','increment_minor_version action','version line in footer','version fetch script in index.html','saveVersion function exists','version card in settings'],
+  'Site Version':['major_version in settings','minor_version in settings','get_version action','increment_minor_version action','version line in footer','version fetch script in index.php','saveVersion function exists','version card in settings'],
   'Nav Submenus':['ADMIN_NAV_LABELS defined','ADMIN_NAV_STRUCTURE_DEFAULT has shop folder','ADMIN_NAV_STRUCTURE_DEFAULT has developer folder','shop folder contains prods','shop folder contains orders','developer folder contains regtest','developer folder contains settings','toggleNavFolder exists','toggleNavFolder saves to localStorage','loadNavOrder handles nested format','loadNavOrder migrates old flat format','loadNavOrder adds missing secs','saveNavOrder reads DOM structure','buildAdminNav renders folders','drag item into folder on header drop','drag item to root on container drop','folder collapse state in localStorage'],
   'Deploy History':['api/deploy_log.php exists','deploy_log appends entries','deploy_log returns deploys','deploy_log.php POST handler exists','deploy_log.php GET handler exists','deploylog in nav titles','rDeployLog in nav','rDeployLog function exists','rDeployLog fetches deploy_log','rDeployLog groups by 5-min window','rDeployLog shows deploy sessions'],
   'Change History':['api/github_log.php exists','github_log returns commits','gitlog in nav titles','rGitLog wired in nav','rGitLog fetches github_log','github token card in settings'],
@@ -276,7 +276,7 @@ function renderSweepPanel(el, d){
 
     el.innerHTML='<div style="max-width:700px">'+pendingHtml+histHtml+'</div>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
-    showPageToolbar({title:'Tax Sweep',logoText:'Handmade Designs By Suzi'});
+    showPageToolbar({title:'Tax Sweep',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
   }).catch(function(){
     el.innerHTML='<div style="color:#c62828;padding:1rem">Failed to load sweep history.</div>';
   });
@@ -396,9 +396,10 @@ var ADMIN_NAV_LABELS={
   cats:'🏷️ Categories',shipping:'🚚 Shipping Charges',
   sqpay:'💳 Square Payments',sweep:'🧾 Tax Sweep',
   regtest:'🧪 Regression Tests',emaillog:'📧 Email Log',
-  logs:'📋 Error Logs',bizprofile:'🏢 Business Profile',
+  logs:'📋 Error Logs',bizprofile:'👤 Profile',
+  bizdocs:'📄 Documents',bizinv:'📦 Inventory',bizreports:'📊 Reports',
   settings:'⚙️ Settings',gitlog:'📜 Change History',
-  deploylog:'🚀 Deploy History',inv:'📦 Inventory',
+  deploylog:'🚀 Deploy History',
   dbbackup:'🗄️ DB Backup'
 };
 // Keep ADMIN_NAV_DEFAULT as flat list for backwards-compat references in RT_GROUPS etc.
@@ -406,8 +407,9 @@ var ADMIN_NAV_DEFAULT=Object.keys(ADMIN_NAV_LABELS).map(function(s){return{sec:s
 // Default nested structure with Shop and Developer folders
 var ADMIN_NAV_STRUCTURE_DEFAULT=[
   {type:'item',sec:'dash'},
-  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast','inv']},
-  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','emaillog','logs','bizprofile','settings']},
+  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast']},
+  {type:'folder',sec:'business',label:'🏢 Business',children:['bizprofile','bizdocs','bizinv','bizreports']},
+  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','emaillog','logs','settings']},
   {type:'item',sec:'faqs'},
   {type:'item',sec:'tncity'},
   {type:'item',sec:'reviews'},
@@ -442,6 +444,18 @@ function loadNavOrder(callback){
       if(n.type==='folder')n.children=(n.children||[]).filter(function(s){return ADMIN_NAV_LABELS[s];});
       return n;
     });
+    // One-time migration: consolidate Business Profile (formerly under Developer) plus the
+    // new Documents/Inventory/Reports pages into a single "Business" folder, on saved nav_orders
+    // that predate it (a fresh install picks this up from ADMIN_NAV_STRUCTURE_DEFAULT already).
+    var hasBusinessFolder=structure.some(function(n){return n.type==='folder'&&n.sec==='business';});
+    if(!hasBusinessFolder){
+      structure=structure.filter(function(n){return !(n.type==='item'&&n.sec==='bizprofile');});
+      structure.forEach(function(n){if(n.type==='folder')n.children=(n.children||[]).filter(function(s){return s!=='bizprofile';});});
+      var devIdx=-1;
+      for(var di=0;di<structure.length;di++)if(structure[di].type==='folder'&&structure[di].sec==='developer'){devIdx=di;break;}
+      var insertAt=devIdx>=0?devIdx:structure.length;
+      structure.splice(insertAt,0,{type:'folder',sec:'business',label:'🏢 Business',children:['bizprofile','bizdocs','bizinv','bizreports']});
+    }
     // Add any new secs not yet present anywhere in structure
     var existing=[];
     structure.forEach(function(n){
@@ -479,7 +493,7 @@ function rDbBackup(el){
       +'</div>'
       +'</div>'
       +'</div>';
-    showPageToolbar({title:'DB Backup',logoText:'Handmade Designs By Suzi'});
+    showPageToolbar({title:'DB Backup',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
   }).catch(function(){
     el.innerHTML='<div style="padding:2rem;color:#c62828">Failed to load backup settings.</div>';
   });
@@ -556,7 +570,7 @@ function rDeployLog(el){
       '<table class="tablekit"><thead><tr><th>Date</th><th>Files</th><th>Type</th><th>Version</th><th>Details</th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
-    showPageToolbar({title:'Deploy History',logoText:'Handmade Designs By Suzi'});
+    showPageToolbar({title:'Deploy History',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
   }).catch(function(e){
     el.innerHTML='<div style="padding:2rem;color:#c62828">Error loading deploy history: '+escHtml(e.message)+'</div>';
   });
@@ -649,7 +663,7 @@ function _renderGitLog(el,d,deploys){
     setT('gl-loc',s.lines_of_code!=null?Number(s.lines_of_code).toLocaleString():'—');
   }).catch(function(){});
   apiFetch('admin.php','POST',{action:'get_version'}).then(function(v){var s=document.getElementById('gitlog-ver');if(s)s.textContent=(v&&v.version)?v.version:'—';}).catch(function(){});
-  showPageToolbar({title:'Change History',logoText:'Handmade Designs By Suzi'});
+  showPageToolbar({title:'Change History',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
 }
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -777,158 +791,6 @@ function buildAdminNav(){
   });
 }
 function aNavEl(el,sec){aNav(el,sec);}
-function rBizProfile(el){
-  el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading…</div>';
-  apiFetch('admin.php','POST',{action:'get_setting',key:'biz_profile'}).then(function(d){
-    var p={};
-    try{if(d.success&&d.value)p=JSON.parse(d.value);}catch(e){}
-    el.innerHTML=
-      '<div style="max-width:660px">'+
-      '<div class="aok" id="bp-ok" style="display:none">\u2713 Business profile saved!</div>'+
-      '<div class="aerr" id="bp-err" style="display:none"></div>'+
-      '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.4rem;margin-bottom:1rem">'+
-        '<div style="font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810;margin-bottom:.9rem">🌐 Website & Contact</div>'+
-        '<label class="fl">Website URL</label>'+
-        '<input class="afi" id="bp-website-url" value="'+(p.website_url||'https://handmadedesignsbysuzi.com')+'">'+
-        '<label class="fl">Website Email</label>'+
-        '<input class="afi" id="bp-website-email" value="'+(p.website_email||'handmadedesignsbysuzi@yahoo.com')+'">'+
-      '</div>'+
-      '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.4rem;margin-bottom:1rem">'+
-        '<div style="font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810;margin-bottom:.9rem">\ud83c\udfe2 Legal Information</div>'+
-        '<label class="fl">Business Legal Name</label>'+
-        '<input class="afi" id="bp-legal-name" value="'+(p.legal_name||'')+'" placeholder="e.g. Handmade Designs By Suzi LLC">'+
-        '<label class="fl">Business Legal Address</label>'+
-        '<input class="afi" id="bp-legal-addr" value="'+(p.legal_addr||'')+'" placeholder="123 Main St, Knoxville TN 37918">'+
-        '<label class="fl">Business License Number</label>'+
-        '<input class="afi" id="bp-license-num" value="'+(p.license_num||'')+'" placeholder="e.g. TN-BUS-12345">'+
-      '</div>'+
-      '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.4rem;margin-bottom:1rem">'+
-        '<div style="font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810;margin-bottom:.9rem">\ud83d\udce6 Shipping Address</div>'+
-        '<div style="font-size:.8rem;color:#6b6040;margin-bottom:.7rem">Address used as the from-address on shipments (if different from legal address)</div>'+
-        '<label class="fl">Shipping Address</label>'+
-        '<input class="afi" id="bp-ship-addr" value="'+(p.ship_addr||'')+'" placeholder="123 Main St, Knoxville TN 37918">'+
-      '</div>'+
-      '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.4rem;margin-bottom:1rem">'+
-        '<div style="font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810;margin-bottom:.9rem">\ud83d\udcf7 Business License Image</div>'+
-        (p.license_img
-          ? '<div style="margin-bottom:.8rem">'+
-            '<img id="bp-img-preview" src="'+p.license_img+'" onclick="bzImgZoom(this)" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #e8e0b8;display:block;cursor:zoom-in" title="Click to enlarge">'+
-            '<div style="display:flex;align-items:center;gap:.6rem;margin-top:.5rem">'+
-              '<span style="font-size:.72rem;color:#6b6040">Click image to enlarge</span>'+
-              '<button class="bd" style="font-size:.72rem;padding:.2rem .6rem" onclick="clearBizImage()">✕ Clear Image</button>'+
-            '</div>'+
-          '</div>'
-          : '<div style="background:#fffdf0;border:1px dashed #e8e0b8;border-radius:8px;padding:1.2rem;text-align:center;color:#6b6040;font-size:.85rem;margin-bottom:.8rem">No license image uploaded</div>')+
-        '<label class="fl">Upload License Image (JPG/PNG)</label>'+
-        '<input type="file" id="bp-license-img" accept="image/jpeg,image/png,image/gif,image/webp" style="margin-bottom:.8rem;font-size:.83rem" onchange="bzPreviewImg(this)">'+
-        '<div id="bp-img-new" style="display:none;margin-bottom:.8rem">'+
-          '<div style="font-size:.72rem;color:#a07810;font-weight:600;margin-bottom:.3rem">New image (not yet saved):</div>'+
-          '<img id="bp-img-new-src" style="max-width:100%;max-height:200px;border-radius:8px;border:2px dashed #d4a017;display:block;cursor:zoom-in" onclick="bzImgZoom(this)">'+
-        '</div>'+
-        (p.license_img?'<div style="font-size:.75rem;color:#2e7d32;margin-bottom:.5rem">\u2713 Image on file</div>':'')+
-      '</div>'+
-      '<button class="bp" onclick="saveBizProfile()">\ud83d\udcbe Save Business Profile</button>'+
-      '</div>';
-  }).catch(function(){
-    el.innerHTML='<div style="color:#c62828;padding:1rem">Failed to load business profile.</div>';
-  });
-}
-function saveBizProfile(){
-  var ok=document.getElementById('bp-ok');
-  var err=document.getElementById('bp-err');
-  ok.style.display='none';err.style.display='none';
-
-  var website_url=document.getElementById('bp-website-url').value.trim();
-  var website_email=document.getElementById('bp-website-email').value.trim();
-  var legal_name=document.getElementById('bp-legal-name').value.trim();
-  var legal_addr=document.getElementById('bp-legal-addr').value.trim();
-  var ship_addr=document.getElementById('bp-ship-addr').value.trim();
-  var license_num=document.getElementById('bp-license-num').value.trim();
-  var fileInput=document.getElementById('bp-license-img');
-
-  // Keep existing image if no new one uploaded — read from current DOM img
-  function doSave(imgData){
-    // If no new image, keep whatever is currently displayed
-    if(!imgData){
-      var existing=document.querySelector('#acnt img[src^="data:"]')||document.querySelector('#acnt img[src^="http"]');
-      imgData=existing?existing.src:'';
-    }
-    var profile={
-      website_url:website_url,
-      website_email:website_email,
-      legal_name:legal_name,
-      legal_addr:legal_addr,
-      ship_addr:ship_addr,
-      license_num:license_num,
-      license_img:imgData
-    };
-    apiFetch('admin.php','POST',{action:'save_setting',key:'biz_profile',value:JSON.stringify(profile)})
-    .then(function(d){
-      if(d.message==='Setting saved'||d.success){
-        // Reload the page to show updated image
-        rBizProfile(document.getElementById('acnt'));
-        var toast=document.createElement('div');
-        toast.textContent='✓ Business profile saved!';
-        toast.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:.65rem 1.4rem;border-radius:24px;font-size:.85rem;font-family:sans-serif;font-weight:600;z-index:9999';
-        document.body.appendChild(toast);
-        setTimeout(function(){toast.remove();},3000);
-      } else {
-        err.textContent='Save failed: '+(d.error||'unknown');err.style.display='block';
-      }
-    }).catch(function(){err.textContent='Network error.';err.style.display='block';});
-  }
-
-  // If image selected, convert to base64 and save
-  if(fileInput&&fileInput.files&&fileInput.files[0]){
-    var file=fileInput.files[0];
-    if(file.size>2*1024*1024){
-      err.textContent='Image must be under 2MB.';err.style.display='block';return;
-    }
-    var reader=new FileReader();
-    reader.onload=function(e){doSave(e.target.result);};
-    reader.readAsDataURL(file);
-  } else {
-    doSave(null);
-  }
-}
-function clearBizImage(){
-  if(!confirm('Remove the license image?'))return;
-  var legal_name=document.getElementById('bp-legal-name').value.trim();
-  var legal_addr=document.getElementById('bp-legal-addr').value.trim();
-  var ship_addr=document.getElementById('bp-ship-addr').value.trim();
-  var license_num=document.getElementById('bp-license-num').value.trim();
-  var profile={legal_name:legal_name,legal_addr:legal_addr,ship_addr:ship_addr,license_num:license_num,license_img:''};
-  apiFetch('admin.php','POST',{action:'save_setting',key:'biz_profile',value:JSON.stringify(profile)})
-  .then(function(d){
-    if(d.message==='Setting saved'||d.success){
-      rBizProfile(document.getElementById('acnt'));
-    }
-  }).catch(function(){alert('Network error.');});
-}
-function bzPreviewImg(input){
-  if(!input.files||!input.files[0])return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var div=document.getElementById('bp-img-new');
-    var img=document.getElementById('bp-img-new-src');
-    if(div&&img){img.src=e.target.result;div.style.display='block';}
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-function bzImgZoom(img){
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
-  var im=document.createElement('img');
-  im.src=img.src;
-  im.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5)';
-  var cls=document.createElement('div');
-  cls.textContent='×';
-  cls.style.cssText='position:absolute;top:1.2rem;right:1.5rem;color:#fff;font-size:2rem;cursor:pointer;line-height:1;font-weight:300';
-  ov.appendChild(im);
-  ov.appendChild(cls);
-  ov.onclick=function(){ov.remove();};
-  document.body.appendChild(ov);
-}
 function chPw(){
   var c=document.getElementById('pw-c').value,n=document.getElementById('pw-n').value,cf=document.getElementById('pw-cf').value;
   var ok=document.getElementById('pw-ok'),err=document.getElementById('pw-err');ok.style.display='none';err.style.display='none';
@@ -1134,7 +996,7 @@ function rEmailLog(el){
     '</div>'+
     '<div id="el-table" style="overflow-x:auto"><table class="tablekit">'+buildElThead()+'<tbody>'+(rows||'<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#6b6040">No emails logged.</td></tr>')+'</tbody></table></div>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
-  showPageToolbar({title:'Email Log',logoText:'Handmade Designs By Suzi'});
+  showPageToolbar({title:'Email Log',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
   // This screen scrolls the window (.amain is overflow:visible here), so reset to the
   // top after layout settles so the toolbar + column headers + first rows are visible.
   setTimeout(function(){window.scrollTo(0,0);var am=document.querySelector('.amain');if(am)am.scrollTop=0;},0);
@@ -1185,7 +1047,7 @@ function rTnCity(el){
         '<tbody>'+rows+'</tbody>'+
       '</table></div>';
     if(typeof TableKit!=='undefined')TableKit.initAll();
-    showPageToolbar({title:'TN City Tax',logoText:'Handmade Designs By Suzi'});
+    showPageToolbar({title:'TN City Tax',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
   }).catch(function(){el.innerHTML='<div style="color:#c62828;padding:1rem">Could not load TN city tax table</div>';});
 }
 function showAddTnCity(){var f=document.getElementById('add-tncity-form');if(f){f.style.display='block';document.getElementById('tncity-city').focus();}}
