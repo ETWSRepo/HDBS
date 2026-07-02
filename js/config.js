@@ -229,7 +229,7 @@ function goContact(){
   if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Contact Us'});
   showOnly('contactpage',true);
   window.scrollTo(0,0);
-  document.getElementById('contact-ok').style.display='none';
+  var contactOk=document.getElementById('contact-ok');if(contactOk)contactOk.style.display='none';
   ['ct-name','ct-email','ct-subject','ct-msg'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
 }
 function sendContact(){

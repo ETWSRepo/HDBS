@@ -842,7 +842,7 @@ if (!empty($bz['logo'])) {
 <video id="cam-video" style="display:none" autoplay playsinline></video>
 
 <script src="js/api.js?v=8"></script>
-<script src="js/config.js?v=10"></script>
+<script src="js/config.js?v=11"></script>
 <script src="js/data.js?v=5"></script>
 <script src="js/store.js?v=15"></script>
 <script src="js/auth.js?v=5"></script>
