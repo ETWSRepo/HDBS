@@ -9,6 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     fail('Method not allowed', 405);
 }
 
+$pdo = db();
+
 // Per-IP rate limit: 5 contact submissions per 15 minutes
 (function() use ($pdo) {
     $ip  = $_SERVER['REMOTE_ADDR'] ?? '';
