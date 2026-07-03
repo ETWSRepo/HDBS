@@ -9,8 +9,8 @@ requireAdmin();
 // getSetting defined in config.php
 
 $token  = getSetting($pdo, 'github_token') ?: '';
-$owner   = 'C177LVR';
-$repo    = 'HandmadeDesignsBySuzi';
+$owner   = 'ETWSRepo';
+$repo    = 'HDBS';
 $perPage = 100;
 
 $cacheFile = sys_get_temp_dir() . '/hdbs_github_log.json';

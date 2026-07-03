@@ -39,7 +39,7 @@ try {
 }
 
 ok([
-    'repo'          => 'C177LVR/HandmadeDesignsBySuzi',
+    'repo'          => 'ETWSRepo/HDBS',
     'path'          => $root,
     'total_files'   => $totalFiles,
     'code_files'    => $codeFiles,

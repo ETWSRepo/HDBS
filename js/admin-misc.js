@@ -639,7 +639,7 @@ function _renderGitLog(el,d,deploys){
   var statsHtml=
     '<div style="margin-bottom:1rem">'+
       '<div class="stats">'+
-        '<div class="stat"><div class="stl">Repo</div><div class="stv" style="font-size:.9rem;word-break:break-all">C177LVR/HandmadeDesignsBySuzi</div></div>'+
+        '<div class="stat"><div class="stl">Repo</div><div class="stv" id="gl-repo" style="font-size:.9rem;word-break:break-all">…</div></div>'+
         '<div class="stat"><div class="stl">Deploy Path</div><div class="stv" id="gl-path" style="font-size:.78rem;font-family:monospace;word-break:break-all">…</div></div>'+
         '<div class="stat"><div class="stl">Files in Repo</div><div class="stv" id="gl-total">…</div></div>'+
         '<div class="stat"><div class="stl">Files Deployed</div><div class="stv" id="gl-code">…</div></div>'+
@@ -664,6 +664,7 @@ function _renderGitLog(el,d,deploys){
   apiFetch('repo_stats.php').then(function(s){
     if(!s||!s.success)return;
     var setT=function(id,val){var e=document.getElementById(id);if(e)e.textContent=val;};
+    setT('gl-repo',s.repo||'—');
     setT('gl-path',s.path||'—');
     setT('gl-total',s.total_files!=null?Number(s.total_files).toLocaleString():'—');
     setT('gl-code',s.code_files!=null?Number(s.code_files).toLocaleString():'—');

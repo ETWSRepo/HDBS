@@ -1012,6 +1012,10 @@ try{
     t('github_log caches results',strpos($ghphp,'cacheFile')!==false&&strpos($ghphp,'cacheTTL')!==false);
     // Change History must show full commit message (body + summary), not just the first line
     t('github_log returns full commit message (not truncated to first line)',strpos($ghphp,'$lines[0]')===false&&strpos($ghphp,"'message' => \$msg")!==false);
+    // Repo migration (2026-07-03): repo moved to ETWSRepo/HDBS — github_log.php's owner/repo
+    // must point at the new location, not the pre-migration C177LVR/HandmadeDesignsBySuzi
+    t('github_log points at the migrated repo (ETWSRepo/HDBS)',strpos($ghphp,"\$owner   = 'ETWSRepo'")!==false&&strpos($ghphp,"\$repo    = 'HDBS'")!==false);
+    t('github_log no longer references the pre-migration repo',strpos($ghphp,'C177LVR/HandmadeDesignsBySuzi')===false);
     $navjs=file_get_contents($root.'/js/admin-nav.js');
     t('gitlog in nav titles',strpos($navjs,"gitlog:'Change History'")!==false);
     t('rGitLog wired in nav',strpos($navjs,'rGitLog(el)')!==false);
@@ -1402,7 +1406,7 @@ try{
     t('repo_stats.php is admin-gated',strpos($rsphp,'requireAdmin()')!==false);
     t('repo_stats.php scans deployment dir',strpos($rsphp,'RecursiveDirectoryIterator')!==false&&strpos($rsphp,'dirname(__DIR__)')!==false);
     t('repo_stats.php returns file counts + LOC',strpos($rsphp,"'total_files'")!==false&&strpos($rsphp,"'code_files'")!==false&&strpos($rsphp,"'lines_of_code'")!==false);
-    t('repo_stats.php returns repo + path',strpos($rsphp,"'C177LVR/HandmadeDesignsBySuzi'")!==false&&strpos($rsphp,"'path'")!==false);
+    t('repo_stats.php returns repo + path',strpos($rsphp,"'ETWSRepo/HDBS'")!==false&&strpos($rsphp,"'path'")!==false);
     // github_log.php — full pagination, total commit count, refresh cache bypass
     $ghphp=file_get_contents($root.'/api/github_log.php');
     t('github_log paginates all commits',strpos($ghphp,'per_page=$perPage&page=$page')!==false&&strpos($ghphp,'array_merge($commits')!==false);
@@ -1414,6 +1418,11 @@ try{
     t('Change History Refresh forces bypass',strpos($amjs,"getElementById(\\'acnt\\'),true")!==false);
     t('Change History fetches repo_stats',strpos($amjs,"apiFetch('repo_stats.php')")!==false);
     t('Change History has stat cards',strpos($amjs,'id="gl-path"')!==false&&strpos($amjs,'id="gl-total"')!==false&&strpos($amjs,'id="gl-code"')!==false&&strpos($amjs,'id="gl-loc"')!==false);
+    // Repo migration (2026-07-03): the Repo card must be populated live from repo_stats.php's
+    // 's.repo' response, not a hardcoded string — a hardcoded string is exactly what went stale
+    // when the repo moved to ETWSRepo/HDBS and stayed wrong on screen after the fix elsewhere.
+    t('Repo card is a live stat, not a hardcoded string',strpos($amjs,'id="gl-repo"')!==false&&strpos($amjs,'C177LVR/HandmadeDesignsBySuzi')===false);
+    t('Repo card is wired to repo_stats.php\'s repo field',strpos($amjs,"setT('gl-repo',s.repo")!==false);
     t('Change History form centered + narrower',strpos($amjs,'max-width:1000px;margin:0 auto')!==false);
     t('Change History entries scroll vertically',strpos($amjs,'max-height:55vh;overflow-y:auto')!==false);
     // deploy_log.php — minor version auto-increment, one per logical change
