@@ -75,6 +75,7 @@ if ($skip_square) {
     }
     $tax_money  = (float)(isset($order['tax_amount']) ? $order['tax_amount'] : 0);
     $paid_total = (float)$order['total'];
+    $sq_actual_fee = (float)(isset($order['transaction_fee']) ? $order['transaction_fee'] : 0);
 }
 
 // Search Square for matching payment
@@ -178,10 +179,17 @@ if ($sq_order_id) {
     }
 }
 $paid_total = $sq_total > 0 ? $sq_total : (isset($matched['total_money']['amount']) ? (float)$matched['total_money']['amount'] / 100 : 0);
-vlog("$ts | VP: sq_total=\$$sq_total tax=\$$tax_money");
-// Update status, payment ID, tax, and total  -  all from Square's authoritative order data
-$pdo->prepare("UPDATE orders SET status='Paid', square_payment_id=?, tax_amount=?, total=?, payment_method='Credit Card' WHERE id=?")
-    ->execute([$matched['id'], $tax_money, $paid_total, $order_id]);
+// Square's actual processing fee for this payment (authoritative -  not an estimate)
+$sq_actual_fee = 0;
+if (!empty($matched['processing_fee']) && is_array($matched['processing_fee'])) {
+    foreach ($matched['processing_fee'] as $pf) {
+        if (isset($pf['amount_money']['amount'])) $sq_actual_fee += (float)$pf['amount_money']['amount'] / 100;
+    }
+}
+vlog("$ts | VP: sq_total=\$$sq_total tax=\$$tax_money fee=\$$sq_actual_fee");
+// Update status, payment ID, tax, total, and fee  -  all from Square's authoritative payment data
+$pdo->prepare("UPDATE orders SET status='Paid', square_payment_id=?, tax_amount=?, total=?, transaction_fee=?, payment_method='Credit Card' WHERE id=?")
+    ->execute([$matched['id'], $tax_money, $paid_total, $sq_actual_fee, $order_id]);
 file_put_contents(__DIR__.'/webhook_log.txt',
     "$ts | VERIFIED PAID | Order: $order_id | Tax: \$".number_format($tax_money,2)." | Square: ".$matched['id']."\n",
     FILE_APPEND|LOCK_EX);
@@ -252,17 +260,20 @@ $shipping_str = $shipping > 0 ? '$'.number_format($shipping, 2) : 'Free';
 $tax_str      = '$'.number_format($tax_money, 2);
 // Calculate display total as subtotal + shipping + tax + fee (fee added after sq_fee is computed below)
 $total_str    = number_format($paid_total, 2); // updated after fee calc
-// Calculate Square transaction fee
-$sq_pct   = 2.6;  // default  -  ideally load from settings
-$sq_flat  = 0.10;
-// Try to load from DB settings
-try {
-    $feeRow = $pdo->query("SELECT value FROM settings WHERE key_name='square_fees' LIMIT 1")->fetch();
-    if ($feeRow) { $feeConf = json_decode($feeRow['value'], true); $sq_pct = isset($feeConf['pct']) ? $feeConf['pct'] : 2.6; $sq_flat = isset($feeConf['cents']) ? $feeConf['cents'] : 0.10; }
-} catch(Exception $e) {}
-$sq_fee     = round(($paid_total * ($sq_pct / 100) + $sq_flat), 2);
+// Square transaction fee  -  use the actual fee Square reported; only estimate as a fallback
+// if Square hasn't posted it yet (processing_fee can lag slightly behind payment completion)
+if ($sq_actual_fee > 0) {
+    $sq_fee = $sq_actual_fee;
+} else {
+    $sq_pct   = 2.6;  // default  -  ideally load from settings
+    $sq_flat  = 0.10;
+    try {
+        $feeRow = $pdo->query("SELECT value FROM settings WHERE key_name='square_fees' LIMIT 1")->fetch();
+        if ($feeRow) { $feeConf = json_decode($feeRow['value'], true); $sq_pct = isset($feeConf['pct']) ? $feeConf['pct'] : 2.6; $sq_flat = isset($feeConf['cents']) ? $feeConf['cents'] : 0.10; }
+    } catch(Exception $e) {}
+    $sq_fee = round(($paid_total * ($sq_pct / 100) + $sq_flat), 2);
+}
 $sq_fee_str = '$'.number_format($sq_fee, 2);
-$sq_fee_note = number_format($paid_total, 2).' × '.number_format($sq_pct, 1).'% + $'.number_format($sq_flat, 2);
 // Display total: subtotal + shipping + tax (no transaction fee shown in email)
 $display_total = $item_total + ($shipping > 0 ? $shipping : 0) + $tax_money;
 $total_str = number_format($display_total, 2);

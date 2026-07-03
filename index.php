@@ -849,8 +849,8 @@ if (!empty($bz['logo'])) {
 <script src="js/ui.js?v=7"></script>
 <script src="js/admin-nav.js?v=10"></script>
 <script src="js/admin-general.js?v=5"></script>
-<script src="js/admin-products.js?v=12"></script>
-<script src="js/admin-orders.js?v=13"></script>
+<script src="js/admin-products.js?v=13"></script>
+<script src="js/admin-orders.js?v=14"></script>
 <script src="js/admin-misc.js?v=17"></script>
 <script src="js/admin-business.js?v=5"></script>
 <script src="js/table.js"></script>

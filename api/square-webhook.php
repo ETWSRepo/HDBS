@@ -73,11 +73,17 @@ if ($event['type'] === 'payment.updated') {
 
         if ($order_id) {
             // Update order status to Paid and store Square payment ID
-            // Extract tax from Square payment
+            // Extract tax + actual processing fee from Square payment
             $tax_cents = $payment['total_tax_money']['amount'] ?? 0;
             $tax_dollars = $tax_cents / 100;
-            $stmt = $pdo->prepare("UPDATE orders SET status = 'Paid', square_payment_id = ?, tax_amount = ? WHERE id = ? AND status != 'Paid'");
-            $stmt->execute([$payment['id'], $tax_dollars, $order_id]);
+            $fee_dollars = 0;
+            if (!empty($payment['processing_fee']) && is_array($payment['processing_fee'])) {
+                foreach ($payment['processing_fee'] as $pf) {
+                    if (isset($pf['amount_money']['amount'])) $fee_dollars += (float)$pf['amount_money']['amount'] / 100;
+                }
+            }
+            $stmt = $pdo->prepare("UPDATE orders SET status = 'Paid', square_payment_id = ?, tax_amount = ?, transaction_fee = ? WHERE id = ? AND status != 'Paid'");
+            $stmt->execute([$payment['id'], $tax_dollars, $fee_dollars, $order_id]);
 
             $dt = new DateTime('now', new DateTimeZone('America/New_York'));
             $log = $dt->format('Y-m-d g:i A') . ' EDT' . " | PAID | Order: {$order_id} | Square: {$payment['id']}\n";

@@ -111,25 +111,25 @@ if($status===401 || $status===403){
 }
 
 $payments = isset($data['payments']) ? $data['payments'] : array();
-// Batch-fetch all order tax in one request instead of one per payment
-$orderIds = array_values(array_filter(array_map(function($p){ return isset($p['order_id']) ? $p['order_id'] : ''; }, $payments)));
-$taxByOrderId = [];
-if (!empty($orderIds)) {
-    $bData = sq_curl($baseUrl.'/orders/batch-retrieve', 'POST',
-        ['location_id'=>'LJP687TQBTWTA','order_ids'=>$orderIds], $token);
-    if (!empty($bData['orders'])) {
-        foreach ($bData['orders'] as $o) {
-            $taxByOrderId[$o['id']] = isset($o['total_tax_money']['amount'])
-                ? (float)$o['total_tax_money']['amount'] / 100
-                : 0;
-        }
+// Tax is never itemized on the Square side (process_payment.php charges a flat total,
+// not a Square Order with tax line items), so Square has no tax to report here. Our own
+// orders table is the authoritative source of what was actually charged — look it up by
+// square_payment_id instead of querying Square's Orders API (which would always return empty).
+$paymentIds = array_values(array_filter(array_map(function($p){ return isset($p['id']) ? $p['id'] : ''; }, $payments)));
+$taxByPaymentId = [];
+if (!empty($paymentIds)) {
+    $placeholders = implode(',', array_fill(0, count($paymentIds), '?'));
+    $taxRows = $pdo->prepare("SELECT square_payment_id, tax_amount FROM orders WHERE square_payment_id IN ($placeholders)");
+    $taxRows->execute($paymentIds);
+    foreach ($taxRows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $taxByPaymentId[$row['square_payment_id']] = (float)$row['tax_amount'];
     }
 }
 
 $out = array();
 foreach($payments as $p){
     $amt = isset($p['total_money']['amount']) ? (float)$p['total_money']['amount']/100 : 0;
-    $tax = isset($p['order_id']) ? ($taxByOrderId[$p['order_id']] ?? 0) : 0;
+    $tax = isset($p['id']) ? ($taxByPaymentId[$p['id']] ?? 0) : 0;
     $tip = isset($p['tip_money']['amount'])       ? (float)$p['tip_money']['amount']/100       : 0;
     $fee = 0;
     if(isset($p['processing_fee'])&&is_array($p['processing_fee']))

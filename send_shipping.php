@@ -62,25 +62,34 @@ dbg('send_shipping', "START order_id=$order_id carrier_override=$carrier_overrid
     $customer_name  = htmlspecialchars(isset($order['customer_name']) ? $order['customer_name'] : '');
     $first_name     = explode(' ', $customer_name)[0];
     $carrier        = htmlspecialchars(isset($order['shipping_carrier']) ? $order['shipping_carrier'] : 'USPS');
-    $tracking       = htmlspecialchars(isset($order['tracking_number']) ? $order['tracking_number'] : '');
+    $tracking_raw   = isset($order['tracking_number']) ? $order['tracking_number'] : '';
+    $tracking_list  = array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $tracking_raw))));
     $address        = htmlspecialchars(isset($order['shipping_address']) ? $order['shipping_address'] : '');
     $from_email     = 'handmadedesignsbysuzi@yahoo.com';
     $from_name      = bizName($pdo);
     $subject        = "Your Order Has Shipped! - #{$order_id}";
 
-    // Tracking URL
-    $tracking_url = '';
-    if($tracking){
-        if($carrier==='USPS')    $tracking_url='https://tools.usps.com/go/TrackConfirmAction?tLabels='.urlencode($tracking);
-        elseif($carrier==='UPS') $tracking_url='https://www.ups.com/track?tracknum='.urlencode($tracking);
-        elseif($carrier==='FedEx') $tracking_url='https://www.fedex.com/fedextrack/?trknbr='.urlencode($tracking);
+    // Tracking URL(s) — one per tracking number
+    function trackingUrl($carrier, $num){
+        $num = urlencode($num);
+        if($carrier==='USPS')    return 'https://tools.usps.com/go/TrackConfirmAction?tLabels='.$num;
+        if($carrier==='UPS')     return 'https://www.ups.com/track?tracknum='.$num;
+        if($carrier==='FedEx')   return 'https://www.fedex.com/fedextrack/?trknbr='.$num;
+        return '';
     }
+    $tracking_url = $tracking_list ? trackingUrl($carrier, $tracking_list[0]) : '';
 
-    $tracking_html = $tracking
-        ? ($tracking_url
-            ? "<a href='{$tracking_url}' style='color:#a07810;font-weight:700;font-family:monospace;font-size:1rem'>{$tracking}</a>"
-            : "<strong style='font-family:monospace;font-size:1rem;color:#a07810'>{$tracking}</strong>")
-        : '<em style="color:#6b6040">Not provided</em>';
+    if(empty($tracking_list)){
+        $tracking_html = '<em style="color:#6b6040">Not provided</em>';
+    } else {
+        $tracking_html = implode('<br>', array_map(function($num) use ($carrier){
+            $num = htmlspecialchars($num);
+            $url = trackingUrl($carrier, $num);
+            return $url
+                ? "<a href='{$url}' style='color:#a07810;font-weight:700;font-family:monospace;font-size:1rem'>{$num}</a>"
+                : "<strong style='font-family:monospace;font-size:1rem;color:#a07810'>{$num}</strong>";
+        }, $tracking_list));
+    }
 
     // Build items table HTML
     $items_html = '';

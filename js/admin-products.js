@@ -500,7 +500,7 @@ function viewOrder(oid){
           '<div style="font-size:.83rem;color:#6b6040">Order Type: <strong style="color:#2d2220">'+(order.order_type||'Online')+'</strong></div>'+
           '<div style="font-size:.83rem;color:#6b6040">Tax Swept: <strong style="color:'+(order.swept_date?'#2e7d32':'#c62828')+'">'+(order.swept_date||'Not swept')+'</strong></div>'+
           (order.carrier?'<div style="font-size:.83rem;color:#6b6040">Carrier: <strong style="color:#2d2220">'+(order.carrier||'USPS')+'</strong></div>':'')+
-          (order.tracking?'<div style="font-size:.83rem;color:#6b6040">Tracking: <code style="color:#a07810;font-size:.8rem">'+order.tracking+'</code></div>':'')+
+          (order.tracking?'<div style="font-size:.83rem;color:#6b6040">Tracking: '+order.tracking.split(/[,\n]+/).map(function(t){return t.trim();}).filter(Boolean).map(function(t){return '<code style="color:#a07810;font-size:.8rem;margin-right:.4rem">'+t+'</code>';}).join('')+'</div>':'')+
         '</div>'+
         (order.addr?
           '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1rem;grid-column:1/-1">'+
@@ -550,6 +550,7 @@ function viewOrder(oid){
           '<button class="bp" style="font-size:.82rem" onclick="editOrderDetail(\''+oid+'\')">✏️ Edit Order</button>'+
           '<button class="bs" style="font-size:.82rem" onclick="sendConfirmEmail(\''+oid+'\')">&#x1F4E7; Send Confirmation</button>'+
           '<button class="bs" style="font-size:.82rem" onclick="sendShippingEmail(\''+oid+'\')">&#x1F69A; Send Shipping</button>'+
+          '<button class="bs" style="font-size:.82rem" onclick="sendGenericEmail(\''+oid+'\')">&#x1F4E7; Send Email</button>'+
           (refundRemaining(order)>0.004?'<button class="bs" style="font-size:.82rem" onclick="showRefundFormFor(\''+oid+'\')">↩ '+((order.refunded_amount||0)>0?'Refund More':'Refund Order')+'</button>':'')+
                     '<button class="bd" style="font-size:.82rem;margin-left:auto" onclick="deleteOrder(\''+oid+'\')">&#x1F5D1; Delete Order</button>'+
         '</div>'+

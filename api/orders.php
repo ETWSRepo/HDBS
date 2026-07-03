@@ -18,6 +18,11 @@ foreach ([
 ] as $col => $ddl) {
     if (empty($pdo->query("SHOW COLUMNS FROM orders LIKE '$col'")->fetchAll())) $pdo->exec($ddl);
 }
+// Widen tracking_number to fit multiple comma-separated tracking numbers
+$trackCol = $pdo->query("SHOW COLUMNS FROM orders LIKE 'tracking_number'")->fetch();
+if ($trackCol && preg_match('/varchar\((\d+)\)/i', $trackCol['Type'], $m) && (int)$m[1] < 500) {
+    $pdo->exec("ALTER TABLE orders MODIFY COLUMN tracking_number VARCHAR(500) DEFAULT NULL");
+}
 
 // GET — return all orders with items
 if ($method === 'GET') { requireAdmin(); dbg('orders','GET all orders');

@@ -779,10 +779,11 @@ try{$aojs=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
     t('send_log includes email_body preview',strpos(file_get_contents($root.'/api/admin.php'),'email_body')!==false);
 }catch(Exception $e){t('error log screen checks',false,$e->getMessage());}
 
-// Square payments batch-retrieve (performance fix)
+// Square payments — no per-payment Square API call for tax (2026-07-03: tax now comes from
+// our own orders table by square_payment_id, not a batch-retrieve call to Square's Orders API,
+// since payments made via process_payment.php were never attached to a Square Order to begin with)
 try{$sqphp=file_get_contents($root.'/api/square_payments.php');
     t('square_payments uses sq_curl()',strpos($sqphp,'sq_curl(')!==false);
-    t('square_payments uses batch-retrieve',strpos($sqphp,'batch-retrieve')!==false);
     t('square_payments no per-payment curl loop',substr_count($sqphp,'curl_init')<=1,'found '.substr_count($sqphp,'curl_init').' curl_init (expected <=1 check only)');
 }catch(Exception $e){t('square_payments batch checks',false,$e->getMessage());}
 
@@ -1432,7 +1433,7 @@ foreach(['api/config.php','api/admin.php','api/orders.php','api/products.php',
          'api/tax_sweep.php','api/square_payments.php','api/fetch_tax.php',
          'api/email_log.php','api/tn_city_tax.php','api/applog.php',
          'api/business_docs.php',
-         'mailer.php','checkout.php','send_confirm.php','send_shipping.php',
+         'mailer.php','checkout.php','send_confirm.php','send_shipping.php','send_generic.php',
          'verify_payment.php','notify.php','index.php',
          'css/shop.css','css/table.css','js/table.js','js/api.js','js/config.js','js/store.js','js/auth.js',
          'js/ui.js','js/admin-nav.js','js/admin-general.js','js/admin-products.js',
@@ -1445,7 +1446,7 @@ $fns=[
     'openCheckout','placeOrder','addToCart',
     // Orders
     'renderOrdersTable','viewOrder',
-    'sendConfirmEmail','sendShippingEmail','deleteOrder','deleteAllOrders',
+    'sendConfirmEmail','sendShippingEmail','sendGenericEmail','previewGenericEmail','deleteOrder','deleteAllOrders',
     'exportOrdersCsv','exportTaxCSV','clearOrdFilters','clearOrderFilters',
     'updCarrier','updTracking','fetchOrderTax',
     'showRefundForm','saveRefund',
@@ -2438,6 +2439,78 @@ try{
     $wwwHdrs=substr($resp,0,strpos($resp,"\r\n\r\n"));
     t('www subdomain API sends Access-Control-Allow-Origin',stripos($wwwHdrs,'Access-Control-Allow-Origin')!==false,$wwwHdrs===false?'no response':'');
 }catch(Exception $e){t('www subdomain checks',false,$e->getMessage());}
+
+// ── GENERIC CUSTOMER EMAIL (2026-07-03) ──
+try{
+    $sgFile=$root.'/send_generic.php';
+    t('send_generic.php exists',file_exists($sgFile));
+    $sgPhp=file_exists($sgFile)?file_get_contents($sgFile):'';
+    t('send_generic.php requires order_id',strpos($sgPhp,'Missing order_id')!==false);
+    t('send_generic.php requires subject and message',strpos($sgPhp,'Subject and message are required')!==false);
+    t('send_generic.php strips CR/LF from subject (header injection guard)',strpos($sgPhp,'str_replace(["\r","\n"]')!==false);
+    t('send_generic.php escapes message body',strpos($sgPhp,'nl2br(htmlspecialchars($message_in')!==false);
+    t('send_generic.php escapes order id in email body',strpos($sgPhp,'htmlspecialchars($order_id, ENT_QUOTES')!==false);
+    t('send_generic.php supports preview mode without sending',strpos($sgPhp,"!empty(\$data['preview'])")!==false&&strpos($sgPhp,"'preview'=>true")!==false);
+    t('send_generic.php logs to email_log as Custom Email',strpos($sgPhp,"'Custom Email'")!==false);
+    t('send_generic.php uses bizName for from-name',strpos($sgPhp,'bizName($pdo)')!==false);
+
+    // Admin UI wiring
+    $aojsGe=isset($aojs)?$aojs:file_get_contents($root.'/js/admin-orders.js');
+    $apjsGe=isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js');
+    t('sendGenericEmail validates customer email before opening compose modal',strpos($aojsGe,'function sendGenericEmail(oid)')!==false&&strpos($aojsGe,'Cannot send: no valid email address on this order.')!==false);
+    t('sendGenericEmail opens compose modal with subject + message fields',strpos($aojsGe,'ge-subject')!==false&&strpos($aojsGe,'ge-message')!==false);
+    t('previewGenericEmail requires subject and message before preview',strpos($aojsGe,'function previewGenericEmail(oid)')!==false&&strpos($aojsGe,'Subject and message are both required.')!==false);
+    t('previewGenericEmail calls send_generic.php preview',strpos($aojsGe,"SITE_ORIGIN+'/send_generic.php'")!==false);
+    t('emailSendNow carries subject/message through to final send',strpos($aojsGe,"endpoint.indexOf('send_generic')!==-1 && _genericDraft")!==false);
+    t('btn:Send Email (generic) wired on Order Detail',strpos($apjsGe,'sendGenericEmail(')!==false);
+}catch(Exception $e){t('generic customer email checks',false,$e->getMessage());}
+
+// ── MULTIPLE TRACKING NUMBERS (2026-07-03) ──
+try{
+    $ordPhpTr=isset($ordPhpRF)?$ordPhpRF:file_get_contents($root.'/api/orders.php');
+    t('orders.php widens tracking_number column when narrower than 500',strpos($ordPhpTr,'MODIFY COLUMN tracking_number VARCHAR(500)')!==false);
+
+    $ssphpTr=isset($ssphp)?$ssphp:file_get_contents($root.'/send_shipping.php');
+    t('send_shipping.php splits tracking on commas/newlines',strpos($ssphpTr,"preg_split('/[,\\n]+/'")!==false);
+    t('send_shipping.php builds a per-carrier tracking URL helper',strpos($ssphpTr,'function trackingUrl($carrier, $num)')!==false);
+    t('send_shipping.php renders one link per tracking number',strpos($ssphpTr,'array_map(function($num) use ($carrier)')!==false);
+    t('send_shipping.php handles empty tracking list gracefully',strpos($ssphpTr,'empty($tracking_list)')!==false);
+
+    $aojsTr=isset($aojsGe)?$aojsGe:file_get_contents($root.'/js/admin-orders.js');
+    $apjsTr=isset($apjsGe)?$apjsGe:file_get_contents($root.'/js/admin-products.js');
+    t('Edit Order tracking field hints at comma-separated multiple',strpos($aojsTr,'comma-separate multiple')!==false);
+    t('Send Shipping preview tracking field hints at comma-separated multiple',strpos($aojsTr,'Comma-separate multiple')!==false);
+    t('Order Detail renders each tracking number as its own chip',strpos($apjsTr,"order.tracking.split(/[,\\n]+/)")!==false);
+}catch(Exception $e){t('multiple tracking numbers checks',false,$e->getMessage());}
+
+// ── TRANSACTION FEE PERSISTENCE (2026-07-03) ──
+// Root cause: Square's Payment object carries the real processing_fee it charged, but neither
+// payment-completion path ever read or saved it, so transaction_fee stayed $0 for every card
+// order regardless of what Square actually took.
+try{
+    $vpPhpFee=isset($vpphp2)?$vpphp2:file_get_contents($root.'/verify_payment.php');
+    t('verify_payment.php extracts Square processing_fee',strpos($vpPhpFee,'$sq_actual_fee')!==false&&strpos($vpPhpFee,"matched['processing_fee']")!==false);
+    t('verify_payment.php persists transaction_fee on the order',strpos($vpPhpFee,'transaction_fee=?')!==false&&strpos($vpPhpFee,'$sq_actual_fee, $order_id')!==false);
+    t('verify_payment.php falls back to fee estimate only when Square has not posted one yet',strpos($vpPhpFee,'if ($sq_actual_fee > 0)')!==false);
+    t('verify_payment.php test_mode path initializes sq_actual_fee from the stored order',strpos($vpPhpFee,"\$sq_actual_fee = (float)(isset(\$order['transaction_fee'])")!==false);
+
+    $whPhpFee=isset($wphp2)?$wphp2:file_get_contents($root.'/api/square-webhook.php');
+    t('square-webhook.php extracts Square processing_fee',strpos($whPhpFee,"payment['processing_fee']")!==false);
+    t('square-webhook.php persists transaction_fee on the order',strpos($whPhpFee,'transaction_fee = ?')!==false&&strpos($whPhpFee,'$fee_dollars, $order_id')!==false);
+}catch(Exception $e){t('transaction fee persistence checks',false,$e->getMessage());}
+
+// ── SQUARE PAYMENTS REPORT — TAX SOURCE FIX (2026-07-03) ──
+// process_payment.php charges a flat total via the raw Payments API (no Square Order, no tax
+// line item), so Square never has tax to report for these payments. The report used to ask
+// Square's Orders API for tax and would always get back nothing for real orders — now it reads
+// the authoritative tax_amount from our own orders table instead.
+try{
+    $spPhp=file_get_contents($root.'/api/square_payments.php');
+    t('square_payments.php no longer queries Square Orders API for tax',strpos($spPhp,'orders/batch-retrieve')===false);
+    t('square_payments.php looks up tax_amount from our own orders table by square_payment_id',strpos($spPhp,'SELECT square_payment_id, tax_amount FROM orders WHERE square_payment_id IN')!==false);
+    t('square_payments.php keys tax lookup by payment id, not Square order id',strpos($spPhp,"\$taxByPaymentId[\$row['square_payment_id']]")!==false);
+    t('square_payments.php still requires admin',strpos($spPhp,'requireAdmin()')!==false);
+}catch(Exception $e){t('square payments report tax source checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 

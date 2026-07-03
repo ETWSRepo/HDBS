@@ -39,6 +39,60 @@ function sendShippingEmail(oid){
   }
   emailPreviewThenSend('/send_shipping.php',oid,'Shipping Notification');
 }
+// ── Send generic/custom email ──
+var _genericDraft = null;
+function sendGenericEmail(oid){
+  var order=ORDERS.find(function(o){return o.id===oid;});
+  if(!order){alert('Order not found.');return;}
+  var email=order.email||'';
+  if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    var msgEl=document.getElementById('vo-msg-'+oid);
+    if(msgEl){msgEl.style.color='#c62828';msgEl.textContent='Cannot send: no valid email address on this order.';}
+    return;
+  }
+  var existing=document.getElementById('generic-email-modal');if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='generic-email-modal';
+  div.className='modal-ov on';
+  div.style.zIndex='400';
+  div.innerHTML=
+    '<div class="modal-box" style="max-width:520px;width:95%;padding:1.4rem">'+
+      '<div style="font-weight:700;font-size:1rem;margin-bottom:1rem;color:#2d2220">&#x1F4E7; Send Email — '+oid+'</div>'+
+      '<div class="merr" id="ge-err" style="display:none;background:#fdecea;color:#c0392b;padding:.5rem .8rem;border-radius:6px;font-size:.82rem;margin-bottom:.7rem"></div>'+
+      '<label class="fl">Subject *</label>'+
+      '<input class="afi" id="ge-subject" placeholder="e.g. Update on your order">'+
+      '<label class="fl">Message *</label>'+
+      '<textarea class="afi" id="ge-message" rows="6" placeholder="Type your message to the customer…"></textarea>'+
+      '<div style="display:flex;gap:.6rem;margin-top:1rem">'+
+        '<button class="bp" onclick="previewGenericEmail(\''+oid+'\')">Preview</button>'+
+        '<button class="bs" onclick="document.getElementById(\'generic-email-modal\').remove()">Cancel</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(div);
+}
+function previewGenericEmail(oid){
+  var subjEl=document.getElementById('ge-subject'), msgInputEl=document.getElementById('ge-message');
+  var subject=subjEl?subjEl.value.trim():'', message=msgInputEl?msgInputEl.value.trim():'';
+  var errEl=document.getElementById('ge-err');
+  if(!subject||!message){
+    if(errEl){errEl.style.display='block';errEl.textContent='Subject and message are both required.';}
+    return;
+  }
+  _genericDraft={subject:subject,message:message};
+  fetch(SITE_ORIGIN+'/send_generic.php',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({order_id:oid,subject:subject,message:message,preview:true})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d||!d.success||!d.html){
+      if(errEl){errEl.style.display='block';errEl.textContent='Could not load preview: '+((d&&d.error)||'unknown');}
+      return;
+    }
+    var modal=document.getElementById('generic-email-modal');if(modal)modal.remove();
+    showEmailPreviewModal('/send_generic.php',oid,'Custom Email',d);
+  }).catch(function(e){
+    if(errEl){errEl.style.display='block';errEl.textContent='Network error: '+e;}
+  });
+}
 // ── Email preview-before-send ──
 // Fetches the rendered email (preview mode, no send) and shows it in a modal;
 // the email is only sent when the user clicks Send Email.
@@ -73,8 +127,8 @@ function showEmailPreviewModal(endpoint,oid,label,d){
             '<select class="afi" id="email-carrier" style="margin:0;font-size:.88rem">'+
             ['USPS','UPS','FedEx','Other'].map(function(cr){return'<option'+(cr===carrier?' selected':'')+'>'+cr+'</option>';}).join('')+
             '</select></div>'+
-          '<div><label style="font-size:.75rem;font-weight:600;color:#6b6040;display:block;margin-bottom:.3rem">Tracking Number</label>'+
-            '<input class="afi" id="email-tracking" value="'+esc(tracking)+'" placeholder="Tracking #" style="margin:0;font-family:monospace;font-size:.88rem">'+
+          '<div><label style="font-size:.75rem;font-weight:600;color:#6b6040;display:block;margin-bottom:.3rem">Tracking Number(s)</label>'+
+            '<input class="afi" id="email-tracking" value="'+esc(tracking)+'" placeholder="Comma-separate multiple" style="margin:0;font-family:monospace;font-size:.88rem">'+
           '</div>'+
         '</div>'+
       '</div>';
@@ -115,11 +169,16 @@ function emailSendNow(endpoint,oid,label,btn,isShipping){
     if(carrierEl)payload.carrier=carrierEl.value;
     if(trackingEl)payload.tracking=trackingEl.value.trim();
   }
+  if(endpoint.indexOf('send_generic')!==-1 && _genericDraft){
+    payload.subject=_genericDraft.subject;
+    payload.message=_genericDraft.message;
+  }
   fetch(SITE_ORIGIN+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)})
   .then(function(r){return r.json();})
   .then(function(d){
     var modal=document.getElementById('email-preview-modal');if(modal)modal.remove();
+    _genericDraft=null;
     var msgEl=document.getElementById('vo-msg-'+oid);
     if(msgEl){
       if(d&&d.success){msgEl.style.color='#2e7d32';msgEl.textContent='✓ '+label+' sent to '+(d.to||'customer')+'!';}
@@ -157,7 +216,7 @@ function editOrderDetail(oid){
         '<select class="afi" id="eo-carrier">'+
         ['USPS','UPS','FedEx','Other'].map(function(cr){return'<option'+(cr===(order.carrier||'USPS')?' selected':'')+'>'+cr+'</option>';}).join('')+
         '</select></div>'+
-      '<div><label class="fl">Tracking Number</label><input class="afi" id="eo-tracking" value="'+(order.tracking||'')+'" placeholder="Tracking #" style="font-family:monospace"></div>'+
+      '<div><label class="fl">Tracking Number(s)</label><input class="afi" id="eo-tracking" value="'+(order.tracking||'')+'" placeholder="Tracking # (comma-separate multiple)" style="font-family:monospace"></div>'+
       '<div><label class="fl">Status</label>'+
         '<select class="afi" id="eo-status">'+
         ['Awaiting Payment','Paid','Pending','Processing','Shipped','Delivered','Cancelled','Refunded'].map(function(s){return'<option'+(s===order.status?' selected':'')+'>'+s+'</option>';}).join('')+
