@@ -753,7 +753,11 @@ function ordFilt2(e,col){e.stopPropagation();document.querySelectorAll('.ord-fp'
 function applyOrdFilters(){var result=ORDERS.filter(function(o){function chkF(fval,oval){if(!fval)return true;if(fval==='__NONE__')return false;return fval.split('\x00').indexOf(String(oval||'(blank)'))>=0;}if(ORD_F.id&&!chkF(ORD_F.id,o.id))return false;if(ORD_F.cust&&!chkF(ORD_F.cust,o.cust))return false;if(ORD_F.pay&&!chkF(ORD_F.pay,o.pay))return false;if(ORD_F.status&&!chkF(ORD_F.status,o.status))return false;if(ORD_F.swept_date&&!chkF(ORD_F.swept_date,o.swept_date||'\u2014'))return false;if(ORD_F.total&&(o.total||0).toFixed(2).indexOf(ORD_F.total)<0)return false;if(ORD_F.tax&&String((o.tax||0).toFixed(2)).indexOf(ORD_F.tax)<0)return false;if(ORD_F.dateFrom||ORD_F.dateTo){var norm=ordNormDate(o);if(ORD_F.dateFrom&&norm<ORD_F.dateFrom)return false;if(ORD_F.dateTo&&norm>ORD_F.dateTo)return false;}return true;});var sc=ORD_SORT.col,sd=ORD_SORT.dir;if(sc)result.sort(function(a,b){var av=a[sc]||'',bv=b[sc]||'';if(typeof av==='number'&&typeof bv==='number')return sd*(av-bv);if(sc==='date')return sd*ordNormDate(a).localeCompare(ordNormDate(b));return sd*String(av).localeCompare(String(bv));});return result;}
 function buildOrdThead(){
   var cols=['Order ID','Customer','Date','Time','Subtotal','Shipping','Tax','Trans Fee','Total','Refunded','Paid By','Payment Config','Status','Tax Swept Date','','Actions'];
-  return '<thead><tr>'+cols.map(function(l){return'<th>'+l+'</th>';}).join('')+'</tr></thead>';
+  // First cell is the select-all column. TableKit wipes th.textContent on init, so the actual
+  // select-all checkbox is injected back into this cell after TableKit.initAll() (see renderOrdersTable).
+  return '<thead><tr>'+
+    '<th class="ord-selall-th"></th>'+
+    cols.map(function(l){return'<th>'+l+'</th>';}).join('')+'</tr></thead>';
 }
 function renderOrdersTable(el){
   var filt=applyOrdFilters();
@@ -761,6 +765,7 @@ function renderOrdersTable(el){
   for(var i=0;i<filt.length;i++){
     var o=filt[i];
     rows+='<tr>'+
+      '<td style="text-align:center"><input type="checkbox" class="ord-chk" value="'+o.id+'"></td>'+
       '<td><code style="font-size:.72rem;cursor:pointer;color:#a07810;text-decoration:underline" onclick="viewOrder(\''+o.id+'\')" title="View details">'+o.id+'</code></td>'+
       '<td>'+o.cust+'</td>'+
       '<td>'+(o.dispDate||o.date)+'</td>'+
@@ -787,12 +792,12 @@ function renderOrdersTable(el){
   el.innerHTML=
     '<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.6rem">'+
     '<button class="bs" id="upd-fee-btn" onclick="updateTransFees()" style="font-size:.78rem">💳 Update Trans Fees</button>'+
-    (ORDERS.length?'<button class="bd" onclick="deleteAllOrders()" style="font-size:.78rem">🗑 Delete All</button>':'')+
+    (ORDERS.length?'<button class="bd" onclick="deleteCheckedOrders()" style="font-size:.78rem">🗑 Delete Selected</button>':'')+
     '</div>'+
     '<table class="tablekit">'+buildOrdThead()+
-    '<tbody>'+(rows||'<tr><td colspan="11" style="text-align:center;padding:1.5rem;color:#6b6040">No orders yet</td></tr>')+'</tbody>'+
+    '<tbody>'+(rows||'<tr><td colspan="12" style="text-align:center;padding:1.5rem;color:#6b6040">No orders yet</td></tr>')+'</tbody>'+
     '<tfoot><tr style="background:#fffdf0;font-weight:700;border-top:2px solid #e8e0b8">'+
-      '<td colspan="4" style="padding:8px 12px;color:#6b6040;font-size:.82rem">'+filt.length+' order'+(filt.length!==1?'s':'')+(isF?' (filtered)':'')+'</td>'+
+      '<td colspan="5" style="padding:8px 12px;color:#6b6040;font-size:.82rem">'+filt.length+' order'+(filt.length!==1?'s':'')+(isF?' (filtered)':'')+'</td>'+
       '<td style="padding:8px 12px;font-size:.8rem">$'+filt.reduce(function(s,o){return s+(o.subtotal||0);},0).toFixed(2)+'</td>'+
       '<td style="padding:8px 12px;font-size:.8rem">$'+filt.reduce(function(s,o){return s+(o.shipping||0);},0).toFixed(2)+'</td>'+
       '<td style="padding:8px 12px;color:#2e7d32">$'+filt.reduce(function(s,o){return s+(o.tax||0);},0).toFixed(2)+'</td>'+
@@ -803,6 +808,15 @@ function renderOrdersTable(el){
     '</tr></tfoot>'+
     '</table>';
   if(typeof TableKit!=='undefined')TableKit.initAll();
+  // Re-inject the select-all checkbox into the first header cell (TableKit clears th content on init).
+  var selTh=el.querySelector('table.tablekit thead th.ord-selall-th')||el.querySelector('table.tablekit thead th:first-child');
+  if(selTh){
+    selTh.innerHTML='';selTh.style.textAlign='center';selTh.style.cursor='default';
+    var selCb=document.createElement('input');
+    selCb.type='checkbox';selCb.title='Select all / clear all';
+    selCb.onclick=function(e){e.stopPropagation();ordToggleAll(this);};
+    selTh.appendChild(selCb);
+  }
   showPageToolbar({title:'Orders',logoText:(window.BIZ_NAME||'Handmade Designs By Suzi')});
 }
 function applyOrderFilters(){
@@ -907,6 +921,21 @@ function exportTaxCSV(){
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='suzi_tax_report_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
+}
+// Header checkbox: tick/untick every row checkbox currently in the Orders table.
+function ordToggleAll(master){
+  var boxes=document.querySelectorAll('#acnt .ord-chk');
+  for(var i=0;i<boxes.length;i++)boxes[i].checked=master.checked;
+}
+// Delete only the checked orders (Orders table toolbar button).
+function deleteCheckedOrders(){
+  var boxes=document.querySelectorAll('#acnt .ord-chk:checked');
+  var ids=[];for(var i=0;i<boxes.length;i++)ids.push(boxes[i].value);
+  if(ids.length===0){alert('No orders are checked. Tick the orders you want to delete first.');return;}
+  if(!confirm('Delete '+ids.length+' selected order'+(ids.length!==1?'s':'')+'? This cannot be undone.'))return;
+  ORDERS=ORDERS.filter(function(o){return ids.indexOf(o.id)<0;});
+  ids.forEach(function(id){apiFetch('orders.php','DELETE',{id:id}).catch(function(){});});
+  renderOrdersTable(document.getElementById('acnt'));
 }
 function deleteAllOrders(){
   if(!confirm('Delete ALL '+ORDERS.length+' orders? This will clear all sales data and cannot be undone.'))return;
@@ -1920,7 +1949,7 @@ function resetDefaultTaxRates(){
 }
 function rSqPay(el){
   el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading Square payments…</div>';
-  sqPayLoad(el,'','','');
+  sqPayLoad(el,'2026-07-01','','');  // default From = store launch (July 1, 2026)
 }
 function sqPayLoad(el,begin,end,cursor){
   var url='square_payments.php';

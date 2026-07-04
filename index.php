@@ -873,7 +873,7 @@ if (!empty($bz['logo'])) {
 <script src="js/admin-nav.js?v=10"></script>
 <script src="js/admin-general.js?v=5"></script>
 <script src="js/admin-products.js?v=14"></script>
-<script src="js/admin-orders.js?v=24"></script>
+<script src="js/admin-orders.js?v=27"></script>
 <script src="js/admin-misc.js?v=20"></script>
 <script src="js/admin-business.js?v=9"></script>
 <script src="js/table.js"></script>

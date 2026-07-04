@@ -2111,9 +2111,20 @@ try{
     $cj=isset($r['json'])?$r['json']:null;
     tProd('ui:customers list has customers array',$cj&&isset($cj['customers'])&&is_array($cj['customers']));
 
-    // Customer register — duplicate email is rejected gracefully (not a 500)
-    $r=uiPost($base.'/api/customers.php',['action'=>'register','em'=>'regression_dupe@test.com','pw'=>'Test1234!','fn'=>'Reg','ln'=>'Test','secQ'=>'What city were you born in?','secA'=>'test','secA2'=>'test']);
-    t('ui:customer register not 500',$r['code']!==500,'HTTP '.$r['code']);
+    // Customer register — duplicate email is rejected gracefully (not a 500).
+    // Prod-only: this call hits $base (hardcoded prod), so running it from a staging suite would
+    // create a real customer in PROD that this run's $pdo (staging) can't clean up. Skip on staging.
+    if(!$isStaging){
+      $r=uiPost($base.'/api/customers.php',['action'=>'register','em'=>'regression_dupe@test.com','pw'=>'Test1234!','fn'=>'Reg','ln'=>'Test','secQ'=>'What city were you born in?','secA'=>'test','secA2'=>'test']);
+      t('ui:customer register not 500',$r['code']!==500,'HTTP '.$r['code']);
+      // Clean up the customer this may have created (and any left by earlier runs).
+      try { $pdo->prepare("DELETE FROM customers WHERE email = ?")->execute(['regression_dupe@test.com']); } catch (Exception $e) {}
+      $rtDupe=$pdo->prepare("SELECT COUNT(*) c FROM customers WHERE email = ?"); $rtDupe->execute(['regression_dupe@test.com']);
+      t('ui:register test customer cleaned up (no test data left behind)',((int)(($rtDupe->fetch()['c'])??0))===0);
+    } else {
+      t('ui:customer register not 500',true,'skipped on staging (would create prod data)');
+      t('ui:register test customer cleaned up (no test data left behind)',true,'skipped on staging');
+    }
 
     // Customer login — wrong password rejected
     $r=uiPost($base.'/api/customers.php',['action'=>'login','em'=>'nobody@example.com','pw'=>'wrong']);
@@ -2365,6 +2376,19 @@ try{
 
 }catch(Exception $e){t('PayPal integration checks',false,$e->getMessage());}
 
+// ── ORDERS bulk select/delete + Square Payments default date ──
+try{
+    $aojs=file_get_contents($root.'/js/admin-orders.js');
+    t('admin-orders.js orders rows have checkbox column',strpos($aojs,'class="ord-chk"')!==false);
+    t('admin-orders.js has ordToggleAll (header select-all)',strpos($aojs,'function ordToggleAll')!==false);
+    t('admin-orders.js re-injects select-all header after TableKit',strpos($aojs,'ord-selall-th')!==false&&strpos($aojs,'ordToggleAll(this)')!==false);
+    t('admin-orders.js has deleteCheckedOrders',strpos($aojs,'function deleteCheckedOrders')!==false);
+    t('admin-orders.js Delete Selected button wired',strpos($aojs,'onclick="deleteCheckedOrders()"')!==false&&strpos($aojs,'Delete Selected')!==false);
+    t('admin-orders.js deleteCheckedOrders guards empty selection',strpos($aojs,'No orders are checked')!==false);
+    t('admin-orders.js keeps deleteAllOrders for Settings full wipe',strpos($aojs,'function deleteAllOrders')!==false);
+    t('admin-orders.js Square Payments defaults From to launch date',strpos($aojs,"sqPayLoad(el,'2026-07-01'")!==false);
+}catch(Exception $e){t('orders bulk-delete + sqpay default checks',false,$e->getMessage());}
+
 // ── DIGITAL WALLETS (Apple Pay / Google Pay) + SANDBOX/LIVE MODE ──
 try{
     $stjs   = file_get_contents($root.'/js/store.js');
@@ -2613,26 +2637,34 @@ try {
     t('orders.php stock decrement checks rowCount', strpos($ordPhp2, 'rowCount() === 0') !== false && strpos($ordPhp2, 'out of stock') !== false);
     t('orders.php no longer uses GREATEST(0, stock -', strpos($ordPhp2, 'GREATEST(0, stock -') === false);
 
-    // Live: POST order with bogus X-Admin-Token via curl — status must be clamped to Awaiting Payment
-    $fakeOid = 'RT-FKADM-' . time();
-    $fakePayload = json_encode(['id'=>$fakeOid,'total'=>1.00,'cust'=>'Test','email'=>'rt@test.com','status'=>'Paid']);
-    $ch = curl_init($base . '/api/orders.php');
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_POST=>true,
-        CURLOPT_POSTFIELDS=>$fakePayload,
-        CURLOPT_HTTPHEADER=>['Content-Type: application/json','X-Admin-Token: not-a-real-token'],
-        CURLOPT_TIMEOUT=>8]);
-    $rb = curl_exec($ch); curl_close($ch);
-    $rj = @json_decode($rb, true);
-    // Clean up the test order if it was created
-    if (!empty($rj['success'])) {
-        $pdo->prepare("DELETE FROM orders WHERE id=?")->execute([$fakeOid]);
+    // Live: POST order with bogus X-Admin-Token via curl — status must be clamped to Awaiting Payment.
+    // Prod-only: this POST hits $base (hardcoded prod) and CREATES an order there; running it from a
+    // staging suite would leak that order into PROD, which this run's $pdo (staging) can't clean up.
+    if(!$isStaging){
+      $fakeOid = 'RT-FKADM-' . time();
+      $fakePayload = json_encode(['id'=>$fakeOid,'total'=>1.00,'cust'=>'Test','email'=>'rt@test.com','status'=>'Paid']);
+      $ch = curl_init($base . '/api/orders.php');
+      curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_POST=>true,
+          CURLOPT_POSTFIELDS=>$fakePayload,
+          CURLOPT_HTTPHEADER=>['Content-Type: application/json','X-Admin-Token: not-a-real-token'],
+          CURLOPT_TIMEOUT=>8]);
+      $rb = curl_exec($ch); curl_close($ch);
+      $rj = @json_decode($rb, true);
+      // Clean up the test order if it was created
+      if (!empty($rj['success'])) {
+          $pdo->prepare("DELETE FROM orders WHERE id=?")->execute([$fakeOid]);
+      }
+      // Check DB: order should not exist with status Paid (it was either rejected or clamped)
+      $chk = $pdo->prepare("SELECT status FROM orders WHERE id=?"); $chk->execute([$fakeOid]);
+      $chkRow = $chk->fetch();
+      $fakeAdminOk = !$chkRow || $chkRow['status'] !== 'Paid';
+      t('orders.php rejects fake admin token (status not Paid)', $fakeAdminOk, $chkRow ? 'status='.$chkRow['status'] : 'order not created');
+      // Always remove the row we just created, whatever its status came back as.
+      $pdo->prepare("DELETE FROM orders WHERE id=?")->execute([$fakeOid]);
+      $pdo->prepare("DELETE FROM order_items WHERE order_id=?")->execute([$fakeOid]);
+    } else {
+      t('orders.php rejects fake admin token (status not Paid)', true, 'skipped on staging (would create prod data)');
     }
-    // Check DB: order should not exist with status Paid (it was either rejected or clamped)
-    $chk = $pdo->prepare("SELECT status FROM orders WHERE id=?"); $chk->execute([$fakeOid]);
-    $chkRow = $chk->fetch();
-    $fakeAdminOk = !$chkRow || $chkRow['status'] !== 'Paid';
-    t('orders.php rejects fake admin token (status not Paid)', $fakeAdminOk, $chkRow ? 'status='.$chkRow['status'] : 'order not created');
-    if ($chkRow) $pdo->prepare("DELETE FROM orders WHERE id=?")->execute([$fakeOid]);
 } catch (Exception $e) { t('round 5 hardening checks', false, $e->getMessage()); }
 
 // ── DB TABLE LIST / CONTENTS ──
@@ -2760,6 +2792,18 @@ try{
 }catch(Exception $e){t('square payments report tax source checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
+
+// ── TEST-DATA CLEANUP SWEEP ──
+// Safety net so the suite never leaves fake records behind. Order-creating tests target $base
+// (hardcoded prod), so on a PRODUCTION run this $pdo IS prod and this clears the fake orders/
+// customers there — including any leaked by earlier staging runs (which couldn't self-clean).
+try {
+    $pdo->prepare("DELETE FROM order_items WHERE order_id LIKE 'RT-FKADM-%' OR order_id LIKE 'FAKE-%'")->execute();
+    $pdo->prepare("DELETE FROM orders WHERE id LIKE 'RT-FKADM-%' OR id LIKE 'FAKE-%'")->execute();
+    $pdo->prepare("DELETE FROM customers WHERE email = 'regression_dupe@test.com'")->execute();
+    $rtLeft=(int)$pdo->query("SELECT COUNT(*) FROM orders WHERE id LIKE 'RT-FKADM-%' OR id LIKE 'FAKE-%'")->fetchColumn();
+    t('test-data cleanup: no fake orders remain in this DB', $rtLeft===0, $rtLeft.' left');
+} catch (Exception $e) { t('test-data cleanup sweep', false, $e->getMessage()); }
 
 ob_end_clean();
 echo json_encode(['pass'=>$pass,'fail'=>$fail,'total'=>$pass+$fail,
