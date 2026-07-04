@@ -842,32 +842,31 @@ if (!empty($bz['logo'])) {
 <video id="cam-video" style="display:none" autoplay playsinline></video>
 
 <script src="js/api.js?v=9"></script>
-<script src="js/config.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
 <script src="js/data.js?v=5"></script>
 <script src="js/store.js?v=15"></script>
 <script src="js/auth.js?v=5"></script>
 <script src="js/ui.js?v=7"></script>
 <script src="js/admin-nav.js?v=10"></script>
 <script src="js/admin-general.js?v=5"></script>
-<script src="js/admin-products.js?v=13"></script>
-<script src="js/admin-orders.js?v=14"></script>
-<script src="js/admin-misc.js?v=18"></script>
-<script src="js/admin-business.js?v=5"></script>
+<script src="js/admin-products.js?v=14"></script>
+<script src="js/admin-orders.js?v=19"></script>
+<script src="js/admin-misc.js?v=19"></script>
+<script src="js/admin-business.js?v=8"></script>
 <script src="js/table.js"></script>
 <script src="js/toolbar.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function(){ TableKit.initAll(); });</script>
 <script>
 (function(){
-  var dt=new Date();
-  var ds=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
   fetch('/api/admin.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_version'})})
   .then(function(r){return r.json();})
   .then(function(d){
+    // Show when the version was actually last changed, not the current page-load time
+    var ds=d.updated_at?fmtDate(new Date(d.updated_at)):'unknown';
     var txt='Version: '+(d.version||'1.0')+'   Date: '+ds;
     document.querySelectorAll('.site-version-line').forEach(function(el){el.textContent=txt;});
-  }).catch(function(){
-    document.querySelectorAll('.site-version-line').forEach(function(el){el.textContent='Date: '+ds;});
-  });
+  }).catch(function(){});
 })();
 </script>
 </body>

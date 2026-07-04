@@ -244,6 +244,11 @@ if ($method === 'POST' && ($action === 'set_setting' || $action === 'save_settin
         }
     }
     setSetting($pdo, $key, $val);
+    // Track when the version actually last changed, so the footer can show that instead of
+    // "now" (it used to just render new Date() at page load, which is meaningless)
+    if ($key === 'major_version' || $key === 'minor_version') {
+        setSetting($pdo, 'version_updated_at', date('c'));
+    }
     ok(['message' => 'Setting saved']);
 }
 
@@ -407,7 +412,8 @@ if ($method === 'POST' && $action === 'log_page_view') {
 if ($action === 'get_version') {
     $major = getSetting($pdo, 'major_version') ?? '1';
     $minor = getSetting($pdo, 'minor_version') ?? '0';
-    ok(['version' => $major . '.' . $minor, 'major' => $major, 'minor' => $minor]);
+    $updatedAt = getSetting($pdo, 'version_updated_at');
+    ok(['version' => $major . '.' . $minor, 'major' => $major, 'minor' => $minor, 'updated_at' => $updatedAt]);
 }
 
 if ($method === 'POST' && $action === 'increment_minor_version') {
@@ -415,6 +421,7 @@ if ($method === 'POST' && $action === 'increment_minor_version') {
     $minor = (int)(getSetting($pdo, 'minor_version') ?? 0);
     $minor++;
     setSetting($pdo, 'minor_version', (string)$minor);
+    setSetting($pdo, 'version_updated_at', date('c'));
     $major = getSetting($pdo, 'major_version') ?? '1';
     ok(['version' => $major . '.' . $minor, 'minor' => $minor]);
 }

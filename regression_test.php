@@ -392,10 +392,21 @@ try{
     t('admin-business.js defines rBizEquip',strpos($abjs,'function rBizEquip(')!==false);
     t('Profile form has business name field',strpos($abjs,'bp-name')!==false);
     t('Profile form has short name field',strpos($abjs,'bp-short-name')!==false);
-    t('Profile form has address field',strpos($abjs,'bp-address')!==false);
+    // Mailing address (Business Identity card) — street/city/state/zip
+    t('Profile form has mailing street field',strpos($abjs,'bp-mail-street')!==false);
+    t('Profile form has mailing city/state/zip fields',strpos($abjs,'bp-mail-city')!==false&&strpos($abjs,'bp-mail-state')!==false&&strpos($abjs,'bp-mail-zip')!==false);
+    // Contact address (Contact Info card) — replaced the old single "Address" field
+    t('Profile form has contact street field (no more single bp-address)',strpos($abjs,'bp-cont-street')!==false&&strpos($abjs,'id="bp-address"')===false);
+    t('Profile form has contact city/state/zip fields',strpos($abjs,'bp-cont-city')!==false&&strpos($abjs,'bp-cont-state')!==false&&strpos($abjs,'bp-cont-zip')!==false);
     t('Profile form has phone field',strpos($abjs,'bp-phone')!==false);
+    // Phone auto-formats like the storefront's checkout/customer/signup phone fields
+    t('Profile phone field reuses fmtPhone() live formatter',strpos($abjs,'id="bp-phone"')!==false&&strpos($abjs,'oninput="fmtPhone(this)"')!==false);
+    t('Profile phone formats the stored value on load (bizFmtPhone)',strpos($abjs,'function bizFmtPhone(')!==false&&strpos($abjs,"bizFmtPhone(p.phone||'')")!==false);
     t('Profile form has email field',strpos($abjs,'bp-email')!==false);
     t('Profile form has logo upload',strpos($abjs,'bp-logo-file')!==false);
+    // Both save paths (saveBizProfile + clearBizLogo) must persist all the new address fields
+    t('saveBizProfile persists mailing + contact address fields',
+        substr_count($abjs,'mailing_street:mailing_street')>=1&&substr_count($abjs,'contact_street:contact_street')>=1);
     t('index.php cache-busts admin-business.js',strpos(file_get_contents($root.'/index.php'),'js/admin-business.js?v=')!==false);
 }catch(Exception $e){t('business nav checks',false,$e->getMessage());}
 // Business Documents API (resale certificate, business license)
@@ -494,6 +505,30 @@ try{
     t('printOrdersPdf function exists',strpos($aojs,'function printOrdersPdf()')!==false);
     t('Print PDF button removed from orders bar (on PageToolbar)',strpos($aojs,"onclick=\"printOrdersPdf()\"")===false);
     t('Print window closes after print',strpos($aojs,'w.close()')!==false);
+    // Print Invoice + Print Shipping Label (Order Detail actions)
+    t('printInvoice function exists',strpos($aojs,'function printInvoice(oid)')!==false);
+    t('printInvoice itemizes subtotal/shipping/tax/fee/total',strpos($aojs,"trow('Subtotal'")!==false&&strpos($aojs,"trow('Shipping'")!==false&&strpos($aojs,"trow('Total'")!==false);
+    t('printShippingLabel function exists',strpos($aojs,'function printShippingLabel(oid)')!==false);
+    t('printShippingLabel requires a shipping address on file',strpos($aojs,'This order has no shipping address on file.')!==false);
+    // Label window opens synchronously (before the async biz_profile fetch) so popup blockers don't intercept it
+    // admin-orders.js is stored with CRLF line endings on disk — normalize before comparing
+    // so this check isn't sensitive to line-ending drift
+    $aojsNoCr=str_replace("\r\n","\n",$aojs);
+    t('printShippingLabel opens window before the async fetch (popup-blocker safe)',
+        strpos($aojsNoCr,"var w=window.open('','_blank');\n  apiFetch('admin.php','POST',{action:'get_setting',key:'biz_profile'})")!==false);
+    t('printShippingLabel has no border on the label box',strpos($aojs,".label{width:4in;height:6in;padding:.3in")!==false&&strpos($aojs,'.label{width:4in;height:6in;border:')===false);
+    t('printShippingLabel return address uses the same style as the customer address',strpos($aojs,'.from,.to{font-size:22px;font-weight:700;line-height:1.4}')!==false);
+    t('printShippingLabel return address pulls mailing_street/city/state/zip from biz_profile',strpos($aojs,'p.mailing_street')!==false&&strpos($aojs,'p.mailing_city')!==false&&strpos($aojs,'p.mailing_state')!==false&&strpos($aojs,'p.mailing_zip')!==false);
+    t('printShippingLabel splits the customer address into street / city-state-zip lines',strpos($aojs,'commaIdx=order.addr.indexOf')!==false);
+    // Shipper/carrier line removed from the label
+    t('printShippingLabel no longer prints the carrier/shipper',strpos($aojs,'.carrier{')===false&&strpos($aojs,'class="carrier"')===false);
+    // Hard one-page clamp: html/body pinned to the label's exact 4in x 6in footprint with
+    // overflow hidden, plus page-break-avoid on the label box — a sub-pixel overflow was
+    // spilling a near-blank second page onto the printer before this.
+    t('printShippingLabel clamps html/body to the label footprint with overflow hidden',strpos($aojs,'html,body{margin:0;padding:0;width:4in;height:6in;overflow:hidden}')!==false);
+    t('printShippingLabel forces no page break on the label box',strpos($aojs,'page-break-after:avoid;page-break-inside:avoid;overflow:hidden')!==false);
+    t('btn:Print Invoice wired on Order Detail',strpos(isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js'),'printInvoice(')!==false);
+    t('btn:Print Shipping Label wired on Order Detail',strpos(isset($apjs)?$apjs:file_get_contents($root.'/js/admin-products.js'),'printShippingLabel(')!==false);
     t('Clear Filters button removed from orders bar (on PageToolbar)',strpos($aojs,"clearOrdFilters()'")===false);
     t('Update Trans Fees button exists',strpos($aojs,'updateTransFees()')!==false);
     t('updateTransFees function exists',strpos($aojs,'function updateTransFees()')!==false);
@@ -877,10 +912,20 @@ try{
     t('minor_version in settings',strpos($adphp,"'minor_version'")!==false);
     t('get_version action',strpos($adphp,"action === 'get_version'")!==false||strpos($adphp,"=== 'get_version'")!==false);
     t('increment_minor_version action',strpos($adphp,"increment_minor_version")!==false);
+    // Footer previously showed new Date() (page-load time) instead of when the version was
+    // actually last changed — now stamped server-side on every version write and returned
+    // by get_version, so the footer can display the real change time.
+    t('set_setting stamps version_updated_at when major/minor_version changes',strpos($adphp,"\$key === 'major_version' || \$key === 'minor_version'")!==false&&substr_count($adphp,"setSetting(\$pdo, 'version_updated_at'")>=2);
+    // api/admin.php is stored with CRLF line endings — normalize before a multi-line check
+    $adphpNoCr=str_replace("\r\n","\n",$adphp);
+    t('increment_minor_version also stamps version_updated_at',strpos($adphpNoCr,"setSetting(\$pdo, 'minor_version', (string)\$minor);\n    setSetting(\$pdo, 'version_updated_at'")!==false);
+    t('get_version returns updated_at',strpos($adphp,"'updated_at' => \$updatedAt")!==false);
     $ihtml=isset($ihtml)?$ihtml:file_get_contents($root.'/index.php');
     t('version line in footer',strpos($ihtml,'site-version-line')!==false);
     t('version line brightness matches footer (.5 opacity)',strpos($ihtml,'site-version-line')!==false&&strpos($ihtml,'rgba(255,255,255,.25)')===false,'should use .5 not .25');
     t('version fetch script in index.php',strpos($ihtml,'get_version')!==false);
+    t('footer no longer uses new Date() for the displayed timestamp',strpos($ihtml,'var dt=new Date();')===false);
+    t('footer derives the date from d.updated_at',strpos($ihtml,'d.updated_at?fmtDate(new Date(d.updated_at))')!==false);
     $amjs=isset($amjs)?$amjs:file_get_contents($root.'/js/admin-misc.js');
     t('saveVersion function exists',strpos($amjs,'function saveVersion(')!==false);
     t('version card in settings',strpos($amjs,'version-card')!==false&&strpos($amjs,'ver-major')!==false);
@@ -891,6 +936,8 @@ try{
         CURLOPT_HTTPHEADER=>['Content-Type: application/json']]);
     $vd=json_decode(curl_exec($ch),true);curl_close($ch);
     t('get_version returns version',isset($vd['version'])&&strpos($vd['version'],'.')!==false,$vd['version']??'');
+    // Only live on prod once this checkpoint ships and the version is next re-saved/backfilled
+    tProd('get_version returns updated_at on prod',isset($vd['updated_at'])&&$vd['updated_at'],json_encode($vd));
 }catch(Exception $e){t('site version checks',false,$e->getMessage());}
 
 // ── NAV SUBMENUS ──
@@ -910,12 +957,22 @@ try{
     $devMatch=preg_match("/sec:'developer'.*?children:\[([^\]]+)\]/s",$amjs,$dm);
     t('developer folder contains regtest',$devMatch&&strpos($dm[1],"'regtest'")!==false);
     t('developer folder contains settings',$devMatch&&strpos($dm[1],"'settings'")!==false);
+    // Email Log moved from Developer into Shop
+    t('shop folder contains emaillog',$shopMatch&&strpos($sm[1],"'emaillog'")!==false);
+    t('developer folder no longer contains emaillog',$devMatch&&strpos($dm[1],"'emaillog'")===false);
+    t('loadNavOrder migrates emaillog from Developer into Shop on saved nav_orders',strpos($amjs,'move Email Log from Developer into Shop')!==false&&strpos($amjs,"s!=='emaillog'")!==false);
     // Drag behaviour
     t('drag item into folder on header drop',strpos($amjs,'ch.appendChild(drag.el)')!==false);
     t('drag item to root on container drop',strpos($amjs,'container.appendChild(drag.el)')!==false);
     // Folder collapse
     t('toggleNavFolder saves to localStorage',strpos($amjs,'hdbs_nav_folders')!==false);
     t('folder collapse state in localStorage',strpos($amjs,'_navFolderState')!==false);
+    t('ADMIN_NAV_STRUCTURE_DEFAULT has business folder',strpos($amjs,"sec:'business'")!==false);
+    // goPanel() must collapse all 3 top-level folders on back-office entry — business was
+    // missing here (added later for Capital Equipment) even though shop/developer were handled
+    $cfgjsNav=file_get_contents($root.'/js/config.js');
+    t('goPanel collapses all 3 top-level folders (shop/business/developer)',
+        strpos($cfgjsNav,'nf.shop=false')!==false&&strpos($cfgjsNav,'nf.business=false')!==false&&strpos($cfgjsNav,'nf.developer=false')!==false);
     // Migration
     t('loadNavOrder migrates old flat format',strpos($amjs,'ADMIN_NAV_STRUCTURE_DEFAULT')!==false&&strpos($amjs,'migrate')!==false);
     t('loadNavOrder adds missing secs',strpos($amjs,'existing.indexOf(sec)<0')!==false);
@@ -1461,6 +1518,7 @@ $fns=[
     // Orders
     'renderOrdersTable','viewOrder',
     'sendConfirmEmail','sendShippingEmail','sendGenericEmail','previewGenericEmail','deleteOrder','deleteAllOrders',
+    'printInvoice','printShippingLabel',
     'exportOrdersCsv','exportTaxCSV','clearOrdFilters','clearOrderFilters',
     'updCarrier','updTracking','fetchOrderTax',
     'showRefundForm','saveRefund',

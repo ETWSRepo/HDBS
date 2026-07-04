@@ -551,6 +551,8 @@ function viewOrder(oid){
           '<button class="bs" style="font-size:.82rem" onclick="sendConfirmEmail(\''+oid+'\')">&#x1F4E7; Send Confirmation</button>'+
           '<button class="bs" style="font-size:.82rem" onclick="sendShippingEmail(\''+oid+'\')">&#x1F69A; Send Shipping</button>'+
           '<button class="bs" style="font-size:.82rem" onclick="sendGenericEmail(\''+oid+'\')">&#x1F4E7; Send Email</button>'+
+          '<button class="bs" style="font-size:.82rem" onclick="printInvoice(\''+oid+'\')">&#x1F5A8; Print Invoice</button>'+
+          '<button class="bs" style="font-size:.82rem" onclick="printShippingLabel(\''+oid+'\')">&#x1F5A8; Print Shipping Label</button>'+
           (refundRemaining(order)>0.004?'<button class="bs" style="font-size:.82rem" onclick="showRefundFormFor(\''+oid+'\')">↩ '+((order.refunded_amount||0)>0?'Refund More':'Refund Order')+'</button>':'')+
                     '<button class="bd" style="font-size:.82rem;margin-left:auto" onclick="deleteOrder(\''+oid+'\')">&#x1F5D1; Delete Order</button>'+
         '</div>'+

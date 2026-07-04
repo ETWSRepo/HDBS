@@ -408,9 +408,9 @@ var ADMIN_NAV_DEFAULT=Object.keys(ADMIN_NAV_LABELS).map(function(s){return{sec:s
 // Default nested structure with Shop and Developer folders
 var ADMIN_NAV_STRUCTURE_DEFAULT=[
   {type:'item',sec:'dash'},
-  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast']},
+  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast','emaillog']},
   {type:'folder',sec:'business',label:'🏢 Business',children:['bizprofile','bizdocs','bizinv','bizreports','bizequip']},
-  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','emaillog','logs','settings']},
+  {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','logs','settings']},
   {type:'item',sec:'faqs'},
   {type:'item',sec:'tncity'},
   {type:'item',sec:'reviews'},
@@ -463,6 +463,18 @@ function loadNavOrder(callback){
     structure.forEach(function(n){
       if(n.type==='folder'&&n.sec==='business'&&(n.children||[]).indexOf('bizequip')<0)n.children.push('bizequip');
     });
+    // One-time migration: move Email Log from Developer into Shop, on saved nav_orders that
+    // predate the move (a fresh install picks this up from the folder defaults above).
+    (function(){
+      var inShop=structure.some(function(n){return n.type==='folder'&&n.sec==='shop'&&(n.children||[]).indexOf('emaillog')>=0;});
+      if(inShop)return;
+      structure.forEach(function(n){
+        if(n.type==='folder'&&n.sec==='developer')n.children=(n.children||[]).filter(function(s){return s!=='emaillog';});
+      });
+      structure.forEach(function(n){
+        if(n.type==='folder'&&n.sec==='shop')n.children.push('emaillog');
+      });
+    })();
     // Add any new secs not yet present anywhere in structure
     var existing=[];
     structure.forEach(function(n){

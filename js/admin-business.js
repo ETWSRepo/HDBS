@@ -1,5 +1,14 @@
 // ── BUSINESS: Profile, Documents, Inventory, Reports ──
 
+// Same formatting as fmtPhone() in store.js, but for a stored string rather than a live input
+function bizFmtPhone(s){
+  var v=String(s||'').replace(/\D/g,'').substring(0,10);
+  if(v.length>=7) return '('+v.substring(0,3)+') '+v.substring(3,6)+'-'+v.substring(6);
+  if(v.length>=4) return '('+v.substring(0,3)+') '+v.substring(3);
+  if(v.length>0) return '('+v;
+  return '';
+}
+
 // -- Profile --
 function rBizProfile(el){
   el.innerHTML='<div style="padding:2rem;text-align:center;color:#6b6040">Loading…</div>';
@@ -16,13 +25,25 @@ function rBizProfile(el){
         '<input class="afi" id="bp-name" value="'+(p.name||'Handmade Designs By Suzi')+'">'+
         '<label class="fl">Short Name</label>'+
         '<input class="afi" id="bp-short-name" value="'+(p.short_name||'')+'" placeholder="e.g. HDBS">'+
+        '<label class="fl">Mailing Street Address</label>'+
+        '<input class="afi" id="bp-mail-street" value="'+(p.mailing_street||'')+'" placeholder="123 Main St">'+
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.8rem">'+
+          '<div><label class="fl">City</label><input class="afi" id="bp-mail-city" value="'+(p.mailing_city||'')+'" placeholder="Knoxville"></div>'+
+          '<div><label class="fl">State</label><input class="afi" id="bp-mail-state" value="'+(p.mailing_state||'')+'" placeholder="TN" maxlength="2" style="text-transform:uppercase"></div>'+
+          '<div><label class="fl">ZIP</label><input class="afi" id="bp-mail-zip" value="'+(p.mailing_zip||'')+'" placeholder="37918"></div>'+
+        '</div>'+
       '</div>'+
       '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:10px;padding:1.4rem;margin-bottom:1rem">'+
         '<div style="font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.06em;color:#a07810;margin-bottom:.9rem">📍 Contact Info</div>'+
-        '<label class="fl">Address</label>'+
-        '<input class="afi" id="bp-address" value="'+(p.address||'')+'" placeholder="123 Main St, Knoxville TN 37918">'+
+        '<label class="fl">Street Address</label>'+
+        '<input class="afi" id="bp-cont-street" value="'+(p.contact_street||'')+'" placeholder="123 Main St">'+
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.8rem">'+
+          '<div><label class="fl">City</label><input class="afi" id="bp-cont-city" value="'+(p.contact_city||'')+'" placeholder="Knoxville"></div>'+
+          '<div><label class="fl">State</label><input class="afi" id="bp-cont-state" value="'+(p.contact_state||'')+'" placeholder="TN" maxlength="2" style="text-transform:uppercase"></div>'+
+          '<div><label class="fl">ZIP</label><input class="afi" id="bp-cont-zip" value="'+(p.contact_zip||'')+'" placeholder="37918"></div>'+
+        '</div>'+
         '<label class="fl">Phone</label>'+
-        '<input class="afi" id="bp-phone" value="'+(p.phone||'')+'" placeholder="(865) 555-0100">'+
+        '<input class="afi" id="bp-phone" value="'+bizFmtPhone(p.phone||'')+'" placeholder="(865) 555-0100" oninput="fmtPhone(this)">'+
         '<label class="fl">Email</label>'+
         '<input class="afi" id="bp-email" value="'+(p.email||'')+'" placeholder="handmadedesignsbysuzi@yahoo.com">'+
       '</div>'+
@@ -57,7 +78,14 @@ function saveBizProfile(){
 
   var name=document.getElementById('bp-name').value.trim();
   var short_name=document.getElementById('bp-short-name').value.trim();
-  var address=document.getElementById('bp-address').value.trim();
+  var mailing_street=document.getElementById('bp-mail-street').value.trim();
+  var mailing_city=document.getElementById('bp-mail-city').value.trim();
+  var mailing_state=document.getElementById('bp-mail-state').value.trim();
+  var mailing_zip=document.getElementById('bp-mail-zip').value.trim();
+  var contact_street=document.getElementById('bp-cont-street').value.trim();
+  var contact_city=document.getElementById('bp-cont-city').value.trim();
+  var contact_state=document.getElementById('bp-cont-state').value.trim();
+  var contact_zip=document.getElementById('bp-cont-zip').value.trim();
   var phone=document.getElementById('bp-phone').value.trim();
   var email=document.getElementById('bp-email').value.trim();
   var fileInput=document.getElementById('bp-logo-file');
@@ -67,7 +95,7 @@ function saveBizProfile(){
       var existing=document.getElementById('bp-logo-preview');
       imgData=existing?existing.src:'';
     }
-    var profile={name:name,short_name:short_name,address:address,phone:phone,email:email,logo:imgData};
+    var profile={name:name,short_name:short_name,mailing_street:mailing_street,mailing_city:mailing_city,mailing_state:mailing_state,mailing_zip:mailing_zip,contact_street:contact_street,contact_city:contact_city,contact_state:contact_state,contact_zip:contact_zip,phone:phone,email:email,logo:imgData};
     apiFetch('admin.php','POST',{action:'save_setting',key:'biz_profile',value:JSON.stringify(profile)})
     .then(function(d){
       if(d.message==='Setting saved'||d.success){
@@ -99,10 +127,17 @@ function clearBizLogo(){
   if(!confirm('Remove the business logo?'))return;
   var name=document.getElementById('bp-name').value.trim();
   var short_name=document.getElementById('bp-short-name').value.trim();
-  var address=document.getElementById('bp-address').value.trim();
+  var mailing_street=document.getElementById('bp-mail-street').value.trim();
+  var mailing_city=document.getElementById('bp-mail-city').value.trim();
+  var mailing_state=document.getElementById('bp-mail-state').value.trim();
+  var mailing_zip=document.getElementById('bp-mail-zip').value.trim();
+  var contact_street=document.getElementById('bp-cont-street').value.trim();
+  var contact_city=document.getElementById('bp-cont-city').value.trim();
+  var contact_state=document.getElementById('bp-cont-state').value.trim();
+  var contact_zip=document.getElementById('bp-cont-zip').value.trim();
   var phone=document.getElementById('bp-phone').value.trim();
   var email=document.getElementById('bp-email').value.trim();
-  var profile={name:name,short_name:short_name,address:address,phone:phone,email:email,logo:''};
+  var profile={name:name,short_name:short_name,mailing_street:mailing_street,mailing_city:mailing_city,mailing_state:mailing_state,mailing_zip:mailing_zip,contact_street:contact_street,contact_city:contact_city,contact_state:contact_state,contact_zip:contact_zip,phone:phone,email:email,logo:''};
   apiFetch('admin.php','POST',{action:'save_setting',key:'biz_profile',value:JSON.stringify(profile)})
   .then(function(d){
     if(d.message==='Setting saved'||d.success)rBizProfile(document.getElementById('acnt'));

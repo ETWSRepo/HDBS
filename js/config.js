@@ -177,8 +177,8 @@ function submitContact(){
 function goAdminLogin(){document.getElementById('lpw').value='';document.getElementById('lerr').style.display='none';showOnly('alog',true);setTimeout(function(){var f=document.getElementById('lpw');if(f)f.focus();},50);}
 function goPanel(){
   showOnly('apanel',true);
-  // Collapse Shop and Developer folders each time the back office is opened
-  var nf=_navFolderState();nf.shop=false;nf.developer=false;localStorage.setItem('hdbs_nav_folders',JSON.stringify(nf));
+  // Collapse all top-level nav folders each time the back office is opened
+  var nf=_navFolderState();nf.shop=false;nf.business=false;nf.developer=false;localStorage.setItem('hdbs_nav_folders',JSON.stringify(nf));
   buildAdminNav();
   // Show loading state on dashboard
   document.getElementById('aptitle').textContent='Dashboard';

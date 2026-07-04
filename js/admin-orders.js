@@ -423,6 +423,119 @@ function printOrdersPdf(){
   setTimeout(function(){w.focus();w.print();w.close();},400);
 }
 
+function printInvoice(oid){
+  var order=ORDERS.find(function(o){return o.id===oid;});
+  if(!order){alert('Order not found.');return;}
+  var items=(order.items||[]).filter(function(it){return it.id!=='_ship'&&it.product_id!=='_ship';});
+  var itemSubtotal=items.reduce(function(s,it){return s+(parseFloat(it.price)||0)*(parseInt(it.qty||it.q)||1);},0);
+  var shipCost=order.shipping>0?order.shipping:0;
+  var tax=order.tax||0;
+  var fee=(order.pay==='Credit Card'||order.pay==='Square')?(order.fee||0):0;
+  var rows=items.map(function(it){
+    var lt=((parseFloat(it.price)||0)*(parseInt(it.qty||it.q)||1)).toFixed(2);
+    return '<tr><td>'+(it.name||'Item')+(it.sku?' <span style="color:#a07810;font-size:.85em">('+it.sku+')</span>':'')+'</td>'+
+      '<td style="text-align:center">'+(it.qty||it.q||1)+'</td>'+
+      '<td style="text-align:right">$'+(parseFloat(it.price)||0).toFixed(2)+'</td>'+
+      '<td style="text-align:right">$'+lt+'</td></tr>';
+  }).join('');
+  function trow(label,val,cls){
+    return '<tr class="totals'+(cls?' '+cls:'')+'"><td colspan="3" class="lab">'+label+'</td><td>$'+val.toFixed(2)+'</td></tr>';
+  }
+  var bizNamePrint=window.BIZ_NAME||'Handmade Designs By Suzi';
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<title>Invoice — '+oid+'</title>'+
+    '<style>'+
+      'body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#2d2220}'+
+      'h1{color:#a07810;margin:0 0 4px;font-size:22px}'+
+      '.sub{color:#6b6040;font-size:11px;margin-bottom:20px}'+
+      '.grid{display:flex;justify-content:space-between;margin-bottom:24px}'+
+      '.grid>div{width:48%}'+
+      '.lbl{font-size:10px;text-transform:uppercase;color:#a07810;font-weight:700;margin-bottom:4px}'+
+      'table{width:100%;border-collapse:collapse}'+
+      'th{background:#a07810;color:#fff;padding:6px 10px;text-align:left;font-size:11px}'+
+      'td{padding:6px 10px;border-bottom:1px solid #e8e0b8}'+
+      '.totals td{border:none;padding:3px 10px;text-align:right}'+
+      '.totals .lab{color:#6b6040;text-align:right}'+
+      '.grand td{font-weight:700;font-size:15px;border-top:2px solid #a07810!important;padding-top:8px!important}'+
+      '@media print{@page{margin:1.5cm}button{display:none}}'+
+    '</style></head><body>'+
+    '<h1>'+bizNamePrint+'</h1>'+
+    '<div class="sub">Invoice for Order '+oid+' &bull; '+(order.dispDate||order.date||'')+'</div>'+
+    '<div class="grid">'+
+      '<div><div class="lbl">Bill To</div>'+(order.cust||'')+'<br>'+(order.email||'')+'<br>'+(order.phone||'')+'</div>'+
+      '<div><div class="lbl">Ship To</div>'+(order.addr||'—')+'</div>'+
+    '</div>'+
+    '<table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>'+
+    rows+'</tbody></table>'+
+    '<table style="margin-top:6px">'+
+      trow('Subtotal',itemSubtotal)+
+      trow('Shipping',shipCost)+
+      (tax>0?trow('Sales Tax',tax):'')+
+      (fee>0?trow('Transaction Fee',fee):'')+
+      trow('Total',order.total,'grand')+
+    '</table>'+
+    '<div class="sub" style="margin-top:20px">Paid by: '+(order.pay||'—')+'</div>'+
+    '</body></html>';
+  var w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){w.focus();w.print();w.close();},400);
+}
+
+function printShippingLabel(oid){
+  var order=ORDERS.find(function(o){return o.id===oid;});
+  if(!order){alert('Order not found.');return;}
+  if(!order.addr){alert('This order has no shipping address on file.');return;}
+  // Open synchronously (within the click handler) so browsers don't treat it as a popup
+  var w=window.open('','_blank');
+  apiFetch('admin.php','POST',{action:'get_setting',key:'biz_profile'}).then(function(d){
+    var p={};
+    try{if(d.success&&d.value)p=JSON.parse(d.value);}catch(e){}
+    var bizNamePrint=window.BIZ_NAME||'Handmade Designs By Suzi';
+    var fromLines=[bizNamePrint];
+    if(p.mailing_street)fromLines.push(p.mailing_street);
+    var fromCityStateZip=[p.mailing_city,p.mailing_state].filter(Boolean).join(', ')+(p.mailing_zip?' '+p.mailing_zip:'');
+    if(fromCityStateZip.trim())fromLines.push(fromCityStateZip.trim());
+    var fromHtml=fromLines.join('<br>');
+    // order.addr is stored as "Street, City StateZip" (single string) — split on the first
+    // comma so it prints as two lines, matching the from-address layout
+    var commaIdx=order.addr.indexOf(',');
+    var toLine1=commaIdx===-1?order.addr:order.addr.substring(0,commaIdx).trim();
+    var toLine2=commaIdx===-1?'':order.addr.substring(commaIdx+1).trim();
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+      '<title>Shipping Label — '+oid+'</title>'+
+      '<style>'+
+        'html,body{margin:0;padding:0;width:4in;height:6in;overflow:hidden}'+
+        'body{font-family:Arial,sans-serif;color:#2d2220}'+
+        '.label{width:4in;height:6in;padding:.3in;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;page-break-after:avoid;page-break-inside:avoid;overflow:hidden}'+
+        '.from-lbl,.to-lbl{font-size:11px;text-transform:uppercase;color:#a07810;font-weight:700;margin-bottom:6px}'+
+        '.from,.to{font-size:22px;font-weight:700;line-height:1.4}'+
+        '.oid{font-size:12px;font-family:monospace;color:#6b6040;margin-top:20px}'+
+        '@media print{@page{margin:0;size:4in 6in}button{display:none}}'+
+      '</style></head><body>'+
+      '<div class="label">'+
+        '<div>'+
+          '<div class="from-lbl">From</div>'+
+          '<div class="from">'+fromHtml+'</div>'+
+        '</div>'+
+        '<div>'+
+          '<div class="to-lbl">Ship To</div>'+
+          '<div class="to">'+(order.cust||'')+'<br>'+toLine1+(toLine2?'<br>'+toLine2:'')+'</div>'+
+        '</div>'+
+        '<div>'+
+          (order.tracking?'<div class="oid">Tracking: '+order.tracking+'</div>':'')+
+          '<div class="oid">Order: '+oid+'</div>'+
+        '</div>'+
+      '</div>'+
+      '</body></html>';
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(function(){w.focus();w.print();w.close();},400);
+  }).catch(function(){if(w)w.close();alert('Could not load business profile for the label.');});
+}
+
 function exportOrdersCsv(){
   var filt=applyOrdFilters();
   if(!filt.length){alert('No orders to export.');return;}
