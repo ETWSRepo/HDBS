@@ -287,9 +287,11 @@ if (!empty($bz['logo'])) {
       <span>💳 Visa</span><span>Mastercard</span><span>American Express</span><span>Discover</span>
       <span style="color:#e8e0b8">|</span>
       <span>🍎 Apple Pay</span><span>🅖 Google Pay</span>
+      <span style="color:#e8e0b8">|</span>
+      <span>🅿️ PayPal</span><span>Venmo</span>
     </div>
     <div style="font-size:.78rem;color:#6b6040;line-height:1.6;max-width:460px;margin:0 auto">
-      🔒 All payments are processed securely by Square. Your card details are encrypted and never stored on our servers.
+      🔒 Payments are processed securely by Square (cards, Apple Pay, Google Pay) and PayPal (PayPal, Venmo). Your card details are encrypted and never stored on our servers.
     </div>
   </div>
 
@@ -389,8 +391,8 @@ if (!empty($bz['logo'])) {
         </label>
       </div>
       <div id="co-secure-note" style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.8rem 1rem;font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">
-        💳 Visa · Mastercard · American Express · Discover · 🍎 Apple Pay · 🅖 Google Pay<br>
-        🔒 Your payment is processed securely by Square. Card details are never stored on our site.
+        💳 Visa · Mastercard · American Express · Discover · 🍎 Apple Pay · 🅖 Google Pay · 🅿️ PayPal · Venmo<br>
+        🔒 Processed securely by Square &amp; PayPal. Card details are never stored on our site.
       </div>
       <button class="mbtn" id="co-submit-btn" onclick="placeOrder()">Review &amp; Pay →</button>
     </div>
@@ -404,6 +406,7 @@ if (!empty($bz['logo'])) {
       <div id="co-pay-summary" style="background:#fffdf0;border:1px solid #e8e0b8;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#6b6040"></div>
       <button id="apple-pay-button" type="button" style="display:none;-webkit-appearance:-apple-pay-button;-apple-pay-button-type:plain;-apple-pay-button-style:black;width:100%;height:44px;border-radius:6px;margin-bottom:.6rem;cursor:pointer;border:none"></button>
       <div id="google-pay-button" style="display:none;margin-bottom:.6rem"></div>
+      <div id="paypal-button-container" style="display:none;margin-bottom:.6rem"></div>
       <div id="wallet-divider" style="display:none;text-align:center;color:#aaa;font-size:.78rem;margin:.2rem 0 1rem;position:relative">
         <span style="background:#fff;padding:0 .6rem;position:relative;z-index:1">or pay with card</span>
         <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#e8e0b8;z-index:0"></div>
@@ -862,16 +865,16 @@ if (!empty($bz['logo'])) {
 <video id="cam-video" style="display:none" autoplay playsinline></video>
 
 <script src="js/api.js?v=9"></script>
-<script src="js/config.js?v=13"></script>
+<script src="js/config.js?v=15"></script>
 <script src="js/data.js?v=5"></script>
-<script src="js/store.js?v=18"></script>
+<script src="js/store.js?v=21"></script>
 <script src="js/auth.js?v=5"></script>
 <script src="js/ui.js?v=8"></script>
 <script src="js/admin-nav.js?v=10"></script>
 <script src="js/admin-general.js?v=5"></script>
 <script src="js/admin-products.js?v=14"></script>
-<script src="js/admin-orders.js?v=20"></script>
-<script src="js/admin-misc.js?v=19"></script>
+<script src="js/admin-orders.js?v=24"></script>
+<script src="js/admin-misc.js?v=20"></script>
 <script src="js/admin-business.js?v=9"></script>
 <script src="js/table.js"></script>
 <script src="js/toolbar.js"></script>

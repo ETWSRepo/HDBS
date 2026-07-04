@@ -223,7 +223,7 @@ function editOrderDetail(oid){
         '</select></div>'+
       '<div><label class="fl">Paid By</label>'+
         '<select class="afi" id="eo-pay">'+
-        ['Credit Card','Cash','Check','Square','Other'].map(function(p){return'<option'+(p===(order.pay||'Credit Card')?' selected':'')+'>'+p+'</option>';}).join('')+
+        ['Credit Card','Cash','Check','Square','PayPal','Venmo','Other'].map(function(p){return'<option'+(p===(order.pay||'Credit Card')?' selected':'')+'>'+p+'</option>';}).join('')+
         '</select></div>'+
       '<div><label class="fl">Check #</label><input class="afi" id="eo-checknum" value="'+(order.check_number||'')+'" placeholder="Check number"></div>'+
       '<div><label class="fl">Payment Config</label>'+
@@ -320,7 +320,7 @@ function updateRefundAmount(){
   if(!sel||!inp||!typeEl)return;
   var order=ORDERS.find(function(o){return o.id===sel.value;});
   var remaining=order?refundRemaining(order):0;
-  if(note)note.textContent=order?(((order.pay==='Credit Card'||order.pay==='Square')?'Card order — Square will refund the customer\'s card directly.':'Cash/Check order — this only records the refund; return the money to the customer yourself.')):'';
+  if(note)note.textContent=order?((order.pay==='PayPal'||order.pay==='Venmo')?order.pay+' order — '+order.pay+' will refund the customer\'s '+order.pay+' account directly.':((order.pay==='Credit Card'||order.pay==='Square')?'Card order — Square will refund the customer\'s card directly.':'Cash/Check order — this only records the refund; return the money to the customer yourself.')):'';
   if(order&&typeEl.value==='full'){
     inp.value=remaining.toFixed(2);
     inp.readOnly=true;
@@ -355,7 +355,8 @@ function saveRefund(){
     document.getElementById('refund-panel').remove();
     document.getElementById('refund-overlay').remove();
     var toast=document.createElement('div');
-    toast.textContent='✓ Refund processed: $'+amt.toFixed(2)+' for '+oid+(d.square_refund_id?' (Square refund '+d.square_refund_id+')':'');
+    var refLabel=(order&&(order.pay==='PayPal'||order.pay==='Venmo'))?order.pay+' refund':'Square refund';
+    toast.textContent='✓ Refund processed: $'+amt.toFixed(2)+' for '+oid+(d.square_refund_id?' ('+refLabel+' '+d.square_refund_id+')':'');
     toast.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:.65rem 1.4rem;border-radius:24px;font-size:.85rem;font-family:sans-serif;font-weight:600;z-index:9999';
     document.body.appendChild(toast);
     setTimeout(function(){toast.remove();},3500);
@@ -430,7 +431,7 @@ function printInvoice(oid){
   var itemSubtotal=items.reduce(function(s,it){return s+(parseFloat(it.price)||0)*(parseInt(it.qty||it.q)||1);},0);
   var shipCost=order.shipping>0?order.shipping:0;
   var tax=order.tax||0;
-  var fee=(order.pay==='Credit Card'||order.pay==='Square')?(order.fee||0):0;
+  var fee=(order.pay==='Credit Card'||order.pay==='Square'||order.pay==='PayPal'||order.pay==='Venmo')?(order.fee||0):0;
   var rows=items.map(function(it){
     var lt=((parseFloat(it.price)||0)*(parseInt(it.qty||it.q)||1)).toFixed(2);
     return '<tr><td>'+(it.name||'Item')+(it.sku?' <span style="color:#a07810;font-size:.85em">('+it.sku+')</span>':'')+'</td>'+
@@ -853,7 +854,7 @@ function buildOrderRow(o){
     '<td><span class="badge '+(o.status==='Delivered'||o.status==='Paid'?'bg':o.status==='Shipped'?'bb':o.status==='Cancelled'||o.status==='Refunded'?'br':o.status==='Awaiting Payment'?'bw':'ba')+'">'+o.status+'</span></td>'+
     '<td>'+
       '<select style="padding:.24rem .38rem;border:1.5px solid #e8e0b8;border-radius:5px;font-size:.75rem;font-family:sans-serif;display:block;width:100%;margin-bottom:.3rem" onchange="updO(\''+o.id+'\',this.value)">'+['Awaiting Payment','Paid','Pending','Processing','Shipped','Delivered','Cancelled','Refunded'].map(function(s){return'<option'+(s===o.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
-      '<select style="padding:.24rem .38rem;border:1.5px solid #e8e0b8;border-radius:5px;font-size:.75rem;font-family:sans-serif;display:block;width:100%" onchange="updPay(\''+o.id+'\',this.value)">'+['Credit Card','Cash','Check','Square','Other'].map(function(p){return'<option'+(p===(o.pay||'Credit Card')?' selected':'')+'>'+p+'</option>';}).join('')+'</select>'+
+      '<select style="padding:.24rem .38rem;border:1.5px solid #e8e0b8;border-radius:5px;font-size:.75rem;font-family:sans-serif;display:block;width:100%" onchange="updPay(\''+o.id+'\',this.value)">'+['Credit Card','Cash','Check','Square','PayPal','Venmo','Other'].map(function(p){return'<option'+(p===(o.pay||'Credit Card')?' selected':'')+'>'+p+'</option>';}).join('')+'</select>'+
     '</td>'+
     '<td>'+
       '<button class="be" onclick="viewOrder(\''+o.id+'\')" style="font-size:.8rem;padding:.3rem .8rem">View</button>'+
@@ -1738,6 +1739,21 @@ function setSquareMode(mode){
   if(panel){if(mode==='test')panel.classList.add('test-mode');else panel.classList.remove('test-mode');}
   var ok=document.getElementById('sqmode-ok');if(ok){ok.style.display='block';setTimeout(function(){ok.style.display='none';},1500);}
 }
+function checkPaypalConfig(){
+  var box=document.getElementById('pp-status');
+  if(box)box.innerHTML='<span style="color:#6b6040">Checking…</span>';
+  apiFetch('paypal_status.php','POST',{}).then(function(d){
+    if(!box)return;
+    if(!d||!d.success){box.innerHTML='<span style="color:#c62828">'+((d&&d.error)||'Check failed.')+'</span>';return;}
+    var yes='<span style="color:#2e7d32">✓</span>',no='<span style="color:#c62828">✗</span>';
+    box.innerHTML=
+      '<div><strong>Environment:</strong> '+d.env+'</div>'+
+      '<div>'+(d.client_id_set?yes:no)+' Client ID present</div>'+
+      '<div>'+(d.secret_set?yes:no)+' Secret present</div>'+
+      '<div>'+(d.credentials_valid?yes:no)+' Credentials accepted by PayPal</div>'+
+      '<div style="margin-top:.5rem;padding:.55rem .7rem;border-radius:7px;background:'+(d.ready?'#e8f5e9':'#fde8e8')+';color:'+(d.ready?'#2e7d32':'#c62828')+'">'+d.message+'</div>';
+  }).catch(function(){if(box)box.innerHTML='<span style="color:#c62828">Network error running the check.</span>';});
+}
 function rSettings(el){
   if(!SEC){apiFetch('admin.php','POST',{action:'get_sec_question'}).then(function(d){if(d&&d.success)SEC={q:d.question};rSettings(el);}).catch(function(){rSettingsInner(el);});return;}
   rSettingsInner(el);
@@ -1759,6 +1775,12 @@ function rSettingsInner(el){
       ['live','test'].map(function(m){return'<option value="'+m+'"'+(SQUARE_MODE===m?' selected':'')+'>'+(m==='live'?'Live':'Test (Sandbox)')+'</option>';}).join('')+
     '</select>'+
     '<div class="aok" id="sqmode-ok" style="display:none">Saved!</div>'+
+  '</div>'+
+  '<div style="background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem;margin-bottom:1.2rem">'+
+    '<div style="font-weight:700;margin-bottom:.4rem">🅿️ PayPal Configuration</div>'+
+    '<div style="font-size:.8rem;color:#6b6040;margin-bottom:.9rem;line-height:1.6">Checks whether the PayPal <strong>'+PAYPAL_ENV+'</strong> credentials are present on the server and accepted by PayPal. Values are never shown. Staging checks the sandbox keys; production checks the live keys.</div>'+
+    '<button class="bp" onclick="checkPaypalConfig()">Check PayPal Configuration</button>'+
+    '<div id="pp-status" style="margin-top:.8rem;font-size:.83rem;line-height:1.6"></div>'+
   '</div>'+
   '<div style="background:#fff;border-radius:10px;border:1px solid #e8e0b8;padding:1.2rem;margin-bottom:1.2rem">'+
     '<div style="font-weight:700;margin-bottom:.9rem">Change Admin Password</div>'+
@@ -1949,7 +1971,33 @@ function renderSqPayTable(el,d,begin,end){
       '<button class="bp" style="font-size:.8rem" onclick="sqPayLoad(document.getElementById(\'acnt\'),document.getElementById(\'sqp-from\').value,document.getElementById(\'sqp-to\').value,\'\')">Search</button>'+
       '<button class="bs" style="font-size:.8rem" onclick="rSqPay(document.getElementById(\'acnt\'))">Reset</button>'+
     '</div>';
-  el.innerHTML='<div style="max-width:1100px">'+formHtml+statsHtml+'<div id="sqp-table-wrap"></div></div>';
+  var mnTh='text-align:left;padding:.4rem .65rem;border:1px solid #e8e0b8;color:#a07810;font-size:.7rem;text-transform:uppercase;letter-spacing:.02em';
+  var mnTd='padding:.4rem .65rem;border:1px solid #e8e0b8';
+  var moneyNote=
+    '<div style="background:#fff;border:1px solid #e8e0b8;border-radius:8px;padding:.8rem .9rem;margin-bottom:1rem">'+
+      '<div style="font-weight:700;color:#a07810;font-size:.85rem;margin-bottom:.6rem">💰 Where the money goes</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:.8rem;color:#2d2220">'+
+        '<thead><tr style="background:#fffdf0">'+
+          ['Funding source','Processor','Lands in','Paid out from'].map(function(h){return '<th style="'+mnTh+'">'+h+'</th>';}).join('')+
+        '</tr></thead>'+
+        '<tbody>'+
+          '<tr>'+
+            '<td style="'+mnTd+'">Cards, Apple&nbsp;Pay, Google&nbsp;Pay</td>'+
+            '<td style="'+mnTd+';font-weight:700">Square</td>'+
+            '<td style="'+mnTd+'">Square balance</td>'+
+            '<td style="'+mnTd+'">Square Dashboard</td>'+
+          '</tr>'+
+          '<tr>'+
+            '<td style="'+mnTd+'">PayPal, Venmo, Pay&nbsp;Later</td>'+
+            '<td style="'+mnTd+';font-weight:700">PayPal</td>'+
+            '<td style="'+mnTd+'">PayPal balance</td>'+
+            '<td style="'+mnTd+'">PayPal Dashboard</td>'+
+          '</tr>'+
+        '</tbody>'+
+      '</table>'+
+      '<div style="font-size:.75rem;color:#6b6040;margin-top:.5rem">Only Square payments are listed below. PayPal &amp; Venmo orders appear under Orders (Paid&nbsp;By: PayPal / Venmo).</div>'+
+    '</div>';
+  el.innerHTML='<div style="max-width:1100px">'+formHtml+statsHtml+moneyNote+'<div id="sqp-table-wrap"></div></div>';
   sqPayRenderTable();
 }
 var SQ_PAY_DATA=[];

@@ -408,7 +408,7 @@ var ADMIN_NAV_DEFAULT=Object.keys(ADMIN_NAV_LABELS).map(function(s){return{sec:s
 // Default nested structure with Shop and Developer folders
 var ADMIN_NAV_STRUCTURE_DEFAULT=[
   {type:'item',sec:'dash'},
-  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast','emaillog']},
+  {type:'folder',sec:'shop',label:'🛍️ Shop',children:['prods','orders','custs','sales','subs','blast','emaillog','sqpay']},
   {type:'folder',sec:'business',label:'🏢 Business',children:['bizprofile','bizdocs','bizinv','bizreports','bizequip']},
   {type:'folder',sec:'developer',label:'🔧 Developer',children:['regtest','gitlog','deploylog','dbbackup','logs','settings']},
   {type:'item',sec:'faqs'},
@@ -416,7 +416,6 @@ var ADMIN_NAV_STRUCTURE_DEFAULT=[
   {type:'item',sec:'reviews'},
   {type:'item',sec:'cats'},
   {type:'item',sec:'shipping'},
-  {type:'item',sec:'sqpay'},
   {type:'item',sec:'sweep'},
   {type:'item',sec:'logout'}
 ];
@@ -473,6 +472,19 @@ function loadNavOrder(callback){
       });
       structure.forEach(function(n){
         if(n.type==='folder'&&n.sec==='shop')n.children.push('emaillog');
+      });
+    })();
+    // One-time migration: move Square Payments from a root item into Shop, on saved nav_orders
+    // that predate the move (a fresh install picks this up from the folder defaults above).
+    (function(){
+      var inShop=structure.some(function(n){return n.type==='folder'&&n.sec==='shop'&&(n.children||[]).indexOf('sqpay')>=0;});
+      if(inShop)return;
+      structure=structure.filter(function(n){return !(n.type==='item'&&n.sec==='sqpay');});
+      structure.forEach(function(n){
+        if(n.type==='folder'&&n.sec!=='shop')n.children=(n.children||[]).filter(function(s){return s!=='sqpay';});
+      });
+      structure.forEach(function(n){
+        if(n.type==='folder'&&n.sec==='shop')n.children.push('sqpay');
       });
     })();
     // Add any new secs not yet present anywhere in structure

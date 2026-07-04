@@ -58,6 +58,9 @@ if ($amount > $remaining + 0.005) fail('Refund amount exceeds remaining refundab
 
 $payMethod      = $order['payment_method'] ?: 'Other';
 $isCard         = in_array($payMethod, ['Credit Card', 'Square'], true);
+$isPaypal       = in_array($payMethod, ['PayPal', 'Venmo'], true);  // Venmo settles on the PayPal rail
+// Holds the processor's refund id (Square or PayPal). The `method` column disambiguates
+// which processor it belongs to, so both reuse the existing square_refund_id column.
 $squareRefundId = null;
 $refundStatus   = 'Completed';
 
@@ -95,6 +98,36 @@ if ($isCard) {
     $refundStatus   = $refund['status'] ?? 'PENDING';
     if ($refundStatus === 'REJECTED' || $refundStatus === 'FAILED') {
         fail('Square rejected the refund (status: '.$refundStatus.').');
+    }
+} elseif ($isPaypal) {
+    require_once __DIR__ . '/paypal.php';
+    ensurePaypalColumn($pdo);  // older orders predate this column
+    $capId = $order['paypal_capture_id'] ?? '';
+    if (!$capId) fail('This order has no linked PayPal capture — cannot process an automatic PayPal refund.');
+
+    $token = pp_token();
+    if (!$token) fail('PayPal is not configured — cannot process refund.');
+
+    // Deterministic within a 10-minute window (same rationale as the Square key above):
+    // a genuine retry of the same refund reuses this id so PayPal dedupes it.
+    $reqId  = substr(hash('sha256', $oid.'|'.$amount.'|'.floor(time() / 600)), 0, 40);
+    $ppBody = [
+        'amount'        => ['value' => number_format($amount, 2, '.', ''), 'currency_code' => 'USD'],
+        'note_to_payer' => substr($reason, 0, 250),
+    ];
+    list($ppStatus, $ppResp) = pp_curl(
+        pp_api_base() . '/v2/payments/captures/' . rawurlencode($capId) . '/refund',
+        'POST', $ppBody, $token, ['PayPal-Request-Id: rf-' . $reqId]
+    );
+    if (($ppStatus !== 200 && $ppStatus !== 201) || empty($ppResp['id'])) {
+        applog('REFUND-FAIL', "order=$oid amount=$amount pp=".json_encode($ppResp));
+        $detail = $ppResp['details'][0]['description'] ?? ($ppResp['message'] ?? 'Unknown PayPal error');
+        fail('PayPal refund failed: '.$detail);
+    }
+    $squareRefundId = $ppResp['id'];
+    $refundStatus   = $ppResp['status'] ?? 'COMPLETED';
+    if ($refundStatus === 'CANCELLED' || $refundStatus === 'FAILED') {
+        fail('PayPal rejected the refund (status: '.$refundStatus.').');
     }
 }
 
@@ -146,9 +179,13 @@ function sendRefundEmail($pdo, $order, $amount, $reason, $payMethod, $squareRefu
         $oidSafe   = htmlspecialchars($oid);
         $firstName = htmlspecialchars(explode(' ', trim($order['customer_name'] ?? ''))[0] ?? '');
         $isCard    = in_array($payMethod, ['Credit Card', 'Square'], true);
-        $viaLine   = $isCard
-            ? 'Refunded to your original card'.($squareRefundId ? ' (Square ref: '.htmlspecialchars($squareRefundId).')' : '')
-            : 'Refunded via '.htmlspecialchars($payMethod);
+        if ($isCard) {
+            $viaLine = 'Refunded to your original card'.($squareRefundId ? ' (Square ref: '.htmlspecialchars($squareRefundId).')' : '');
+        } elseif (in_array($payMethod, ['PayPal', 'Venmo'], true)) {
+            $viaLine = 'Refunded to your '.htmlspecialchars($payMethod).' account'.($squareRefundId ? ' ('.htmlspecialchars($payMethod).' ref: '.htmlspecialchars($squareRefundId).')' : '');
+        } else {
+            $viaLine = 'Refunded via '.htmlspecialchars($payMethod);
+        }
         $balanceLine = $remaining > 0.004
             ? "<div style='margin-top:6px;color:#6b6040;font-size:.85rem'>Remaining order balance: \$".number_format($remaining, 2)."</div>"
             : "<div style='margin-top:6px;color:#2e7d32;font-size:.85rem'>This completes the refund for this order.</div>";

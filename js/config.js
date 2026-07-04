@@ -1,6 +1,14 @@
 // ── GLOBALS ──
 var SEC=null;
 var SQUARE_MODE=(typeof location!=='undefined'&&location.hostname.indexOf('staging.')===0)?'test':'live';
+// PayPal runs alongside Square. Staging uses the PayPal sandbox, production uses live —
+// this mirrors the backend env split in api/paypal.php. The client id is public (safe in
+// the browser); the secret lives only in secrets.php. Replace the placeholders below with
+// the real client ids once the PayPal Business app exists, or the button stays hidden.
+var PAYPAL_ENV=(typeof location!=='undefined'&&location.hostname.indexOf('staging.')===0)?'sandbox':'live';
+var PAYPAL_CLIENT_ID=PAYPAL_ENV==='sandbox'
+  ?'AeLp6VykU5cLKw3C46hNoMSrvNuWd2orb7GUAPNcO2iC2DNoVUZdDsHvV_87SFIQPi2B9u4ftpc8A956'
+  :'AWkhrKpgPtTwVMV-Pr3bA-YJR7slMqHz1Verxn7vp-pQQKnbQN5FUeZlVFb9W_bDt5DNjYw_37HVz5B1';
 var PAY_CONFIG='Online'; // global store payment mode: Online | InPerson | Test
 var SQ_FEE_PCT=2.6;
 var SQ_FEE_CENTS=0.10;

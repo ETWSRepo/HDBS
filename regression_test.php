@@ -466,7 +466,11 @@ try{
     t('verify_payment.php reads email field (not stale website_email)',strpos(file_get_contents($root.'/verify_payment.php'),"\$biz_vp['email']")!==false);
     t('order_confirm.php fetches biz_profile email',strpos(file_get_contents($root.'/order_confirm.php'),'$biz_email_oc')!==false);
     $ppphp=file_get_contents($root.'/api/process_payment.php');
-    t('process_payment.php fetches biz name and email',strpos($ppphp,'$biz_name_pp')!==false&&strpos($ppphp,'$biz_email_pp')!==false);
+    // Confirmation email was extracted into the shared order_confirm_email.php helper
+    // (used by both the Square and PayPal charge paths); biz name/email now resolved there.
+    t('process_payment.php delegates confirmation to shared helper',strpos($ppphp,'order_confirm_email.php')!==false&&strpos($ppphp,'sendOrderConfirmation(')!==false);
+    $ocehp=file_get_contents($root.'/api/order_confirm_email.php');
+    t('order_confirm_email.php fetches biz name and email',strpos($ocehp,'bizName(')!==false&&strpos($ocehp,'biz_email')!==false);
     t('api/contact.php uses dynamic biz name in email header',strpos(file_get_contents($root.'/api/contact.php'),'$biz_name_ct')!==false);
     // Regression: $pdo was used (rate limiting, bizName(), email_log) without ever being
     // assigned, causing a fatal error on every submission (fixed 2026-07-02).
@@ -644,11 +648,12 @@ try{
     t('send_shipping supports preview mode',strpos($ssp2,"!empty(\$data['preview'])")!==false);
     t('send_shipping logs to email_log',strpos($ssp2,'INSERT INTO email_log')!==false);
     t('send_shipping table-layout fixed (mobile)',strpos($ssp2,'table-layout:fixed')!==false);
-    // process_payment: paid by + logging + mobile
-    $ppp2=file_get_contents($root.'/api/process_payment.php');
-    t('process_payment shows Paid by',strpos($ppp2,'Paid by:')!==false);
-    t('process_payment logs to email_log',strpos($ppp2,'INSERT INTO email_log')!==false);
-    t('process_payment table-layout fixed (mobile)',strpos($ppp2,'table-layout:fixed')!==false);
+    // order-confirmation email now built by the shared helper (Square + PayPal): paid by + logging + mobile
+    $ppp2=file_get_contents($root.'/api/order_confirm_email.php');
+    t('order_confirm_email shows Paid by',strpos($ppp2,'Paid by:')!==false);
+    t('order_confirm_email logs to email_log',strpos($ppp2,'INSERT INTO email_log')!==false);
+    t('order_confirm_email table-layout fixed (mobile)',strpos($ppp2,'table-layout:fixed')!==false);
+    t('process_payment calls sendOrderConfirmation',strpos(file_get_contents($root.'/api/process_payment.php'),'sendOrderConfirmation(')!==false);
     // order_confirm (legacy): extracts fields, displays them, logs, mobile
     $ocp2=file_get_contents($root.'/order_confirm.php');
     t('order_confirm extracts payment_method',strpos($ocp2,"\$data['payment_method']")!==false);
@@ -968,6 +973,10 @@ try{
     t('shop folder contains emaillog',$shopMatch&&strpos($sm[1],"'emaillog'")!==false);
     t('developer folder no longer contains emaillog',$devMatch&&strpos($dm[1],"'emaillog'")===false);
     t('loadNavOrder migrates emaillog from Developer into Shop on saved nav_orders',strpos($amjs,'move Email Log from Developer into Shop')!==false&&strpos($amjs,"s!=='emaillog'")!==false);
+    // Square Payments moved from a root item into Shop
+    t('shop folder contains sqpay',$shopMatch&&strpos($sm[1],"'sqpay'")!==false);
+    t('sqpay no longer a root nav item',strpos($amjs,"{type:'item',sec:'sqpay'}")===false);
+    t('loadNavOrder migrates Square Payments into Shop on saved nav_orders',strpos($amjs,'move Square Payments from a root item into Shop')!==false&&strpos($amjs,"s!=='sqpay'")!==false);
     // Drag behaviour
     t('drag item into folder on header drop',strpos($amjs,'ch.appendChild(drag.el)')!==false);
     t('drag item to root on container drop',strpos($amjs,'container.appendChild(drag.el)')!==false);
@@ -2229,7 +2238,7 @@ try{
     t('process_payment:recalculates tax server-side',strpos($ppPhp,'0.0975')!==false);
     t('process_payment:uses sq_curl',strpos($ppPhp,'sq_curl')!==false);
     t('process_payment:marks order Paid',strpos($ppPhp,"status='Paid'")!==false);
-    t('process_payment:sends confirmation email',strpos($ppPhp,'sendEmail')!==false);
+    t('process_payment:sends confirmation email',strpos($ppPhp,'sendOrderConfirmation(')!==false);
     t('process_payment:test_mode requireAdmin before order lookup',
         strpos($ppPhp,'test_mode')!==false&&strpos($ppPhp,'requireAdmin')!==false);
 
@@ -2282,6 +2291,79 @@ try{
     t('admin.php wraps getSetting with function_exists',strpos(file_get_contents($root.'/api/admin.php'),"function_exists('getSetting')")!==false);
 
 }catch(Exception $e){t('embedded Square SDK checks',false,$e->getMessage());}
+
+// ── PAYPAL (Orders v2, runs alongside Square) ──
+// File-content checks only ($root = local filesystem). No $base live-HTTP checks here on
+// purpose: $base is hardcoded to prod, and the PayPal endpoints don't exist on prod until
+// the checkpoint that promotes this feature — HTTP tests would false-fail until then.
+try{
+    $stjs = file_get_contents($root.'/js/store.js');
+    $cfgjs= file_get_contents($root.'/js/config.js');
+    $idx  = file_get_contents($root.'/index.php');
+    $aojs = file_get_contents($root.'/js/admin-orders.js');
+
+    // Required files exist
+    t('api/paypal.php exists',file_exists($root.'/api/paypal.php'));
+    t('api/paypal_create.php exists',file_exists($root.'/api/paypal_create.php'));
+    t('api/paypal_capture.php exists',file_exists($root.'/api/paypal_capture.php'));
+    t('api/paypal_status.php exists',file_exists($root.'/api/paypal_status.php'));
+    t('api/order_confirm_email.php exists',file_exists($root.'/api/order_confirm_email.php'));
+
+    // Shared helpers
+    $ppApi=file_get_contents($root.'/api/paypal.php');
+    t('paypal.php defines pp_token',strpos($ppApi,'function pp_token')!==false);
+    t('paypal.php defines pp_curl',strpos($ppApi,'function pp_curl')!==false);
+    t('paypal.php pp_env sandbox on staging',strpos($ppApi,'function pp_env')!==false&&strpos($ppApi,'sandbox')!==false);
+    t('paypal.php ensurePaypalColumn adds paypal_capture_id',strpos($ppApi,'function ensurePaypalColumn')!==false&&strpos($ppApi,'paypal_capture_id')!==false);
+    t('paypal.php recomputes total server-side (9.75% tax)',strpos($ppApi,'function pp_order_amounts')!==false&&strpos($ppApi,'0.0975')!==false);
+
+    // Shared confirmation-email helper
+    $oce=file_get_contents($root.'/api/order_confirm_email.php');
+    t('order_confirm_email defines sendOrderConfirmation',strpos($oce,'function sendOrderConfirmation')!==false);
+
+    // Create order: server-side amount, CAPTURE intent, awaiting-payment guard, test bypass
+    $ppc=file_get_contents($root.'/api/paypal_create.php');
+    t('paypal_create uses server-side amounts',strpos($ppc,'pp_order_amounts(')!==false);
+    t('paypal_create sets intent CAPTURE',strpos($ppc,"'intent' => 'CAPTURE'")!==false);
+    t('paypal_create guards Awaiting Payment',strpos($ppc,'Awaiting Payment')!==false);
+    t('paypal_create has test_mode admin bypass',strpos($ppc,'test_mode')!==false&&strpos($ppc,'requireAdmin')!==false);
+
+    // Capture: atomic lock, marks Paid/PayPal, stores capture id, idempotency, confirmation
+    $ppcap=file_get_contents($root.'/api/paypal_capture.php');
+    t('paypal_capture has atomic Processing guard',strpos($ppcap,"status='Processing' WHERE id=? AND status='Awaiting Payment'")!==false);
+    t('paypal_capture rolls back on failure',strpos($ppcap,"status='Awaiting Payment' WHERE id=? AND status='Processing'")!==false);
+    t('paypal_capture sets payment_method PayPal',strpos($ppcap,"payment_method='PayPal'")!==false);
+    t('paypal_capture stores paypal_capture_id',strpos($ppcap,'paypal_capture_id=?')!==false);
+    t('paypal_capture idempotent PayPal-Request-Id',strpos($ppcap,'PayPal-Request-Id')!==false);
+    t('paypal_capture sends confirmation email',strpos($ppcap,'sendOrderConfirmation(')!==false);
+    t('paypal_capture has test_mode admin bypass',strpos($ppcap,'test_mode')!==false&&strpos($ppcap,'requireAdmin')!==false);
+    t('paypal_capture labels Venmo funding source',strpos($ppcap,"payment_source']['venmo']")!==false);
+
+    // Refund routing (automated PayPal refund parity with Square; Venmo rides the PayPal rail)
+    $refPhp=file_get_contents($root.'/api/refund.php');
+    t('refund.php routes PayPal refunds',strpos($refPhp,"'PayPal'")!==false&&strpos($refPhp,'/v2/payments/captures/')!==false);
+    t('refund.php routes Venmo on PayPal rail',strpos($refPhp,"['PayPal', 'Venmo']")!==false);
+    t('refund.php uses paypal_capture_id',strpos($refPhp,'paypal_capture_id')!==false);
+
+    // Frontend wiring
+    t('store.js defines initPayPal',strpos($stjs,'function initPayPal')!==false);
+    t('store.js loads PayPal SDK',strpos($stjs,'function loadPayPalSdk')!==false&&strpos($stjs,'paypal.com/sdk/js')!==false);
+    t('store.js enables Venmo',strpos($stjs,'enable-funding=venmo')!==false);
+    t('store.js disables card + credit + Pay Later (Square owns cards; no Pay Later)',strpos($stjs,'disable-funding=credit,card,paylater')!==false);
+    t('store.js calls paypal_create.php',strpos($stjs,'paypal_create.php')!==false);
+    t('store.js calls paypal_capture.php',strpos($stjs,'paypal_capture.php')!==false);
+    t('config.js defines PAYPAL_ENV',strpos($cfgjs,'PAYPAL_ENV')!==false);
+    t('config.js defines PAYPAL_CLIENT_ID',strpos($cfgjs,'PAYPAL_CLIENT_ID')!==false);
+    t('index.php has paypal-button-container',strpos($idx,'paypal-button-container')!==false);
+
+    // Admin diagnostic + payment-method recognition
+    t('admin-orders.js has checkPaypalConfig',strpos($aojs,'function checkPaypalConfig')!==false);
+    t('admin-orders.js PayPal+Venmo in Paid-By dropdown',strpos($aojs,"'Credit Card','Cash','Check','Square','PayPal','Venmo','Other'")!==false);
+    t('admin-orders.js counts Venmo fee as processor fee',strpos($aojs,"order.pay==='Venmo'")!==false);
+    t('admin-orders.js Square Payments settlement note',strpos($aojs,'Where the money goes')!==false);
+    t('paypal_status.php requires admin',strpos(file_get_contents($root.'/api/paypal_status.php'),'requireAdmin')!==false);
+
+}catch(Exception $e){t('PayPal integration checks',false,$e->getMessage());}
 
 // ── DIGITAL WALLETS (Apple Pay / Google Pay) + SANDBOX/LIVE MODE ──
 try{
@@ -2338,6 +2420,9 @@ try{
     t('index.php:homepage We Accept section',strpos($idx,'We Accept')!==false);
     t('index.php:lists card brands (American Express)',strpos($idx,'American Express')!==false&&strpos($idx,'Discover')!==false);
     t('index.php:payment security note',strpos($idx,'processed securely by Square')!==false);
+    t('index.php:We Accept lists PayPal + Venmo',strpos($idx,'🅿️ PayPal')!==false&&strpos($idx,'Venmo')!==false);
+    t('index.php:We Accept lists Apple Pay + Google Pay',strpos($idx,'Apple Pay')!==false&&strpos($idx,'Google Pay')!==false);
+    t('index.php:security note credits Square + PayPal',strpos($idx,'Square (cards, Apple Pay, Google Pay) and PayPal')!==false);
 
     // Apple Pay domain association file (deployed to staging webroot)
     t('.well-known Apple Pay domain file exists',file_exists($root.'/.well-known/apple-developer-merchantid-domain-association'));

@@ -593,11 +593,15 @@ function showPaymentStep(subtotal,shipping,tax,total){
     initApplePay(payments,total);
     initGooglePay(payments,total);
   });
+  // PayPal loads independently of the Square SDK
+  initPayPal(total);
 }
 
 function resetWalletButtons(){
   var ap=document.getElementById('apple-pay-button');if(ap){ap.style.display='none';ap.onclick=null;}
   var gp=document.getElementById('google-pay-button');if(gp){gp.style.display='none';gp.innerHTML='';gp.onclick=null;}
+  var pp=document.getElementById('paypal-button-container');if(pp){pp.style.display='none';pp.innerHTML='';}
+  if(window._ppButtons){try{window._ppButtons.close();}catch(e){}window._ppButtons=null;}
   var div=document.getElementById('wallet-divider');if(div)div.style.display='none';
   window._sqApplePay=null;window._sqGooglePay=null;
 }
@@ -640,6 +644,70 @@ function initGooglePay(payments,total){
       showWalletDivider();
     });
   }).catch(function(){/* Google Pay unavailable — leave button hidden */});
+}
+
+// ── PayPal (runs alongside Square; card data never touches our site) ──
+function loadPayPalSdk(cb){
+  if(window.paypal){cb();return;}
+  if(window._ppSdkLoading){window._ppSdkQueue.push(cb);return;}
+  window._ppSdkLoading=true;window._ppSdkQueue=[cb];
+  var s=document.createElement('script');
+  // enable-funding=venmo adds the Venmo button through the same SDK (no backend change).
+  // disable-funding hides: card (Square already handles cards), credit (legacy PayPal Credit),
+  // and paylater (Pay Later / Pay in 4 — not offered).
+  s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(PAYPAL_CLIENT_ID)+
+    '&currency=USD&intent=capture&enable-funding=venmo&disable-funding=credit,card,paylater';
+  s.onload=function(){window._ppSdkLoading=false;(window._ppSdkQueue||[]).forEach(function(fn){fn();});window._ppSdkQueue=[];};
+  s.onerror=function(){window._ppSdkLoading=false;window._ppSdkQueue=[];};
+  document.head.appendChild(s);
+}
+
+function initPayPal(total){
+  var cont=document.getElementById('paypal-button-container');
+  if(!cont)return;
+  // Stay hidden until real client ids are configured (placeholders end in _HERE)
+  if(!PAYPAL_CLIENT_ID||PAYPAL_CLIENT_ID.indexOf('_HERE')!==-1)return;
+  loadPayPalSdk(function(){
+    if(!window.paypal||!window.paypal.Buttons)return;
+    cont.innerHTML='';
+    var btns=window.paypal.Buttons({
+      style:{layout:'vertical',color:'gold',shape:'rect',label:'paypal'},
+      createOrder:function(){
+        return apiFetch('paypal_create.php','POST',{order_id:window._pendingOrderId}).then(function(d){
+          if(d&&d.success&&d.paypal_order_id)return d.paypal_order_id;
+          throw new Error((d&&d.error)||'Could not start PayPal checkout.');
+        });
+      },
+      onApprove:function(data){
+        _hide('card-error');_hide('co-payment');_show('co-processing');
+        return apiFetch('paypal_capture.php','POST',{order_id:window._pendingOrderId,paypal_order_id:data.orderID}).then(function(d){
+          _hide('co-processing');
+          if(d&&d.success){
+            window._pendingOrderId=null;window._pendingCartItems=null;window._pendingCancelToken=null;
+            showPaymentResult(d);
+          } else {
+            _show('co-payment');showCardError((d&&d.error)||'PayPal payment failed. Please try again.');
+          }
+        }).catch(function(){
+          _hide('co-processing');_show('co-payment');showCardError('PayPal payment failed. Please try again.');
+        });
+      },
+      onCancel:function(){/* buyer closed the PayPal window — order stays awaiting payment */},
+      onError:function(){_show('co-payment');showCardError('PayPal is unavailable right now. Please try another method.');}
+    });
+    window._ppButtons=btns;
+    if(btns.isEligible&&!btns.isEligible()){cont.style.display='none';return;}
+    btns.render('#paypal-button-container').then(function(){
+      cont.style.display='block';showWalletDivider();
+    }).catch(function(){cont.style.display='none';});
+  });
+}
+
+// Shared success render for the embedded payment step (card, wallet, and PayPal paths).
+function showPaymentResult(d){
+  var body=document.getElementById('co-result-body');
+  if(body)body.innerHTML='Your payment of <strong>$'+d.total.toFixed(2)+'</strong> was received.<br>Order #<strong>'+d.order_id+'</strong><br>A confirmation email has been sent to you.';
+  _show('co-result');
 }
 
 function loadSquareSdk(cb){
