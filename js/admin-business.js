@@ -187,6 +187,7 @@ function rBizDocs(el){
               '<div><div style="font-weight:600;font-size:.85rem;color:#2d2220">'+doc.orig_name+'</div>'+
               '<div style="font-size:.72rem;color:#6b6040">Uploaded '+doc.uploaded_at+' · '+Math.round(doc.size/1024)+' KB</div></div>'+
               '<div style="display:flex;gap:.5rem;flex-shrink:0">'+
+                '<button class="bs" style="font-size:.75rem;padding:.32rem .7rem" onclick="bizDocView(\''+t.key+'\')">👁 View</button>'+
                 '<button class="bs" style="font-size:.75rem;padding:.32rem .7rem" onclick="bizDocDownload(\''+t.key+'\')">⬇ Download</button>'+
                 '<button class="bd" style="font-size:.75rem;padding:.32rem .7rem" onclick="bizDocDelete(\''+t.key+'\')">✕ Delete</button>'+
               '</div>'+
@@ -231,6 +232,24 @@ function bizDocDelete(type){
   apiFetch('business_docs.php','POST',{action:'delete',doc_type:type}).then(function(){
     rBizDocs(document.getElementById('acnt'));
   }).catch(function(){alert('Network error.');});
+}
+function bizDocView(type){
+  fetch(API+'/business_docs.php',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':window._adminToken||''},body:JSON.stringify({action:'download',doc_type:type})})
+    .then(function(r){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var ctype=r.headers.get('Content-Type')||'';
+      return r.blob().then(function(blob){return {blob:blob,ctype:ctype};});
+    })
+    .then(function(res){
+      var url=URL.createObjectURL(res.blob);
+      if(res.ctype.indexOf('image/')===0){
+        showReceiptImageModal(url);
+      } else {
+        window.open(url,'_blank');
+        setTimeout(function(){URL.revokeObjectURL(url);},10000);
+      }
+    })
+    .catch(function(e){alert('Could not load document: '+e.message);});
 }
 function bizDocDownload(type){
   fetch(API+'/business_docs.php',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':window._adminToken||''},body:JSON.stringify({action:'download',doc_type:type})})

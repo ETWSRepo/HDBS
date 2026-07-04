@@ -423,6 +423,13 @@ try{
     t('business_docs.php enforces 5MB size cap',strpos($bdphp,'5 * 1024 * 1024')!==false);
     t('business_docs.php stores files outside webroot',strpos($bdphp,"dirname(dirname(__DIR__)) . '/business_documents/'")!==false);
     t('business_docs.php persists metadata to biz_documents setting',strpos($bdphp,"'biz_documents'")!==false);
+    // View button (2026-07-04) — same inline-preview pattern as Capital Equipment receipts
+    $abjsDoc=isset($abjs)?$abjs:file_get_contents($root.'/js/admin-business.js');
+    t('bizDocView function exists',strpos($abjsDoc,'function bizDocView(type)')!==false);
+    t('btn:View wired on Documents cards',strpos($abjsDoc,"onclick=\"bizDocView(")!==false);
+    t('bizDocView calls business_docs.php download action',strpos($abjsDoc,"API+'/business_docs.php'")!==false&&substr_count($abjsDoc,"action:'download'")>=1);
+    t('bizDocView shows images in a lightbox, opens other types in a new tab',strpos($abjsDoc,"res.ctype.indexOf('image/')===0")!==false);
+    t('bizDocView reuses the shared showReceiptImageModal lightbox',strpos($abjsDoc,'showReceiptImageModal(url)')!==false);
 }catch(Exception $e){t('business_docs.php checks',false,$e->getMessage());}
 // Dynamic business name/logo/email — index.php is server-rendered from Business > Profile
 try{
@@ -1560,7 +1567,7 @@ $fns=[
     // Biz profile
     'rBizProfile',
     // Business: documents, inventory, reports
-    'rBizDocs','bizDocUpload','bizDocDownload','bizDocDelete',
+    'rBizDocs','bizDocUpload','bizDocView','bizDocDownload','bizDocDelete',
     'rBizInv','rBizReports',
     // Regression test
     'rRegTest','runRegTests','cancelRegTests',
