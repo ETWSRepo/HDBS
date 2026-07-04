@@ -2344,6 +2344,28 @@ try{
 
 }catch(Exception $e){t('digital wallet + sandbox mode checks',false,$e->getMessage());}
 
+// ── PROD ERROR HARDENING + PROD-ONLY VERSION AUTO-BUMP ──
+try{
+    $cfgPhp = file_get_contents($root.'/api/config.php');
+    $dlPhp  = file_get_contents($root.'/api/deploy_log.php');
+
+    // config.php: display_errors off in prod, on in staging, log_errors on in prod
+    t('config.php hides errors in production',strpos($cfgPhp,"ini_set('display_errors', '0')")!==false);
+    t('config.php shows errors on staging',strpos($cfgPhp,"ini_set('display_errors', '1')")!==false);
+    t('config.php logs errors in production',strpos($cfgPhp,"ini_set('log_errors', '1')")!==false);
+    // The display_errors guard must precede the secrets require, so even a missing-secrets
+    // fatal is suppressed on prod (the exact leak that happened in HDBS_12).
+    $posErr = strpos($cfgPhp,"ini_set('display_errors', '0')");
+    $posReq = strpos($cfgPhp,'require_once ($__staging');
+    t('config.php sets display_errors before secrets require',$posErr!==false&&$posReq!==false&&$posErr<$posReq);
+
+    // deploy_log.php: prod-only minor auto-bump, debounced, stamps version_updated_at
+    t('deploy_log auto-bumps minor_version',strpos($dlPhp,"setSetting(\$pdo, 'minor_version'")!==false);
+    t('deploy_log skips version bump on staging',strpos($dlPhp,'empty($__staging)')!==false);
+    t('deploy_log debounces the bump (300s)',strpos($dlPhp,'version_updated_at')!==false&&strpos($dlPhp,'> 300')!==false);
+    t('deploy_log stamps version_updated_at on bump',strpos($dlPhp,"setSetting(\$pdo, 'version_updated_at'")!==false);
+}catch(Exception $e){t('error-hardening + auto-bump checks',false,$e->getMessage());}
+
 // ── ORDER REFUNDS (Square API + cash/check ledger + customer email) ──
 try{
     $rfFile=$root.'/api/refund.php';

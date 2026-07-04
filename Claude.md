@@ -96,8 +96,8 @@
 ## Site Version
 - Stored as `major_version` and `minor_version` in settings table
 - Displayed in all 4 footers via `.site-version-line` div (opacity 0.5)
-- **Manual only**: version is NOT auto-incremented. At checkpoint time, user specifies the new version number.
-- Settings screen has Version card to manually set major/minor (also used by checkpoint workflow)
+- **Auto-bump on PRODUCTION deploys**: `api/deploy_log.php` increments `minor_version` on every prod deploy (staging is skipped via `$__staging` so active-dev deploys don't inflate it). Debounced 300s so a multi-call checkpoint bumps the minor once. `version_updated_at` is stamped on each bump.
+- Major version and any explicit override are still set manually via the Settings → Version card (also used to set a specific number, e.g. a major bump).
 
 ## Admin Nav
 - Nested JSON stored in `nav_order` setting
@@ -120,7 +120,7 @@
 - Single file to prod: `.\deploy.ps1 path/to/file.php`
 - Full deploy: add `-staging` for staging, omit for prod
 - Staging keeps its own `.htaccess` (Basic Auth + noindex) — never deployed there, even in a full deploy
-- Each deploy logs to deploy history with the current version at that moment (not auto-incremented). Version is set manually at checkpoint time.
+- Each deploy logs to deploy history with the version it produced. Prod deploys auto-bump `minor_version` (see Site Version); staging deploys do not.
 - Use `Invoke-RestMethod` for JSON POSTs in deploy.ps1 (curl.exe has PS 5.1 quoting issues)
 - `watch.ps1` runs during active dev to auto-deploy on file save
 - Always explicitly report which files were deployed and when, and to which environment (per StandardPrompts rule)
@@ -144,4 +144,4 @@
 Three distinct triggers, each with one action:
 - **A change is made to local disk** → deploy that file immediately (`.\deploy.ps1 -staging <path>` while on `dev`, `.\deploy.ps1 <path>` while on `main`), confirm it's live, and show the site URL for the environment actually deployed to. Do NOT wait for a checkpoint.
 - **"test" command** → update `regression_test.php` to cover new functionality, deploy it to staging, then the user runs it, then show the test URL (without token). Claude never runs the suite itself.
-- **"checkpoint" command** → show the target branch + staged changes and confirm, then: **ask for the new version**, commit on the current branch → push to GitHub → update version in settings table → promote to production (merge `dev`→`main`, push `main`, deploy the changed files to prod via `deploy.ps1` — no `-staging`). Does NOT run the regression suite.
+- **"checkpoint" command** → show the target branch + staged changes and confirm, then: commit on the current branch → push to GitHub → promote to production (merge `dev`→`main`, push `main`, deploy the changed files to prod via `deploy.ps1` — no `-staging`). The prod deploy auto-bumps `minor_version` (no manual version write needed); only ask for a version if the user wants a major bump or a specific override, which is then set via the Settings → Version card. Does NOT run the regression suite.

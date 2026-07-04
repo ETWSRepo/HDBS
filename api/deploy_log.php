@@ -20,14 +20,27 @@ if ($method === 'POST') {
         $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         file_put_contents($logFile, implode("\n", array_slice($lines, -200)) . "\n");
     }
-    // Version is now manually set at checkpoint time, not auto-incremented on deploy
+    // Auto-bump the minor version on PRODUCTION deploys only. Staging is deliberately left
+    // untouched so active-dev staging deploys (incl. watch.ps1 auto-deploy) don't inflate the
+    // version. Debounced via version_updated_at (300s) so several deploy calls inside one
+    // checkpoint window bump the minor once, not once per call. $__staging comes from config.php.
+    $pdo = db();
+    if (empty($__staging)) {
+        try {
+            $lastTs = ($la = getSetting($pdo, 'version_updated_at')) ? strtotime($la) : 0;
+            if (time() - $lastTs > 300) {
+                $minNow = (int)(getSetting($pdo, 'minor_version') ?? 0);
+                setSetting($pdo, 'minor_version', (string)($minNow + 1));
+                setSetting($pdo, 'version_updated_at', date('c'));
+            }
+        } catch (Exception $e) {}
+    }
     // Capture the current site version so each deploy records the version it produced
     $version = '';
     try {
-        $vs = db()->prepare("SELECT value FROM settings WHERE key_name=? LIMIT 1");
-        $vs->execute(['major_version']); $maj = $vs->fetchColumn();
-        $vs->execute(['minor_version']); $min = $vs->fetchColumn();
-        if ($maj !== false || $min !== false) $version = ($maj !== false ? $maj : '0') . '.' . ($min !== false ? $min : '0');
+        $maj = getSetting($pdo, 'major_version');
+        $min = getSetting($pdo, 'minor_version');
+        if ($maj !== null || $min !== null) $version = ($maj !== null ? $maj : '0') . '.' . ($min !== null ? $min : '0');
     } catch (Exception $e) {}
     $entry = json_encode(['ts' => date('c'), 'count' => $count, 'mode' => $mode, 'version' => $version, 'files' => array_values($files)]);
     file_put_contents($logFile, $entry . "\n", FILE_APPEND | LOCK_EX);
