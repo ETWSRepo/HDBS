@@ -71,7 +71,7 @@ if (!empty($bz['logo'])) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/shop.css?v=14">
+<link rel="stylesheet" href="css/shop.css?v=16">
 <link rel="stylesheet" href="css/table.css">
 <link rel="stylesheet" href="css/toolbar.css">
 
@@ -132,8 +132,8 @@ if (!empty($bz['logo'])) {
       <button class="smitem" onclick="closeMenu();goAbout()">
         <span class="smi-icon">🌸</span> About Suzi
       </button>
-      <button class="smitem" onclick="closeMenu();goCustom()">
-        <span class="smi-icon">🧵</span> Custom Bags
+      <button class="smitem" onclick="closeMenu();goStudio()">
+        <span class="smi-icon">🎨</span> Design Studio
       </button>
       <button class="smitem" onclick="closeMenu();goFAQ()">
         <span class="smi-icon">❓</span> FAQ
@@ -192,7 +192,7 @@ if (!empty($bz['logo'])) {
       <p>Upcycled tote bags, purses, and quilts — sewn one stitch at a time by Suzi.</p>
       <div class="hero-btns">
         <button class="hbtn hbtn-primary" onclick="document.getElementById('ps').scrollIntoView({behavior:'smooth'})">Shop the collection</button>
-        <button class="hbtn hbtn-secondary" onclick="goCustom()">Request a custom bag</button>
+        <button class="hbtn hbtn-secondary" onclick="goStudio()">Visit the Design Studio</button>
       </div>
     </div>
   </div>
@@ -229,18 +229,6 @@ if (!empty($bz['logo'])) {
       <p>I believe handmade pieces carry stories that mass-produced products never can. Each bag begins as a one-of-a-kind idea and an upcycled find, then becomes something you'll carry for years — sewn here in Knoxville, never repeated.</p>
       <button class="at-link" onclick="goAbout()">Read her story →</button>
     </div>
-  </div>
-
-  <!-- PROCESS -->
-  <div class="process">
-    <div class="sh"><h2>How a custom piece comes to life</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">Every custom bag is a collaboration</p></div>
-    <div class="proc-steps">
-      <div class="proc-step"><div class="proc-num">1</div><div class="proc-label">Share your idea</div></div>
-      <div class="proc-step"><div class="proc-num">2</div><div class="proc-label">I sketch and design</div></div>
-      <div class="proc-step"><div class="proc-num">3</div><div class="proc-label">Handmade with care</div></div>
-      <div class="proc-step"><div class="proc-num">4</div><div class="proc-label">Delivered to you</div></div>
-    </div>
-    <div style="text-align:center;margin-top:1.4rem"><button class="hbtn hbtn-primary" onclick="goCustom()">Request a custom bag</button></div>
   </div>
 
   <!-- NEWSLETTER -->
@@ -632,12 +620,181 @@ if (!empty($bz['logo'])) {
       Suzi reads every message personally and will reply within 1–2 business days.<br>
       You can also reach her at <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:#a07810"><?php echo $bizEmailAttr; ?></a>
     </p>
+    <p style="text-align:center;font-size:.85rem;color:#6b6040;margin-top:1.2rem">
+      Looking for custom artwork, portraits, logos, photography, or jewelry?
+      <button class="at-link" onclick="goStudio()">Visit the Design Studio →</button>
+    </p>
   </div>
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
     <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
   </footer>
+</div>
+
+<!-- DESIGN STUDIO -->
+<div id="studio-page" style="display:none;min-height:100vh">
+  <nav>
+    <div style="display:flex;align-items:center;gap:.3rem">
+      <button class="menu-btn" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <a href="#" onclick="showPage('store');return false;" style="display:inline-flex;align-items:center"><img src="<?php echo $bizLogoAbsAttr; ?>" alt="<?php echo $bizNameAttr; ?>" style="height:80px;width:80px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.3)"></a>
+    </div>
+    <div class="nav-r"><button class="nb" onclick="goStore()">← Back to Shop</button></div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="ds-hero">
+    <div class="ds-hero-bg" id="ds-hero-bg"></div>
+    <div class="ds-hero-content">
+      <div class="ds-overline">The Design Studio</div>
+      <h1 id="ds-hero-headline">Let's create something that's only yours</h1>
+      <p id="ds-hero-sub">Custom tote bags, crossbody bags, quilts, embroidery, memory keepsakes, sewing projects and more — designed with you, made by hand in Knoxville.</p>
+      <div class="hero-btns">
+        <button class="hbtn hbtn-primary" id="ds-hero-cta" onclick="dsScrollTo('ds-inquire')">Start Your Project</button>
+        <button class="hbtn hbtn-secondary" onclick="dsScrollToWork()">See the work</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- What We Create -->
+  <div class="ds-sec" id="ds-services-sec">
+    <div class="sh"><h2>What We Create</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">Every project is a collaboration — here's where most of them begin</p></div>
+    <div class="ds-cards" id="ds-services"></div>
+  </div>
+
+  <!-- How the Design Studio Works -->
+  <div class="ds-sec-dark" id="ds-process">
+    <div class="sh"><h2>How the Design Studio Works</h2><div class="shd"></div><p style="font-size:.88rem;margin-top:.4rem">From first hello to final delivery — five simple steps</p></div>
+    <div class="ds-steps">
+      <div class="ds-step ds-fade"><div class="ds-step-icon" id="ds-step-i-1">💬</div><div class="ds-step-num">STEP 1</div><div class="ds-step-t" id="ds-step-t-1">Share Your Vision</div><div class="ds-step-c" id="ds-step-c-1">Tell Suzi what you're dreaming of — a few sentences is plenty to start.</div></div>
+      <div class="ds-step ds-fade"><div class="ds-step-icon" id="ds-step-i-2">🤝</div><div class="ds-step-num">STEP 2</div><div class="ds-step-t" id="ds-step-t-2">Creative Consultation</div><div class="ds-step-c" id="ds-step-c-2">A friendly conversation about ideas, budget, and timeline. No commitment yet.</div></div>
+      <div class="ds-step ds-fade"><div class="ds-step-icon" id="ds-step-i-3">✏️</div><div class="ds-step-num">STEP 3</div><div class="ds-step-t" id="ds-step-t-3">Concept Development</div><div class="ds-step-c" id="ds-step-c-3">Suzi sketches and shapes a concept made just for you.</div></div>
+      <div class="ds-step ds-fade"><div class="ds-step-icon" id="ds-step-i-4">🔍</div><div class="ds-step-num">STEP 4</div><div class="ds-step-t" id="ds-step-t-4">Refinement</div><div class="ds-step-c" id="ds-step-c-4">You review the work in progress and fine-tune the details together.</div></div>
+      <div class="ds-step ds-fade"><div class="ds-step-icon" id="ds-step-i-5">🎁</div><div class="ds-step-num">STEP 5</div><div class="ds-step-t" id="ds-step-t-5">Final Delivery</div><div class="ds-step-c" id="ds-step-c-5">Your finished piece is carefully packed and delivered to your door.</div></div>
+    </div>
+  </div>
+
+  <!-- Start With Inspiration (hidden until gallery content exists) -->
+  <div class="ds-sec" id="ds-inspo" style="display:none">
+    <div class="sh"><h2>Start With Inspiration</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">Browse past work — tap the ♥ on anything you love and it travels with your inquiry</p></div>
+    <div id="ds-groups"></div>
+    <div class="masonry" id="ds-gallery"></div>
+  </div>
+
+  <!-- Recent Custom Projects (hidden until content exists) -->
+  <div class="ds-sec" id="ds-projects-sec" style="display:none">
+    <div class="sh"><h2>Recent Custom Projects</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">Real commissions, from first idea to finished piece</p></div>
+    <div class="ds-cards" id="ds-projects"></div>
+  </div>
+
+  <!-- Why Work With Suzi -->
+  <div class="ds-sec" id="ds-why">
+    <div class="sh"><h2>Why Work With Suzi</h2><div class="shd"></div></div>
+    <div class="ds-why-grid">
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-1">🤲</div><div><div class="ds-why-t" id="ds-why-t-1">Handcrafted</div><div class="ds-why-c" id="ds-why-c-1">Every piece is made by hand, start to finish.</div></div></div>
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-2">🤝</div><div><div class="ds-why-t" id="ds-why-t-2">One-on-one collaboration</div><div class="ds-why-c" id="ds-why-c-2">You work directly with the artist — no middlemen.</div></div></div>
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-3">🚫</div><div><div class="ds-why-t" id="ds-why-t-3">No mass production</div><div class="ds-why-c" id="ds-why-c-3">Nothing is batch-made. Your piece exists once.</div></div></div>
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-4">🎨</div><div><div class="ds-why-t" id="ds-why-t-4">Original artwork</div><div class="ds-why-c" id="ds-why-c-4">Designed from scratch around your story.</div></div></div>
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-5">🔎</div><div><div class="ds-why-t" id="ds-why-t-5">Attention to detail</div><div class="ds-why-c" id="ds-why-c-5">The little things are the whole point.</div></div></div>
+      <div class="ds-why-item ds-fade"><div class="ds-why-icon" id="ds-why-i-6">🌿</div><div><div class="ds-why-t" id="ds-why-t-6">Creative flexibility</div><div class="ds-why-c" id="ds-why-c-6">Changed your mind mid-project? Let's talk it through.</div></div></div>
+    </div>
+  </div>
+
+  <!-- Testimonials (hidden until content exists) -->
+  <div class="ds-sec" id="ds-testi-sec" style="display:none;padding-top:0">
+    <div class="sh"><h2>Kind Words</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">From people who trusted Suzi with their ideas</p></div>
+    <div class="ds-testi" id="ds-testi"></div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="ds-sec" id="ds-faq-sec">
+    <div class="sh"><h2>Questions, Answered</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">Everything you might be wondering before you reach out</p></div>
+    <div id="ds-faq"></div>
+  </div>
+
+  <!-- Inquiry form -->
+  <div class="ds-sec" id="ds-inquire" style="padding-top:1rem">
+    <div class="sh"><h2>Start Your Project</h2><div class="shd"></div><p style="color:#6b6040;font-size:.88rem;margin-top:.4rem">No commitment — just tell Suzi what you're imagining</p></div>
+    <div class="ds-form-card">
+      <div id="ds-form-wrap">
+        <div class="merr" id="ds-err"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+          <div><label class="fl">Your Name *</label><input class="fi" id="ds-name" placeholder="Jane Smith"></div>
+          <div><label class="fl">Email *</label><input class="fi" id="ds-email" type="email" placeholder="you@email.com"></div>
+        </div>
+        <label class="fl">Phone (optional)</label>
+        <input class="fi" id="ds-phone" placeholder="(555) 000-0000" oninput="fmtPhone(this)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+          <div><label class="fl">Project type</label>
+            <select class="fi" id="ds-type"><option value="">— What kind of project? —</option></select></div>
+          <div><label class="fl">Budget range (optional)</label>
+            <select class="fi" id="ds-budget">
+              <option value="">— Select a range —</option>
+              <option>Under $100</option>
+              <option>$100 – $250</option>
+              <option>$250 – $500</option>
+              <option>$500+</option>
+              <option>Flexible — depends on the design</option>
+            </select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+          <div><label class="fl">Timeline (optional)</label>
+            <select class="fi" id="ds-timeline">
+              <option value="">— No firm deadline —</option>
+              <option>No rush</option>
+              <option>Within a month</option>
+              <option>Within two weeks</option>
+              <option>I have a specific date (mentioned below)</option>
+            </select></div>
+          <div><label class="fl">How should Suzi reach you?</label>
+            <select class="fi" id="ds-pref">
+              <option>Email</option>
+              <option>Phone call</option>
+              <option>Text</option>
+            </select></div>
+        </div>
+        <label class="fl">Tell Suzi about your project *</label>
+        <textarea class="fi" id="ds-desc" rows="4" style="resize:vertical" placeholder="What are you imagining? Who is it for? Colors, sizes, moods, memories — anything helps…"></textarea>
+        <label class="fl">My inspiration</label>
+        <div class="ds-picks-row" id="ds-picks"><span class="ds-picks-hint">Tap the ♥ on any inspiration photo above and it will appear here with your message.</span></div>
+        <label class="fl">Inspiration links (optional)</label>
+        <input class="fi" id="ds-links" placeholder="Paste links to anything that inspires you — Pinterest, photos, websites…">
+        <button class="mbtn" id="ds-submit" onclick="submitStudioInquiry()">Send My Project Inquiry</button>
+      </div>
+      <div id="ds-ok" style="display:none;text-align:center;padding:1.5rem .5rem">
+        <div style="font-size:2.2rem;margin-bottom:.6rem">🌸</div>
+        <div style="font-family:var(--font-head);font-size:1.3rem;color:#2d2220;margin-bottom:.6rem">Your inquiry is on its way!</div>
+        <p style="font-size:.88rem;color:#6b6040;line-height:1.8;max-width:420px;margin:0 auto">
+          Here's what happens next: Suzi reads every message personally and will reach out within
+          1–2 business days to set up your creative consultation — a friendly, no-commitment
+          conversation about your idea, budget, and timeline.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final CTA -->
+  <div class="ds-final">
+    <h2 id="ds-final-h">Your story, handmade</h2>
+    <p id="ds-final-sub">Every commission starts with a simple hello. Tell Suzi what you're imagining — she'll take it from there.</p>
+    <button class="hbtn hbtn-primary" id="ds-final-cta" onclick="dsScrollTo('ds-inquire')">Begin the collaboration</button>
+  </div>
+
+  <footer style="background:#2d2220;padding:1.5rem;text-align:center">
+    <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+  </footer>
+
+  <!-- Sticky mobile CTA (shown after scrolling past the hero) -->
+  <button id="ds-sticky-cta" onclick="dsScrollTo('ds-inquire')">Start Your Project</button>
+
+  <!-- Project story modal -->
+  <div class="modal-ov" id="ds-proj-modal" onclick="if(event.target===this)closeModal('ds-proj-modal')">
+    <div class="modal-box" style="padding:1.8rem">
+      <button onclick="closeModal('ds-proj-modal')" aria-label="Close" style="position:absolute;top:.7rem;right:.9rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b6040;line-height:1">×</button>
+      <div id="ds-proj-body"></div>
+    </div>
+  </div>
 </div>
 
 <!-- FAQ PAGE -->
@@ -900,17 +1057,19 @@ if (!empty($bz['logo'])) {
 <video id="cam-video" style="display:none" autoplay playsinline></video>
 
 <script src="js/api.js?v=9"></script>
-<script src="js/config.js?v=17"></script>
+<script src="js/config.js?v=18"></script>
 <script src="js/data.js?v=5"></script>
 <script src="js/store.js?v=22"></script>
+<script src="js/studio.js?v=2"></script>
 <script src="js/auth.js?v=6"></script>
 <script src="js/ui.js?v=11"></script>
-<script src="js/admin-nav.js?v=11"></script>
+<script src="js/admin-nav.js?v=12"></script>
 <script src="js/admin-general.js?v=5"></script>
 <script src="js/admin-products.js?v=15"></script>
 <script src="js/admin-orders.js?v=32"></script>
-<script src="js/admin-misc.js?v=21"></script>
+<script src="js/admin-misc.js?v=22"></script>
 <script src="js/admin-business.js?v=9"></script>
+<script src="js/admin-studio.js?v=1"></script>
 <script src="js/table.js"></script>
 <script src="js/toolbar.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function(){ TableKit.initAll(); });</script>

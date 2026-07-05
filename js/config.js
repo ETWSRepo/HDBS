@@ -99,7 +99,8 @@ var RT_GROUPS={
   'DB Schema':['orders.tax_amount','orders.tax_swept_date','orders.payment_method','orders.customer_email','orders.total','orders.shipping_carrier','orders.tracking_number','orders.square_payment_id','products.sku','products.img1','products.price','products.name','products.stock','products.weight','orders table','products table','order_items table','settings table','tax_sweeps table','settings LONGTEXT','tax_swept removed'],
   'Data Integrity':['products exist','orders exist','settings exist','square_mode set','shipping_config','biz_profile','products have SKUs','no duplicate SKUs'],
   'Required Files':['api/config.php','api/admin.php','api/orders.php','api/products.php','api/tax_sweep.php','api/square_payments.php','mailer.php','checkout.php','send_confirm.php','send_shipping.php','index.php'],
-  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax']
+  'JS Functions':['JS:openCheckout','JS:placeOrder','JS:renderOrdersTable','JS:viewOrder','JS:sendConfirmEmail','JS:rSweep','JS:rSqPay','JS:applyShippingConfig','JS:rBizProfile','JS:buildAdminNav','JS:saveNavOrder','JS:rRegTest','JS:runRegTests','JS:cancelRegTests','JS:SQ_FEE_PCT','JS:TAX_RATES','JS:admin-nav','JS:updCarrier','JS:updTracking','JS:deleteOrder','JS:sendShippingEmail','JS:pfNextSku','JS:pfAutoSku','JS:fetchOrderTax'],
+  'Design Studio':['api/studio.php','js/studio.js','js/admin-studio.js','studio_items table','studio_inquiries table','studio services seeded','studio faqs seeded','studio GET public','studio POST auth','studio inquire validates','studio rate limit','JS:goStudio','JS:renderStudio','JS:submitStudioInquiry','JS:STUDIO_PICKS','JS:rStudio','JS:dsSaveItem','index.php studio-page','index.php studio scripts']
 };
 var ADMIN_NAV_DEFAULT=[
   {sec:'dash',    label:'📊 Dashboard'},
@@ -110,6 +111,7 @@ var ADMIN_NAV_DEFAULT=[
   {sec:'subs',    label:'✉️ Subscribers'},
   {sec:'blast',   label:'📣 Email Blast'},
   {sec:'faqs',    label:'❓ FAQs'},
+  {sec:'studio',  label:'🎨 Design Studio'},
   {sec:'reviews', label:'⭐ Reviews'},
   {sec:'cats',    label:'🏷️ Categories'},
   {sec:'shipping',label:'🚚 Shipping Charges'},
@@ -128,7 +130,7 @@ var CFP_USER=null; // the customer being reset
 
 // ── PAGE CONTROL ──
 function showOnly(id,flex){
-  var pages=['store','authpage','alog','apanel','contactpage','aboutpage','faqpage','custompg','pd-page'];
+  var pages=['store','authpage','alog','apanel','contactpage','aboutpage','faqpage','custompg','studio-page','pd-page'];
   for(var i=0;i<pages.length;i++){
     var el=document.getElementById(pages[i]);
     if(pages[i]===id){
@@ -210,6 +212,7 @@ function goPanel(){
 function goAbout(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'About Suzi',page_path:'/#about'});if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'About Suzi'});showOnly('aboutpage');window.scrollTo(0,0);}
 function goFAQ(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'FAQ',page_path:'/#faq'});if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'FAQ'});loadFAQs();showOnly('faqpage');window.scrollTo(0,0);}
 function goCustom(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'Custom Orders',page_path:'/#custom'});if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Custom Orders'});showOnly('custompg');window.scrollTo(0,0);}
+function goStudio(){if(typeof gtag==='function')gtag('event','page_view',{page_title:'Design Studio',page_path:'/#studio'});if(localStorage.getItem('hdbs_pagelog')==='1')apiFetch('admin.php','POST',{action:'log_page_view',page:'Design Studio'});showOnly('studio-page');window.scrollTo(0,0);if(typeof renderStudioEntry==='function')renderStudioEntry();}
 function submitCustomRequest(){
   var name=document.getElementById('cust-name').value.trim();
   var email=document.getElementById('cust-email').value.trim();

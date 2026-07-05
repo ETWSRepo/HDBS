@@ -249,9 +249,10 @@ try{
     t('index.php has Coming Soon section',strpos($chtml,'id="coming-soon"')!==false&&strpos($chtml,'id="cs-grid"')!==false);
     t('Coming Soon has First look eyebrow',strpos($chtml,'First look')!==false);
     t('index.php loads Playfair + Inter',strpos($chtml,'Playfair+Display')!==false&&strpos($chtml,'family=Inter')!==false);
-    t('hero redesigned (overline + buttons)',strpos($chtml,'hero-overline')!==false&&strpos($chtml,'hbtn-primary')!==false&&strpos($chtml,'Request a custom bag')!==false);
+    t('hero redesigned (overline + buttons)',strpos($chtml,'hero-overline')!==false&&strpos($chtml,'hbtn-primary')!==false&&strpos($chtml,'Visit the Design Studio')!==false);
     t('homepage has featured collections',strpos($chtml,'id="featured-cards"')!==false);
-    t('homepage has about + process',strpos($chtml,'class="about-teaser"')!==false&&strpos($chtml,'class="proc-steps"')!==false);
+    t('homepage has about teaser',strpos($chtml,'class="about-teaser"')!==false);
+    t('homepage process section removed',strpos($chtml,'class="process"')===false&&strpos($chtml,'class="proc-steps"')===false);
     t('store.js renderFeatured + goCat',strpos($csj,'function renderFeatured(')!==false&&strpos($csj,'function goCat(')!==false);
     $css2=file_get_contents($root.'/css/shop.css');
     t('shop.css defines neutral palette vars',strpos($css2,'--ivory:#F8F6F2')!==false&&strpos($css2,'--gold:#B88A44')!==false&&strpos($css2,'--charcoal:#2B2B2B')!==false);
@@ -264,7 +265,8 @@ try{
 try{
     $rhtml=file_get_contents($root.'/index.php');
     t('homepage has masonry gallery',strpos($rhtml,'id="gallery-grid"')!==false&&strpos($rhtml,'class="masonry"')!==false);
-    t('nav has Gallery + Custom Bags',strpos($rhtml,'goGallery()')!==false&&strpos($rhtml,'Custom Bags')!==false);
+    t('nav has Gallery + Design Studio',strpos($rhtml,'goGallery()')!==false&&strpos($rhtml,'goStudio()')!==false);
+    t('nav Custom Bags entry removed',strpos($rhtml,'Custom Bags')===false);
     $rsj=file_get_contents($root.'/js/store.js');
     t('store.js renderGallery + goGallery',strpos($rsj,'function renderGallery(')!==false&&strpos($rsj,'function goGallery(')!==false);
     t('cat filter uses muted gold',strpos($rsj,"active?'#B88A44'")!==false);
@@ -2998,6 +3000,51 @@ try{
     t('square_payments.php keys tax lookup by payment id, not Square order id',strpos($spPhp,"\$taxByPaymentId[\$row['square_payment_id']]")!==false);
     t('square_payments.php still requires admin',strpos($spPhp,'requireAdmin()')!==false);
 }catch(Exception $e){t('square payments report tax source checks',false,$e->getMessage());}
+
+// ── DESIGN STUDIO (2026-07-05) ──
+// Commission-inquiry showcase page: services/gallery/projects/testimonials/FAQs content
+// (studio_items) + inquiry form (studio_inquiries), admin-managed via js/admin-studio.js.
+try{
+    t('api/studio.php',file_exists($root.'/api/studio.php'));
+    t('js/studio.js',file_exists($root.'/js/studio.js'));
+    t('js/admin-studio.js',file_exists($root.'/js/admin-studio.js'));
+    $spphp=file_get_contents($root.'/api/studio.php');
+
+    $sicols=$pdo->query("SHOW COLUMNS FROM studio_items")->fetchAll(PDO::FETCH_COLUMN);
+    t('studio_items table',count($sicols)>0);
+    $sqcols=$pdo->query("SHOW COLUMNS FROM studio_inquiries")->fetchAll(PDO::FETCH_COLUMN);
+    t('studio_inquiries table',count($sqcols)>0);
+
+    $svcCount=(int)$pdo->query("SELECT COUNT(*) FROM studio_items WHERE section='service'")->fetchColumn();
+    t('studio services seeded',$svcCount>0,$svcCount.' rows');
+    $faqCount=(int)$pdo->query("SELECT COUNT(*) FROM studio_items WHERE section='faq'")->fetchColumn();
+    t('studio faqs seeded',$faqCount>0,$faqCount.' rows');
+
+    // Public GET is read-only — safe to hit live (mirrors other live curl checks in this suite)
+    // Tests the environment the suite is actually running on (ALLOWED_ORIGIN), not a hardcoded
+    // host — the Design Studio may exist on staging before it's promoted to prod.
+    $sch=curl_init(ALLOWED_ORIGIN.'/api/studio.php');
+    curl_setopt_array($sch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8]);
+    $sresp=curl_exec($sch);$scode=(int)curl_getinfo($sch,CURLINFO_HTTP_CODE);curl_close($sch);
+    $sjson=json_decode((string)$sresp,true);
+    t('studio GET public',$scode===200&&is_array($sjson)&&!empty($sjson['success']),'HTTP '.$scode);
+
+    t('studio POST auth',strpos($spphp,'requireAdmin();')!==false&&strpos($spphp,"action === 'save_item'")!==false&&strpos($spphp,"action === 'inquire'")!==false);
+    t('studio inquire validates',strpos($spphp,'Name, email and a project description are required')!==false&&strpos($spphp,'FILTER_VALIDATE_EMAIL')!==false);
+    t('studio rate limit',strpos($spphp,'rate_limits')!==false&&strpos($spphp,"attempts'] >= 5")!==false);
+
+    $stjs=file_get_contents($root.'/js/studio.js');
+    t('JS:goStudio',strpos(file_get_contents($root.'/js/config.js'),'function goStudio(')!==false);
+    t('JS:renderStudio',strpos($stjs,'function renderStudio(')!==false);
+    t('JS:submitStudioInquiry',strpos($stjs,'function submitStudioInquiry(')!==false);
+    t('JS:STUDIO_PICKS',strpos($stjs,'STUDIO_PICKS')!==false);
+    $asjs=file_get_contents($root.'/js/admin-studio.js');
+    t('JS:rStudio',strpos($asjs,'function rStudio(')!==false);
+    t('JS:dsSaveItem',strpos($asjs,'function dsSaveItem(')!==false);
+
+    t('index.php studio-page',strpos($chtml,'id="studio-page"')!==false);
+    t('index.php studio scripts',strpos($chtml,'js/studio.js')!==false&&strpos($chtml,'js/admin-studio.js')!==false);
+}catch(Exception $e){t('design studio checks',false,$e->getMessage());}
 
 }catch(Exception $e){t('Exception',false,$e->getMessage().' line '.$e->getLine());}
 
