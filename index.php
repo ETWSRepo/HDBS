@@ -290,7 +290,7 @@ if (!empty($bz['logo'])) {
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN · <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:rgba(255,255,255,.5)"><?php echo $bizEmailAttr; ?></a></div>
     <div style="margin-top:.55rem"><a href="#" onclick="event.preventDefault();openMyOrders()" style="color:#d4a017;font-size:.8rem;text-decoration:underline;cursor:pointer">📦 Track / View My Orders</a></div>
-    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by Business Web Express &middot; <a href="mailto:info@businesswebexpress.com" style="color:rgba(255,255,255,.5);text-decoration:underline">info@businesswebexpress.com</a></div>
     <div class="site-version-line" style="color:rgba(255,255,255,.5);font-size:.6rem;margin-top:.5rem"></div>
     <div style="margin-top:1rem">
       <img src="https://handmadedesignsbysuzi.com/QRCode.png" alt="Scan to visit handmadedesignsbysuzi.com" style="width:90px;height:90px;border-radius:6px;opacity:.85">
@@ -628,7 +628,7 @@ if (!empty($bz['logo'])) {
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
-    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by Business Web Express &middot; <a href="mailto:info@businesswebexpress.com" style="color:rgba(255,255,255,.5);text-decoration:underline">info@businesswebexpress.com</a></div>
   </footer>
 </div>
 
@@ -782,7 +782,7 @@ if (!empty($bz['logo'])) {
 
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
-    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by Business Web Express &middot; <a href="mailto:info@businesswebexpress.com" style="color:rgba(255,255,255,.5);text-decoration:underline">info@businesswebexpress.com</a></div>
   </footer>
 
   <!-- Sticky mobile CTA (shown after scrolling past the hero) -->
@@ -821,7 +821,7 @@ if (!empty($bz['logo'])) {
   </div>
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN</div>
-    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by Business Web Express &middot; <a href="mailto:info@businesswebexpress.com" style="color:rgba(255,255,255,.5);text-decoration:underline">info@businesswebexpress.com</a></div>
   </footer>
 </div>
 
@@ -896,7 +896,7 @@ if (!empty($bz['logo'])) {
   <footer style="background:#2d2220;padding:1.5rem;text-align:center">
     <div style="color:rgba(255,255,255,.5);font-size:.82rem">© 2026 <?php echo $bizNameAttr; ?> · Knoxville, TN · <a href="mailto:<?php echo $bizEmailAttr; ?>" style="color:rgba(255,255,255,.5)"><?php echo $bizEmailAttr; ?></a></div>
     <div style="margin-top:.55rem"><a href="#" onclick="event.preventDefault();openMyOrders()" style="color:#d4a017;font-size:.8rem;text-decoration:underline;cursor:pointer">📦 Track / View My Orders</a></div>
-    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by East Tennessee Web Services &middot; <a href="mailto:easttnwebservices@yahoo.com" style="color:rgba(255,255,255,.5);text-decoration:underline">easttnwebservices@yahoo.com</a></div>
+    <div style="color:rgba(255,255,255,.5);font-size:.68rem;margin-top:.4rem">Website by Business Web Express &middot; <a href="mailto:info@businesswebexpress.com" style="color:rgba(255,255,255,.5);text-decoration:underline">info@businesswebexpress.com</a></div>
     <div class="site-version-line" style="color:rgba(255,255,255,.5);font-size:.6rem;margin-top:.5rem"></div>
   </footer>
 </div>

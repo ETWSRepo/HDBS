@@ -2663,6 +2663,16 @@ try{
 
 }catch(Exception $e){t('digital wallet + sandbox mode checks',false,$e->getMessage());}
 
+try{
+    // Footer credit — updated from East Tennessee Web Services to Business Web Express
+    $footerCount=substr_count($idx,'Website by Business Web Express');
+    t('index.php:footer credits Business Web Express',$footerCount>0);
+    t('index.php:footer has all 5 footer instances updated',$footerCount===5,"found $footerCount");
+    t('index.php:footer email is info@businesswebexpress.com',strpos($idx,'mailto:info@businesswebexpress.com')!==false);
+    t('index.php:no stale East Tennessee Web Services footer text',strpos($idx,'East Tennessee Web Services')===false);
+    t('index.php:no stale easttnwebservices email',strpos($idx,'easttnwebservices@yahoo.com')===false);
+}catch(Exception $e){t('footer credit checks',false,$e->getMessage());}
+
 // ── PROD ERROR HARDENING + PROD-ONLY VERSION AUTO-BUMP ──
 try{
     $cfgPhp = file_get_contents($root.'/api/config.php');
